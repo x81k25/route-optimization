@@ -1,0 +1,108 @@
+{
+  "subway_locations_san_francisco": [
+    {
+      "id": 1,
+      "name": "Subway - Folsom Street",
+      "class": "primary",
+      "address": "795 Folsom Street, San Francisco, CA 94107",
+      "latitude": 37.7821435,
+      "longitude": -122.4004926
+    },
+    {
+      "id": 2,
+      "name": "Subway - Market Street",
+      "class": "secondary",
+      "address": "388 Market Street, San Francisco, CA 94111",
+      "latitude": 37.7908,
+      "longitude": -122.4010
+    },
+    {
+      "id": 3,
+      "name": "Subway - 4th Street",
+      "class": "secondary",
+      "address": "700 4th Street, San Francisco, CA 94107",
+      "latitude": 37.7767,
+      "longitude": -122.3949
+    },
+    {
+      "id": 4,
+      "name": "Subway - O'Farrell Street",
+      "class": "secondary",
+      "address": "170 O'Farrell Street, San Francisco, CA 94102",
+      "latitude": 37.7873,
+      "longitude": -122.4086
+    },
+    {
+      "id": 5,
+      "name": "Subway - Mason Street",
+      "class": "secondary",
+      "address": "147 Mason Street, San Francisco, CA 94102",
+      "latitude": 37.7869,
+      "longitude": -122.4093
+    },
+    {
+      "id": 6,
+      "name": "Subway - Townsend Street",
+      "class": "secondary",
+      "address": "177 Townsend Street, San Francisco, CA 94107",
+      "latitude": 37.7800,
+      "longitude": -122.3913
+    },
+    {
+      "id": 7,
+      "name": "Subway - San Bruno Avenue",
+      "class": "secondary",
+      "address": "2599 San Bruno Avenue, San Francisco, CA 94134",
+      "latitude": 37.7281,
+      "longitude": -122.4035
+    },
+    {
+      "id": 8,
+      "name": "Subway - Union Square",
+      "class": "secondary",
+      "address": "Union Square, San Francisco, CA 94108",
+      "latitude": 37.7879,
+      "longitude": -122.4075
+    },
+    {
+      "id": 9,
+      "name": "Subway - Caltrain Station",
+      "class": "secondary",
+      "address": "Caltrain Station, 4th & King Street, San Francisco, CA 94107",
+      "latitude": 37.7765,
+      "longitude": -122.3949
+    },
+    {
+      "id": 10,
+      "name": "Subway - UC Hastings",
+      "class": "secondary",
+      "address": "UC Hastings College of Law Area, San Francisco, CA 94102",
+      "latitude": 37.7820,
+      "longitude": -122.4194
+    },
+    {
+      "id": 11,
+      "name": "Subway - Northpoint",
+      "class": "secondary",
+      "address": "Northpoint Shopping Center, San Francisco, CA 94133",
+      "latitude": 37.8067,
+      "longitude": -122.4181
+    },
+    {
+      "id": 12,
+      "name": "Subway - Bayview Plaza",
+      "class": "secondary",
+      "address": "Bayview Plaza, San Francisco, CA 94124",
+      "latitude": 37.7344,
+      "longitude": -122.3712
+    },
+    {
+      "id": 13,
+      "name": "Subway - Mission District",
+      "class": "secondary",
+      "address": "Mission District, San Francisco, CA 94110",
+      "latitude": 37.7599,
+      "longitude": -122.4148
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+model_params:
+  days_per_week: 5
+  utilization: 100
+  primary_hours_per_week: 24
+  hours_per_non_primary: 1
+  locations_per_day_max: 7
+  drive_inefficiency: 0
+  start_location: primary
