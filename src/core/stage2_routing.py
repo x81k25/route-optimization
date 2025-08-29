@@ -4,30 +4,37 @@ Stage 2: Daily Route Optimization
 Optimizes the route for a given set of locations using Greedy Nearest Neighbor + 2-opt.
 """
 
-import pickle
 import numpy as np
 import polars as pl
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 import itertools
+from loguru import logger
 
 
 class DailyRouteOptimizer:
     """Optimizes routes for a single day's locations."""
     
-    def __init__(self, od_matrix_path: str = "data/od_matrix.pkl"):
+    def __init__(self, od_matrix: Union[str, pl.DataFrame]):
         """
         Initialize with OD matrix.
         
         Args:
-            od_matrix_path: Path to pickled polars DataFrame with drive times
+            od_matrix: Either path to pickled DataFrame (legacy) or Polars DataFrame directly
         """
-        with open(od_matrix_path, 'rb') as f:
-            self.od_matrix = pickle.load(f)
+        if isinstance(od_matrix, str):
+            # Legacy path-based initialization
+            import pickle
+            with open(od_matrix, 'rb') as f:
+                self.od_matrix = pickle.load(f)
+        else:
+            # New DataFrame-based initialization
+            self.od_matrix = od_matrix
         
         # Create lookup dictionary for quick drive time access
         self.drive_time_lookup = {}
         for row in self.od_matrix.iter_rows():
-            origin_id, dest_id, drive_time = row[0], row[1], row[5]
+            origin_id, dest_id = row[1], row[2]  # origin_id, destination_id from OSRM format
+            drive_time = row[5]  # duration_minutes
             self.drive_time_lookup[(origin_id, dest_id)] = drive_time
     
     def get_drive_time(self, origin_id: int, dest_id: int) -> float:
@@ -254,8 +261,8 @@ if __name__ == "__main__":
     # Test with a sample set of locations
     test_locations = [2, 3, 4, 5, 6]  # Sample location IDs
     
-    print("Route Optimization Example:")
-    print("==========================")
+    logger.info("Route Optimization Example:")
+    logger.info("==========================")
     
     # Optimize route
     route, total_time, metadata = optimizer.optimize_route(test_locations)
@@ -263,19 +270,19 @@ if __name__ == "__main__":
     # Load location names for display
     location_names = load_location_names()
     
-    print(f"Algorithm used: {metadata['algorithm']}")
-    print(f"Optimal solution: {metadata['optimal']}")
-    print(f"Total drive time: {total_time:.1f} minutes")
-    print(f"\nOptimized route:")
+    logger.info(f"Algorithm used: {metadata['algorithm']}")
+    logger.info(f"Optimal solution: {metadata['optimal']}")
+    logger.info(f"Total drive time: {total_time:.1f} minutes")
+    logger.info(f"\nOptimized route:")
     
     for i, location_id in enumerate(route):
-        print(f"  {i + 1}. {location_names.get(location_id, f'Location {location_id}')}")
+        logger.info(f"  {i + 1}. {location_names.get(location_id, f'Location {location_id}')}")
     
     # Show step-by-step details
-    print(f"\nRoute details:")
+    logger.info(f"\nRoute details:")
     details = optimizer.get_route_details(route)
     for step in details:
         from_name = location_names.get(step['from_location_id'], f"Location {step['from_location_id']}")
         to_name = location_names.get(step['to_location_id'], f"Location {step['to_location_id']}")
-        print(f"  Step {step['step']}: {from_name} → {to_name}")
-        print(f"    Drive time: {step['drive_time_minutes']:.1f} min, Cumulative: {step['cumulative_time_minutes']:.1f} min")
+        logger.info(f"  Step {step['step']}: {from_name} → {to_name}")
+        logger.info(f"    Drive time: {step['drive_time_minutes']:.1f} min, Cumulative: {step['cumulative_time_minutes']:.1f} min")

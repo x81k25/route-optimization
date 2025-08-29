@@ -8,6 +8,8 @@ import plotly.express as px
 from typing import Dict, List, Tuple, Any
 import os
 from pathlib import Path
+import polyline
+from loguru import logger
 
 
 class RouteVisualizer:
@@ -51,7 +53,7 @@ class RouteVisualizer:
         # Add map background
         fig.update_layout(
             mapbox=dict(
-                style='open-street-map',
+                style='carto-positron',  # Clean, minimalist style with light colors
                 center=dict(lat=37.7749, lon=-122.4194),  # San Francisco center
                 zoom=11
             ),
@@ -69,9 +71,9 @@ class RouteVisualizer:
                 lon=[location['longitude']],
                 mode='markers',
                 marker=dict(
-                    size=15,
+                    size=25,
                     color=self.day_colors[int(day)],
-                    symbol='star'
+                    symbol='circle'
                 ),
                 text=f"Day {day}: {location['name']} (PRIMARY)",
                 name=f"Day {day} - Primary",
@@ -105,20 +107,58 @@ class RouteVisualizer:
                 hovertemplate="<b>%{text}</b><extra></extra>"
             ))
             
-            # Add route lines
+            # Add route lines with real geometry if available
             if len(route) > 1:
-                fig.add_trace(go.Scattermapbox(
-                    lat=lats,
-                    lon=lons,
-                    mode='lines',
-                    line=dict(
-                        width=3,
-                        color=self.day_colors[day_int]
-                    ),
-                    name=f"Day {day} - Route ({drive_time:.1f} min)",
-                    hoverinfo='skip',
-                    showlegend=True
-                ))
+                # Check if we have route geometry data
+                route_geometry = results.get('route_geometries', {}).get(day)
+                if route_geometry and route_geometry.get('geometry_polyline'):
+                    # Decode polyline to get actual route path
+                    try:
+                        polyline_coords = polyline.decode(route_geometry['geometry_polyline'])
+                        route_lats = [coord[0] for coord in polyline_coords]
+                        route_lons = [coord[1] for coord in polyline_coords]
+                        
+                        fig.add_trace(go.Scattermapbox(
+                            lat=route_lats,
+                            lon=route_lons,
+                            mode='lines',
+                            line=dict(
+                                width=4,
+                                color=self.day_colors[day_int]
+                            ),
+                            name=f"Day {day} - Route ({drive_time:.1f} min)",
+                            hoverinfo='skip',
+                            showlegend=True
+                        ))
+                    except Exception as e:
+                        # Fallback to straight lines if polyline decoding fails
+                        logger.warning(f"Failed to decode polyline for day {day}, using straight lines: {e}")
+                        fig.add_trace(go.Scattermapbox(
+                            lat=lats,
+                            lon=lons,
+                            mode='lines',
+                            line=dict(
+                                width=3,
+                                color=self.day_colors[day_int]
+                            ),
+                            name=f"Day {day} - Route ({drive_time:.1f} min)",
+                            hoverinfo='skip',
+                            showlegend=True
+                        ))
+                else:
+                    # No route geometry available, use straight lines
+                    fig.add_trace(go.Scattermapbox(
+                        lat=lats,
+                        lon=lons,
+                        mode='lines',
+                        line=dict(
+                            width=3,
+                            color=self.day_colors[day_int]
+                        ),
+                        name=f"Day {day} - Route ({drive_time:.1f} min)",
+                        hoverinfo='skip',
+                        showlegend=True
+                    ))
         
         return fig
     
@@ -130,7 +170,7 @@ class RouteVisualizer:
         # Add map background
         fig.update_layout(
             mapbox=dict(
-                style='open-street-map',
+                style='carto-positron',  # Clean, minimalist style with light colors
                 zoom=12
             ),
             title=f"Route Optimization - Day {day}",
@@ -149,9 +189,9 @@ class RouteVisualizer:
                 lon=[location['longitude']],
                 mode='markers',
                 marker=dict(
-                    size=20,
+                    size=30,
                     color=self.day_colors[day_int],
-                    symbol='star'
+                    symbol='circle'
                 ),
                 text=f"{location['name']} (PRIMARY - Full Day)",
                 name="Primary Location",
@@ -163,7 +203,8 @@ class RouteVisualizer:
             # Center map on primary location
             fig.update_layout(
                 mapbox=dict(
-                    center=dict(lat=location['latitude'], lon=location['longitude'])
+                    center=dict(lat=location['latitude'], lon=location['longitude']),
+                    zoom=14
                 )
             )
         
@@ -197,19 +238,55 @@ class RouteVisualizer:
                     showlegend=False
                 ))
             
-            # Add route lines with arrows
+            # Add route lines with real geometry if available
             if len(route) > 1:
-                fig.add_trace(go.Scattermapbox(
-                    lat=lats,
-                    lon=lons,
-                    mode='lines',
-                    line=dict(
-                        width=4,
-                        color=self.day_colors[day_int]
-                    ),
-                    name=f"Route (Total: {drive_time:.1f} min)",
-                    hoverinfo='skip'
-                ))
+                # Check if we have route geometry data
+                route_geometry = results.get('route_geometries', {}).get(day)
+                if route_geometry and route_geometry.get('geometry_polyline'):
+                    # Decode polyline to get actual route path
+                    try:
+                        polyline_coords = polyline.decode(route_geometry['geometry_polyline'])
+                        route_lats = [coord[0] for coord in polyline_coords]
+                        route_lons = [coord[1] for coord in polyline_coords]
+                        
+                        fig.add_trace(go.Scattermapbox(
+                            lat=route_lats,
+                            lon=route_lons,
+                            mode='lines',
+                            line=dict(
+                                width=5,
+                                color=self.day_colors[day_int]
+                            ),
+                            name=f"Route (Total: {drive_time:.1f} min)",
+                            hoverinfo='skip'
+                        ))
+                    except Exception as e:
+                        # Fallback to straight lines if polyline decoding fails
+                        logger.warning(f"Failed to decode polyline for day {day}, using straight lines: {e}")
+                        fig.add_trace(go.Scattermapbox(
+                            lat=lats,
+                            lon=lons,
+                            mode='lines',
+                            line=dict(
+                                width=4,
+                                color=self.day_colors[day_int]
+                            ),
+                            name=f"Route (Total: {drive_time:.1f} min)",
+                            hoverinfo='skip'
+                        ))
+                else:
+                    # No route geometry available, use straight lines
+                    fig.add_trace(go.Scattermapbox(
+                        lat=lats,
+                        lon=lons,
+                        mode='lines',
+                        line=dict(
+                            width=4,
+                            color=self.day_colors[day_int]
+                        ),
+                        name=f"Route (Total: {drive_time:.1f} min)",
+                        hoverinfo='skip'
+                    ))
             
             # Center map on route
             center_lat = sum(lats) / len(lats)
@@ -253,13 +330,13 @@ class RouteVisualizer:
         try:
             # Try to save as PNG
             fig.write_image(filepath, width=width, height=height)
-            print(f"Saved visualization: {filepath}")
+            logger.info(f"Saved visualization: {filepath}")
         except Exception as e:
             # Fallback to HTML if image export fails
             html_filepath = filepath.replace('.png', '.html')
             fig.write_html(html_filepath)
-            print(f"PNG export failed, saved HTML instead: {html_filepath}")
-            print(f"Error: {e}")
+            logger.warning(f"PNG export failed, saved HTML instead: {html_filepath}")
+            logger.error(f"PNG export error: {e}")
     
     def generate_all_visualizations(
         self, 
@@ -273,7 +350,7 @@ class RouteVisualizer:
         # Create output directory
         os.makedirs(output_dir, exist_ok=True)
         
-        print("Generating route visualizations...")
+        logger.info("Generating route visualizations...")
         
         # Generate overview map
         overview_fig = self.create_overview_map(results)
@@ -296,19 +373,19 @@ class RouteVisualizer:
                 height=700
             )
         
-        print(f"Generated {len(all_days) + 1} visualization files in {output_dir}/")
+        logger.info(f"Generated {len(all_days) + 1} visualization files in {output_dir}/")
         
         # Print summary
-        print(f"\nVisualization Summary:")
-        print(f"- Overview map: routes_overview.png")
+        logger.info("Visualization Summary:")
+        logger.info("- Overview map: routes_overview.png")
         for day in sorted(all_days, key=int):
             if day in results['primary_assignments']:
                 loc_name = self.locations[results['primary_assignments'][day]]['name']
-                print(f"- Day {day}: route_day_{day}.png (Primary: {loc_name})")
+                logger.info(f"- Day {day}: route_day_{day}.png (Primary: {loc_name})")
             else:
                 n_locations = len(results['secondary_assignments'][day])
                 drive_time = results['daily_drive_times'][day]
-                print(f"- Day {day}: route_day_{day}.png ({n_locations} locations, {drive_time:.1f} min)")
+                logger.info(f"- Day {day}: route_day_{day}.png ({n_locations} locations, {drive_time:.1f} min)")
 
 
 def visualize_routes(

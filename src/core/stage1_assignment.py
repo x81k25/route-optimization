@@ -4,53 +4,45 @@ Stage 1: Day Assignment Algorithm
 Assigns secondary locations to available days using drive time-based clustering.
 """
 
-import pickle
 import numpy as np
 import polars as pl
 from typing import List, Dict, Tuple
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
+from loguru import logger
+
+from ..utils.osrm_utils import fetch_od_matrix, convert_locations_from_polars, ODMatrixResult
 
 
 class DayAssignmentOptimizer:
     """Assigns secondary locations to days using hierarchical clustering."""
     
-    def __init__(self, od_matrix_path: str = "data/od_matrix.pkl"):
+    def __init__(self, zone_id: str, zone_df: pl.DataFrame):
         """
-        Initialize with OD matrix.
+        Initialize with zone data and fetch OD matrix from OSRM.
         
         Args:
-            od_matrix_path: Path to pickled polars DataFrame with drive times
+            zone_id: Zone identifier
+            zone_df: Polars DataFrame with zone location data
         """
-        with open(od_matrix_path, 'rb') as f:
-            self.od_matrix = pickle.load(f)
+        self.zone_id = zone_id
+        self.zone_df = zone_df
         
-        # Get unique secondary location IDs
-        self.location_ids = sorted(self.od_matrix['origin_id'].unique().to_list())
+        # Convert to Location objects and fetch OD matrix
+        self.locations = convert_locations_from_polars(zone_df)
+        self.od_result = fetch_od_matrix(zone_id, self.locations)
+        
+        # Get location IDs and set up distance matrix for clustering
+        self.location_ids = self.od_result.location_ids
         self.n_locations = len(self.location_ids)
         
-        # Create distance matrix for clustering
-        self.distance_matrix = self._create_distance_matrix()
+        # Use duration matrix for clustering (in minutes)
+        self.distance_matrix = self.od_result.duration_matrix / 60.0
     
-    def _create_distance_matrix(self) -> np.ndarray:
-        """Create symmetric distance matrix from OD matrix."""
-        # Initialize symmetric matrix
-        dist_matrix = np.zeros((self.n_locations, self.n_locations))
-        
-        # Create mapping from location_id to matrix index
-        id_to_idx = {loc_id: idx for idx, loc_id in enumerate(self.location_ids)}
-        
-        # Fill distance matrix
-        for row in self.od_matrix.iter_rows():
-            origin_id, dest_id, drive_time = row[0], row[1], row[5]  # drive_time_minutes
-            
-            origin_idx = id_to_idx[origin_id]
-            dest_idx = id_to_idx[dest_id]
-            
-            dist_matrix[origin_idx, dest_idx] = drive_time
-            dist_matrix[dest_idx, origin_idx] = drive_time  # Symmetric
-        
-        return dist_matrix
+    def get_od_matrix_polars(self) -> pl.DataFrame:
+        """Get OD matrix in Polars DataFrame format."""
+        from ..utils.osrm_utils import od_matrix_to_polars
+        return od_matrix_to_polars(self.od_result)
     
     def cluster_locations(self, n_clusters: int, max_locations_per_cluster: int = 7) -> Dict[int, List[int]]:
         """
@@ -259,15 +251,15 @@ if __name__ == "__main__":
     locations_data = load_locations_data()
     id_to_name = {loc['id']: loc['name'] for loc in locations_data}
     
-    print("Day Assignments:")
-    print("================")
+    logger.info("Day Assignments:")
+    logger.info("================")
     for day_id, location_ids in day_assignments.items():
-        print(f"\nDay {day_id} ({len(location_ids)} locations):")
+        logger.info(f"\nDay {day_id} ({len(location_ids)} locations):")
         for loc_id in location_ids:
-            print(f"  - {id_to_name[loc_id]}")
+            logger.info(f"  - {id_to_name[loc_id]}")
     
     # Show quality metrics
     quality = optimizer.calculate_cluster_quality(day_assignments)
-    print(f"\nCluster Quality Metrics:")
+    logger.info(f"\nCluster Quality Metrics:")
     for metric, value in quality.items():
-        print(f"  {metric}: {value:.2f}")
+        logger.info(f"  {metric}: {value:.2f}")
