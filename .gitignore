@@ -184,3 +184,6 @@ figures/
 * data/*.csv
 # data/*.json
 # *.db
+
+# custom ignores
+.dev

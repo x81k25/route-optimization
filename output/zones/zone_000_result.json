@@ -1,0 +1,520 @@
+{
+  "primary_assignments": {
+    "1": 149
+  },
+  "secondary_assignments": {
+    "2": [
+      114,
+      203,
+      116
+    ],
+    "3": [
+      85,
+      229,
+      233
+    ],
+    "4": [
+      31,
+      63,
+      126,
+      143,
+      162
+    ],
+    "5": [
+      207,
+      210
+    ]
+  },
+  "daily_routes": {
+    "1": [
+      149
+    ],
+    "2": [
+      114,
+      203,
+      116
+    ],
+    "3": [
+      85,
+      233,
+      229
+    ],
+    "4": [
+      31,
+      63,
+      143,
+      126,
+      162
+    ],
+    "5": [
+      207,
+      210
+    ]
+  },
+  "daily_drive_times": {
+    "1": 0.0,
+    "2": 1.6283333333333334,
+    "3": 43.21,
+    "4": 27.346666666666664,
+    "5": 17.197499999999998
+  },
+  "route_geometries": {
+    "1": null,
+    "2": {
+      "zone_id": "zone_000",
+      "day_number": 2,
+      "route_location_ids": [
+        114,
+        203,
+        116
+      ],
+      "geometry_polyline": "gqq|Etm_gVEDOBMBI@KAEAUEWIOIOIOCS@MFQLABEHQZO\\Yh@GRCVAVCTGREDQBQDWHKDMHGHEHEXAR?HAFGPMPKNGXMVSR??",
+      "total_distance_meters": 406.1,
+      "total_duration_seconds": 97.7,
+      "turn_by_turn_instructions": [
+        {
+          "leg_index": 0,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 127.2,
+          "duration_seconds": 30.7,
+          "maneuver_type": "depart",
+          "geometry": "gqq|Etm_gVEDOBMBI@KAEAUEWIOIOIOCS@MFQLAB"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 278.8,
+          "duration_seconds": 67,
+          "maneuver_type": "fork",
+          "geometry": "{wq|Etm_gVEHQZO\\Yh@GRCVAVCTGREDQBQDWHKDMHGHEHEXAR?HAFGPMPKNGXMVSR"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "w`r|Eh|_gV"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "depart",
+          "geometry": "w`r|Eh|_gV??"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "w`r|Eh|_gV"
+        }
+      ],
+      "osrm_response_code": "Ok",
+      "api_call_timestamp": "2025-08-29T15:17:16.273091"
+    },
+    "3": {
+      "zone_id": "zone_000",
+      "day_number": 3,
+      "route_location_ids": [
+        85,
+        233,
+        229
+      ],
+      "geometry_polyline": "y}`yExgmcV_@FWBs@@_BI}UiBo@G{BQgCQ_]aCuFc@iWkBgDWgL_AeE[qBUwAKuAGuAGq@Aq@@{@@}@?gBAsDGs@@c@@{@Jk@Ja@Nk@Tm@^k@`@k@j@[b@oLtOaAjAe@p@Yd@Wd@Wj@{AnDiA|B{CxF_DdGc@r@QTORSNSJULYHWDUDY@c@AUAq@Oa@Q[W_@e@W_@O]Qe@SiAK}@Ki@GWKYW_@[YWOSOg@Oi@Es@Du@NuA^o@Vw@^e@^k@d@e@d@EDSVy@lAqCfE[f@IRY`AO`@IXGJIJGHGFKFKDOBO@I?UAm@Im@O[WW]OOIIMEMCw@I]GYKYOSOWSa@_@SQMGIAE@GBGFEFCFCF?F?J?H?FDFDHFFNTJ`@FVHRT`@BDBL@FAH?HEHCDMRg@j@[VQJ_@PmBj@[VSNYRg@XgALk@FI@G@MFOJWTiApAUPSHWFy@@UBMFIFGHMV[`AGNGFULWHeAJm@Na@Tu@d@i@b@w@z@UTmAjAi@X_@PyBn@}@Xo@Vy@\\eAh@ODYPeCtAs@XSHUHODk@PkA\\y@PW@YBe@?YCGAu@G_AK}@G_@AM?QDQFQNMLS\\a@|@u@hAe@n@Wd@MR[h@{@lBGNQV_@^Qb@Gb@M`@QXGLONQNWJUB_@Be@He@TYVSTKRW|@GHIFQFo@Dq@@o@B]BYB_@La@XSTOVKXU`@g@Zm@\\e@VSNOJKNMTEh@Ar@?z@@x@Ff@JZLZHZ@f@AZKRW`@c@d@W^c@f@gA~@s@f@o@ZsB~@_@Fc@A]DQHa@Tm@^}BlAm@`@m@j@q@v@OXKZK^GXKT[Va@N_@De@DW@UCYKWGICI@GBEFCFCL@NBNN^BN@PARCPMf@Qn@_AjCIXETEXA\\Dp@Bx@E\\IPIJQXKHSFOFYHSFGDMF[P}@j@WPSNKJKNIJMTOXILKLKHSNULOFMDI?O?OASEQISKOKWQ{@o@IGOEMGMCQEOAQAQ@U@[DSBQFIHILAJAH@JBFFHFDFFFBNBLDHFLJDFJPXz@BJBJBR?H?J?FAHCHEFEDEBGBGBG?O?]EQA]Eq@ESAS?[?W?[@Q@QB[HWJOHWPUTONIHQVU\\IJGFIBQFa@Nc@L]LQHMHSLQHSHM?G?QEKEKGMGKEOCG?KDKFGFINMXQPKHOFMDIBI?G@IAMCOAG?IBOHIHCHEFCLAL?H@J@HBJBDd@x@FLJTPd@LVJVHPBJBN@NAJCNELIJIJOLc@V_Ar@UNQLGBGBKDG@K@I@]?O@Q@QDMFOLe@d@o@r@KNKTKVGVCPATAR?\\?b@J~C@R?L?TAVCVE\\QzAIl@CJELCFCBIJKJQH_@RWNMLKPIPIZGZm@|AUh@a@t@S^GLERG\\SjAITKTMRWVIJMPINGNENGPIh@G\\KXILKLOLOHQFUFQBI@G?C?EAAAECCCCCCEACEGEQKk@GQIUKSOWSUo@i@q@g@q@i@YSGEMGWISCMAQ?UAMCKEMKIIMKIEMGOCKAY@u@FeBRo@Fg@FQ@c@BU@Q?]@q@@M@c@@S?i@Co@IWGc@YKGKGMCKAM@G@IDEDEDEFEHCDAFAH?D?B?D?D?D@D@D@D@BBDBDDFDDBBHFJHr@b@fAr@NJTR^\\JLRXNRNZN^RVf@j@h@Xz@R^T^Rx@VbBTp@Rb@\\Vb@Jn@@r@C`AU`DA|@JlAV`BDd@Cr@Kl@_@v@[b@EDKFQJi@FwA?uAJ{@Zo@n@c@`AUdAMjBM~CMdBSp@O^WRw@PsFZyAFaA\\kAhAe@|@YbAQnAEjAIxFIb@K`@[\\WPc@Jc@Ag@CaAQa@B_@Hc@d@a@l@a@^i@Pu@GkAe@cAe@q@Gg@Fg@VY\\KZGRGb@Ej@?bA@d@D`@Tl@`@b@t@`@X^Rx@?l@Ih@_@j@k@XyDVe@H]Z[l@Mx@Cz@DfA?bAKp@Qn@M\\O\\i@n@a@\\c@VeAd@m@Zg@j@oAfBwB|COh@Cr@@|BMrBg@rDUp@]n@e@r@w@^sAf@gAh@aAl@}@t@s@v@MN[l@s@xA}@hBg@p@k@d@a@Xc@TqAb@y@Xy@`@[\\Yp@WnAYn@i@x@i@t@_@f@]b@a@f@YPg@LW?YCkAOk@BQLSNMTO^Sv@M^QVOROJWL[?U?OGc@UUW_@m@a@m@m@k@k@c@a@GOBO@EDMLKPK^E`@AXBj@Fh@Nf@vAlDJ|@Az@Mv@Un@}BxCWb@Wh@Qj@k@~B_@~@k@v@q@v@y@n@}@r@_FzDq@|@Qr@KhAKb@Q`@g@Zq@@kCc@y@BqA^o@d@IJSX[j@kBrEiArCo@bAu@z@[n@Sl@a@xA[h@a@b@_@Ve@Ls@?uBQc@Ba@J[`@It@?v@QbA[l@e@^s@JiHVmAVi@T}@b@y@j@kAdAWV_@t@u@fBYf@]Vo@TiG`A{@Xu@^w@v@g@bA]~@Wd@]^OHMH_@Be@@eADy@Tg@Vk@^o@h@w@v@u@`AkFfIeApBq@dB_@bAk@bBUdAU|AYhC_@hCUjCe@rGQtAc@dCQxAc@jEUnBYjBU~@Yv@Wx@a@t@eA|Ao@lAm@`BgBdEWn@Yj@e@f@i@d@q@f@m@f@Mb@Qb@ERCLAR?L?b@@\\@N?X?VCj@Cj@AV?P@TDRBP@JAPAJAV?T?X?Y?U@W@K@QAKCQESAU?Q@WBk@Bk@?W?YAOA]?c@?M@SBMDSPc@Lc@Y`@U`@Yp@Qr@}@zDCNe@lBOZQXa@d@qAnA{@v@{@r@wCfFw@fC[bB_@x@o@f@E@uBr@{@l@mDbDkDhDiDlDy@|@m@nA[tAWxBs@rFw@|F]pAk@fAw@x@_Aj@iL|Dq@ZyAp@WPkBrAoA~@]\\y@z@w@|@sA|AsBbCsBhCiFvFiBrBkB|BkBxBORQXSf@Qf@Ut@Uz@I^G`@WtBOpAUbASr@Yp@y@nAy@hA_BnBw@`AwG~HeBxBgBtBo@p@WT[RQJSHSDYDg@?a@?[A]@YDYJ[NWPe@Zc@Vc@Nm@Hs@@q@Ey@]y@a@y@SeAO_@Ay@BsC?aAAq@GaD[{CUqASm@Oi@Qw@q@cAWcAG{@Gy@HcBTeARw@Vs@`@o@b@i@j@m@v@e@bAc@xAa@fAi@~@k@b@k@Zi@LYBc@@WCa@IYIiAk@aH{Dc@QuAa@{@U[Gk@AU?]Fg@Re@`@k@p@g@z@MT]T[LUFkARqA`@y@Vm@b@ih@ba@aDrBu@\\aAR}@J}@BoA?k@Eq@MYKw@Yw@]SOe@YwA{@sDiCy@i@yA_Ak@WwAq@cBe@ICgBc@oBY{CUwCAuBHqBLkC`@}LhDeBf@_HvB}GhB}Ep@}@Lo@HQ@_Iz@{Dl@aDbAo@Vo@Z}BlAa@VyGhE_IxEUL_@Tm]fTeHnE{RtLaI|EqBp@aBj@eB`@qB\\{BPoDDoD?aCJ_D`@aDt@mEbBmAn@iAt@eAt@kAp@cAd@eAXsAJuADqAHuHX_BHc@?m@AeAMqGeBWGYE]C]AS?O?W@_@Da@FK@OBSFQFSHuHdDsAt@eBpA{DhE_ExDu@l@w@\\wBn@e@H{@Hi@Fe@LgEpAuFrAeDt@}Ab@qAp@mA|@u@b@o@V_@Fc@?eAOm@Ck@@}A`@uElBWLaBl@eBt@g@Zq@h@w@r@}@vA]\\m@^yA\\uA\\sNbFa@PyB|@u@ZcAh@GDuF|CeAr@mBdA{@ZuGzBiEvAaF`B{An@cAv@mFpEeIfGeB~Am@v@i@`Aw@xBm@jAgAxA_AnAc@z@Wj@]d@{@x@i@l@m@bAkAtC_BtCy@fAeAhAa@n@_@j@o@nAc@n@k@h@i@n@]h@c@~@eArByCjFq@~Bo@bC_@nBStBEhABlB?n@I|@w@rEWnBGz@CbAKv@St@GRcChGm@zAUz@Q~AEvACpEAp@Cf@c@rCk@tAy@|@aCbB_A|@eAlAqAhAeBxAkDhDsDxE_ApAU`@O`@Sz@Ez@WfDM|@Qx@Wp@St@OfA[nCe@~A_AdC}ApDk@v@eDpCo@n@k@x@_@~@}AvFu@zCq@nCgAvEkAhFu@jDIjA?v@?t@FlAPpBDlACzBQrCa@rCg@nCK|@Ex@Cv@?n@Fz@bAxIFv@?v@Ct@Mn@]n@u@|@mAbAa@r@]|@e@`EKzALpILdFDpBBfBDlA@p@An@MtBGdBAdBd@zE`@nC^lB`@pBFhCMzAa@zA{@bCy@bCa@lA[z@qAxDsAvDkC~E",
+      "total_distance_meters": 48870.2,
+      "total_duration_seconds": 2620.2,
+      "turn_by_turn_instructions": [
+        {
+          "leg_index": 0,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 23329.3,
+          "duration_seconds": 1186.1,
+          "maneuver_type": "depart",
+          "geometry": "y}`yExgmcV_@FWBs@@_BI}UiBo@G{BQgCQ_]aCuFc@iWkBgDWgL_AeE[qBUwAKuAGuAGq@Aq@@{@@}@?gBAsDGs@@c@@{@Jk@Ja@Nk@Tm@^k@`@k@j@[b@oLtOaAjAe@p@Yd@Wd@Wj@{AnDiA|B{CxF_DdGc@r@QTORSNSJULYHWDUDY@c@AUAq@Oa@Q[W_@e@W_@O]Qe@SiAK}@Ki@GWKYW_@[YWOSOg@Oi@Es@Du@NuA^o@Vw@^e@^k@d@e@d@EDSVy@lAqCfE[f@IRY`AO`@IXGJIJGHGFKFKDOBO@I?UAm@Im@O[WW]OOIIMEMCw@I]GYKYOSOWSa@_@SQMGIAE@GBGFEFCFCF?F?J?H?FDFDHFFNTJ`@FVHRT`@BDBL@FAH?HEHCDMRg@j@[VQJ_@PmBj@[VSNYRg@XgALk@FI@G@MFOJWTiApAUPSHWFy@@UBMFIFGHMV[`AGNGFULWHeAJm@Na@Tu@d@i@b@w@z@UTmAjAi@X_@PyBn@}@Xo@Vy@\\eAh@ODYPeCtAs@XSHUHODk@PkA\\y@PW@YBe@?YCGAu@G_AK}@G_@AM?QDQFQNMLS\\a@|@u@hAe@n@Wd@MR[h@{@lBGNQV_@^Qb@Gb@M`@QXGLONQNWJUB_@Be@He@TYVSTKRW|@GHIFQFo@Dq@@o@B]BYB_@La@XSTOVKXU`@g@Zm@\\e@VSNOJKNMTEh@Ar@?z@@x@Ff@JZLZHZ@f@AZKRW`@c@d@W^c@f@gA~@s@f@o@ZsB~@_@Fc@A]DQHa@Tm@^}BlAm@`@m@j@q@v@OXKZK^GXKT[Va@N_@De@DW@UCYKWGICI@GBEFCFCL@NBNN^BN@PARCPMf@Qn@_AjCIXETEXA\\Dp@Bx@E\\IPIJQXKHSFOFYHSFGDMF[P}@j@WPSNKJKNIJMTOXILKLKHSNULOFMDI?O?OASEQISKOKWQ{@o@IGOEMGMCQEOAQAQ@U@[DSBQFIHILAJAH@JBFFHFDFFFBNBLDHFLJDFJPXz@BJBJBR?H?J?FAHCHEFEDEBGBGBG?O?]EQA]Eq@ESAS?[?W?[@Q@QB[HWJOHWPUTONIHQVU\\IJGFIBQFa@Nc@L]LQHMHSLQHSHM?G?QEKEKGMGKEOCG?KDKFGFINMXQPKHOFMDIBI?G@IAMCOAG?IBOHIHCHEFCLAL?H@J@HBJBDd@x@FLJTPd@LVJVHPBJBN@NAJCNELIJIJOLc@V_Ar@UNQLGBGBKDG@K@I@]?O@Q@QDMFOLe@d@o@r@KNKTKVGVCPATAR?\\?b@J~C@R?L?TAVCVE\\QzAIl@CJELCFCBIJKJQH_@RWNMLKPIPIZGZm@|AUh@a@t@S^GLERG\\SjAITKTMRWVIJMPINGNENGPIh@G\\KXILKLOLOHQFUFQBI@G?C?EAAAECCCCCCEACEGEQKk@GQIUKSOWSUo@i@q@g@q@i@YSGEMGWISCMAQ?UAMCKEMKIIMKIEMGOCKAY@u@FeBRo@Fg@FQ@c@BU@Q?]@q@@M@c@@S?i@Co@IWGc@YKGKGMCKAM@G@IDEDEDEFEHCDAFAH?D?B?D?D?D@D@D@D@BBDBDDFDDBBHFJHr@b@fAr@NJTR^\\JLRXNRNZN^RVf@j@h@Xz@R^T^Rx@VbBTp@Rb@\\Vb@Jn@@r@C`AU`DA|@JlAV`BDd@Cr@Kl@_@v@[b@EDKFQJi@FwA?uAJ{@Zo@n@c@`AUdAMjBM~CMdBSp@O^WRw@PsFZyAFaA\\kAhAe@|@YbAQnAEjAIxFIb@K`@[\\WPc@Jc@Ag@CaAQa@B_@Hc@d@a@l@a@^i@Pu@GkAe@cAe@q@Gg@Fg@VY\\KZGRGb@Ej@?bA@d@D`@Tl@`@b@t@`@X^Rx@?l@Ih@_@j@k@XyDVe@H]Z[l@Mx@Cz@DfA?bAKp@Qn@M\\O\\i@n@a@\\c@VeAd@m@Zg@j@oAfBwB|COh@Cr@@|BMrBg@rDUp@]n@e@r@w@^sAf@gAh@aAl@}@t@s@v@MN[l@s@xA}@hBg@p@k@d@a@Xc@TqAb@y@Xy@`@[\\Yp@WnAYn@i@x@i@t@_@f@]b@a@f@YPg@LW?YCkAOk@BQLSNMTO^Sv@M^QVOROJWL[?U?OGc@UUW_@m@a@m@m@k@k@c@a@GOBO@EDMLKPK^E`@AXBj@Fh@Nf@vAlDJ|@Az@Mv@Un@}BxCWb@Wh@Qj@k@~B_@~@k@v@q@v@y@n@}@r@_FzDq@|@Qr@KhAKb@Q`@g@Zq@@kCc@y@BqA^o@d@IJSX[j@kBrEiArCo@bAu@z@[n@Sl@a@xA[h@a@b@_@Ve@Ls@?uBQc@Ba@J[`@It@?v@QbA[l@e@^s@JiHVmAVi@T}@b@y@j@kAdAWV_@t@u@fBYf@]Vo@TiG`A{@Xu@^w@v@g@bA]~@Wd@]^OHMH_@Be@@eADy@Tg@Vk@^o@h@w@v@u@`AkFfIeApBq@dB_@bAk@bBUdAU|AYhC_@hCUjCe@rGQtAc@dCQxAc@jEUnBYjBU~@Yv@Wx@a@t@eA|Ao@lAm@`BgBdEWn@Yj@e@f@i@d@q@f@m@f@"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 267.3,
+          "duration_seconds": 91.5,
+          "maneuver_type": "turn",
+          "geometry": "on{yErrcdVMb@Qb@ERCLAR?L?b@@\\@N?X?VCj@Cj@AV?P@TDRBP@JAPAJAV?T?X"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "yo{yErdddV"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 267.3,
+          "duration_seconds": 71.5,
+          "maneuver_type": "depart",
+          "geometry": "yo{yErdddV?Y?U@W@K@QAKCQESAU?Q@WBk@Bk@?W?YAOA]?c@?M@SBMDSPc@Lc@"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 25006.3,
+          "duration_seconds": 1271.1,
+          "maneuver_type": "turn",
+          "geometry": "on{yErrcdVY`@U`@Yp@Qr@}@zDCNe@lBOZQXa@d@qAnA{@v@{@r@wCfFw@fC[bB_@x@o@f@E@uBr@{@l@mDbDkDhDiDlDy@|@m@nA[tAWxBs@rFw@|F]pAk@fAw@x@_Aj@iL|Dq@ZyAp@WPkBrAoA~@]\\y@z@w@|@sA|AsBbCsBhCiFvFiBrBkB|BkBxBORQXSf@Qf@Ut@Uz@I^G`@WtBOpAUbASr@Yp@y@nAy@hA_BnBw@`AwG~HeBxBgBtBo@p@WT[RQJSHSDYDg@?a@?[A]@YDYJ[NWPe@Zc@Vc@Nm@Hs@@q@Ey@]y@a@y@SeAO_@Ay@BsC?aAAq@GaD[{CUqASm@Oi@Qw@q@cAWcAG{@Gy@HcBTeARw@Vs@`@o@b@i@j@m@v@e@bAc@xAa@fAi@~@k@b@k@Zi@LYBc@@WCa@IYIiAk@aH{Dc@QuAa@{@U[Gk@AU?]Fg@Re@`@k@p@g@z@MT]T[LUFkARqA`@y@Vm@b@ih@ba@aDrBu@\\aAR}@J}@BoA?k@Eq@MYKw@Yw@]SOe@YwA{@sDiCy@i@yA_Ak@WwAq@cBe@ICgBc@oBY{CUwCAuBHqBLkC`@}LhDeBf@_HvB}GhB}Ep@}@Lo@HQ@_Iz@{Dl@aDbAo@Vo@Z}BlAa@VyGhE_IxEUL_@Tm]fTeHnE{RtLaI|EqBp@aBj@eB`@qB\\{BPoDDoD?aCJ_D`@aDt@mEbBmAn@iAt@eAt@kAp@cAd@eAXsAJuADqAHuHX_BHc@?m@AeAMqGeBWGYE]C]AS?O?W@_@Da@FK@OBSFQFSHuHdDsAt@eBpA{DhE_ExDu@l@w@\\wBn@e@H{@Hi@Fe@LgEpAuFrAeDt@}Ab@qAp@mA|@u@b@o@V_@Fc@?eAOm@Ck@@}A`@uElBWLaBl@eBt@g@Zq@h@w@r@}@vA]\\m@^yA\\uA\\sNbFa@PyB|@u@ZcAh@GDuF|CeAr@mBdA{@ZuGzBiEvAaF`B{An@cAv@mFpEeIfGeB~Am@v@i@`Aw@xBm@jAgAxA_AnAc@z@Wj@]d@{@x@i@l@m@bAkAtC_BtCy@fAeAhAa@n@_@j@o@nAc@n@k@h@i@n@]h@c@~@eArByCjFq@~Bo@bC_@nBStBEhABlB?n@I|@w@rEWnBGz@CbAKv@St@GRcChGm@zAUz@Q~AEvACpEAp@Cf@c@rCk@tAy@|@aCbB_A|@eAlAqAhAeBxAkDhDsDxE_ApAU`@O`@Sz@Ez@WfDM|@Qx@Wp@St@OfA[nCe@~A_AdC}ApDk@v@eDpCo@n@k@x@_@~@}AvFu@zCq@nCgAvEkAhFu@jDIjA?v@?t@FlAPpBDlACzBQrCa@rCg@nCK|@Ex@Cv@?n@Fz@bAxIFv@?v@Ct@Mn@]n@u@|@mAbAa@r@]|@e@`EKzALpILdFDpBBfBDlA@p@An@MtBGdBAdBd@zE`@nC^lB`@pBFhCMzAa@zA{@bCy@bCa@lA[z@qAxDsAvDkC~E"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "_|zzE|f_eV"
+        }
+      ],
+      "osrm_response_code": "Ok",
+      "api_call_timestamp": "2025-08-29T15:17:16.275516"
+    },
+    "4": {
+      "zone_id": "zone_000",
+      "day_number": 4,
+      "route_location_ids": [
+        31,
+        63,
+        143,
+        126,
+        162
+      ],
+      "geometry_polyline": "qg}aFna`jV??MROBGCICWd@W^i@h@e@`@cBlAaAn@s@h@sA|@wAl@e@La@FkARuAPuATuAVo@Jc@FaAFsBEcBO_AGg@Ds@TkA^}CdAW?IEME][M[GQaFlDMJ}B~AkEtCm@`@k@\\m@\\o@\\k@Vm@Vi@Rk@Pm@Pk@Lk@Nk@Jk@Hg@Fg@Fe@Di@BkCJG?C?eFNmBFmCJa@@_@B_@D_@D_@Fa@H_@Hc@J_@Le@PoMxEyDrAqAd@_DhA{@XA@oA`@sCbAmBr@yGfCoBr@qAf@q@Vk@Re@Le@Ni@Li@Jc@Jc@Hg@Fg@Fe@Fe@Fk@Di@De@@_@Ba@?e@@e@?a@AwAAeAAu@AkAAaAAgLOC?oCCW?c@?c@?_@@c@@c@Bc@Di@D[Fc@Hc@Hc@Ha@Je@Nc@Lc@Rc@Pc@Tc@Va@Vc@Za@X}BhB{@p@GFcIpGCBwAhAEDsDrCmFjE}GpFiCrBg@^e@\\QNg@\\k@Ze@Tg@Tg@Tg@Pc@N]J]Jc@Je@Je@Hg@Fe@DqGh@e@D@XBFDFD@hBj@AL?JBHHDF@DCFKCKEGIGM?iBk@EAEGCGAYd@EpGi@d@Ef@Gd@Id@Kb@K\\K\\Kb@Of@Qf@Uf@Ud@Uj@[f@]POd@]f@_@hCsB|GqFlFkErDsCDEvAiABCbIqGFGz@q@|BiB`@Yb@[`@Wb@Wb@Ub@Qb@Sb@Md@O`@Kb@Ib@Ib@IZGh@Eb@Eb@Cb@A^Ab@?b@?V?nCBB?fLN`A@jA@t@@dA@vA@`@@d@?d@A`@?^Cd@Ah@Ej@Ed@Gd@Gf@Gf@Gb@Ib@Kh@Kh@Md@Od@Mj@Sp@WpAg@nBs@xGgClBs@rCcAnAa@@Az@Y~CiApAe@xDsAnMyEd@Q^Mb@K^I`@I^G^E^E^C`@AlCKlBGdFOB?F?jCKh@Cd@Ef@Gf@Gj@Ij@Kj@Oj@Ml@Qj@Qh@Sl@Wj@Wn@]l@]j@]l@a@jEuC|B_BLK`FmDfM{IrDeCpFyDbCeBdDaC`@[^[Z[Z]Za@X_@T_@Ta@Tc@P_@Pe@Pi@Le@Nk@Lm@Jo@Ho@Fo@Fq@Du@RiELoCZoIPsEFiAHgAHcAJiALeALaAN_ANy@Nw@Nw@Py@T{@R{@Ty@Ts@Rm@Vw@N_@Ti@Tk@Xq@Xm@|D}ItG}NzC_HvFcMbEeJpAsCdA}BfAaCXo@Zk@Zg@\\i@^c@`@e@`@a@b@a@d@a@f@]d@[h@Yf@Wh@Uj@Sj@QjEoAdHuB~GuBvC{@xA_@`Cq@vAa@t@UjA[hBi@dA_@v@Wl@Wp@Yn@[p@]n@_@zIoFDCDChFaD|BqA|IoFn@a@p@e@l@c@n@e@l@e@n@g@l@e@n@i@lAgArG_GrQoPj@k@h@m@d@i@d@m@`@m@b@o@b@u@`@w@^u@Zu@Vs@Xu@Xy@Tw@V{@Ry@|@kDR{@FSLo@|Iq`@tDmP`HkZvG_Y`DaNH_@HYzAqGNo@Pm@Rm@Rk@Rg@Ti@Zk@\\i@Zg@Xa@\\e@^c@`@c@`@c@xAsA`B{AvXqVdIiHlCeCXWbB_Br@m@vCeCdB{Al@i@p@k@t@k@t@k@z@m@z@m@v@i@j@a@dAi@t@c@bCsAjFoC~BmAdAm@fAm@tAu@tLoGlB{@r@[bAa@r@_@~@[bGeC~GuC~@_@f@Uh@Wh@[f@]d@]d@_@b@c@b@c@^c@^g@^i@Zi@Xg@Xk@~@sBlDyHp@{Ab@_AxAwCXk@Zg@\\i@^g@^e@`@e@TULMf@g@~CqC|CqCh@i@j@o@h@m@b@m@j@w@Xc@\\g@h@w@FIbDyE~AaCr@eAd@s@f@y@z@yAtKgR\\k@\\i@^g@^e@^c@`@c@bAcA^]^[`@Y`@W^Ub@UtBeA^S^U\\YfB_Bj@k@f@i@h@o@f@m@h@q@d@o@`@o@`@o@Zk@Zi@Xm@Xm@Xo@b@mA`AsCPe@Rg@LYLYLWNYT_@Va@Xa@Xc@^c@f@i@d@g@vF{Fb@a@`@]b@]d@]ZOHGf@Wf@Uf@Sh@Qf@Md@Mh@Ih@Ij@Ih@GxBSb@Gb@G`@Ib@K`@K`@M`@O`@Qb@S^S`@W^U^W^[\\YJV?FDJNr@",
+      "total_distance_meters": 28818,
+      "total_duration_seconds": 1642.9,
+      "turn_by_turn_instructions": [
+        {
+          "leg_index": 0,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "depart",
+          "geometry": "qg}aFna`jV??"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "qg}aFna`jV"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 31.2,
+          "duration_seconds": 10.6,
+          "maneuver_type": "depart",
+          "geometry": "qg}aFna`jVMROBGCIC"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 346.3,
+          "duration_seconds": 49.9,
+          "maneuver_type": "turn",
+          "geometry": "ai}aF~a`jVWd@W^i@h@e@`@cBlAaAn@s@h@sA|@wAl@"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "gy}aFdo`jV"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 732.2,
+          "duration_seconds": 113,
+          "maneuver_type": "depart",
+          "geometry": "gy}aFdo`jVe@La@FkARuAPuATuAVo@Jc@FaAFsBEcBO_AGg@Ds@TkA^}CdAW?IEME][M[GQ"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 5332.7,
+          "duration_seconds": 276.9,
+          "maneuver_type": "turn",
+          "geometry": "u`_bFxs`jVaFlDMJ}B~AkEtCm@`@k@\\m@\\o@\\k@Vm@Vi@Rk@Pm@Pk@Lk@Nk@Jk@Hg@Fg@Fe@Di@BkCJG?C?eFNmBFmCJa@@_@B_@D_@D_@Fa@H_@Hc@J_@Le@PoMxEyDrAqAd@_DhA{@XA@oA`@sCbAmBr@yGfCoBr@qAf@q@Vk@Re@Le@Ni@Li@Jc@Jc@Hg@Fg@Fe@Fe@Fk@Di@De@@_@Ba@?e@@e@?a@AwAAeAAu@AkAAaAAgLOC?oCCW?c@?c@?_@@c@@c@Bc@Di@D[Fc@Hc@Hc@Ha@Je@Nc@Lc@Rc@Pc@Tc@Va@Vc@Za@X}BhB{@p@GFcIpGCBwAhAEDsDrCmFjE}GpFiCrBg@^e@\\QNg@\\k@Ze@Tg@Tg@Tg@Pc@N]J]Jc@Je@Je@Hg@Fe@DqGh@e@D"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 85.2,
+          "duration_seconds": 21.9,
+          "maneuver_type": "turn",
+          "geometry": "mwgbFdgdjV@XBFDFD@hBj@"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 3,
+          "instruction": "",
+          "distance_meters": 27.1,
+          "duration_seconds": 6.4,
+          "maneuver_type": "continue",
+          "geometry": "qsgbF|idjVAL?JBHHDF@"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 4,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "}rgbFhkdjV"
+        },
+        {
+          "leg_index": 3,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 121.7,
+          "duration_seconds": 31.6,
+          "maneuver_type": "depart",
+          "geometry": "}rgbFhkdjVDCFKCKEGIGM?iBk@EAEGCGAY"
+        },
+        {
+          "leg_index": 3,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 22094.5,
+          "duration_seconds": 1125.8,
+          "maneuver_type": "end of road",
+          "geometry": "mwgbFdgdjVd@EpGi@d@Ef@Gd@Id@Kb@K\\K\\Kb@Of@Qf@Uf@Ud@Uj@[f@]POd@]f@_@hCsB|GqFlFkErDsCDEvAiABCbIqGFGz@q@|BiB`@Yb@[`@Wb@Wb@Ub@Qb@Sb@Md@O`@Kb@Ib@Ib@IZGh@Eb@Eb@Cb@A^Ab@?b@?V?nCBB?fLN`A@jA@t@@dA@vA@`@@d@?d@A`@?^Cd@Ah@Ej@Ed@Gd@Gf@Gf@Gb@Ib@Kh@Kh@Md@Od@Mj@Sp@WpAg@nBs@xGgClBs@rCcAnAa@@Az@Y~CiApAe@xDsAnMyEd@Q^Mb@K^I`@I^G^E^E^C`@AlCKlBGdFOB?F?jCKh@Cd@Ef@Gf@Gj@Ij@Kj@Oj@Ml@Qj@Qh@Sl@Wj@Wn@]l@]j@]l@a@jEuC|B_BLK`FmDfM{IrDeCpFyDbCeBdDaC`@[^[Z[Z]Za@X_@T_@Ta@Tc@P_@Pe@Pi@Le@Nk@Lm@Jo@Ho@Fo@Fq@Du@RiELoCZoIPsEFiAHgAHcAJiALeALaAN_ANy@Nw@Nw@Py@T{@R{@Ty@Ts@Rm@Vw@N_@Ti@Tk@Xq@Xm@|D}ItG}NzC_HvFcMbEeJpAsCdA}BfAaCXo@Zk@Zg@\\i@^c@`@e@`@a@b@a@d@a@f@]d@[h@Yf@Wh@Uj@Sj@QjEoAdHuB~GuBvC{@xA_@`Cq@vAa@t@UjA[hBi@dA_@v@Wl@Wp@Yn@[p@]n@_@zIoFDCDChFaD|BqA|IoFn@a@p@e@l@c@n@e@l@e@n@g@l@e@n@i@lAgArG_GrQoPj@k@h@m@d@i@d@m@`@m@b@o@b@u@`@w@^u@Zu@Vs@Xu@Xy@Tw@V{@Ry@|@kDR{@FSLo@|Iq`@tDmP`HkZvG_Y`DaNH_@HYzAqGNo@Pm@Rm@Rk@Rg@Ti@Zk@\\i@Zg@Xa@\\e@^c@`@c@`@c@xAsA`B{AvXqVdIiHlCeCXWbB_Br@m@vCeCdB{Al@i@p@k@t@k@t@k@z@m@z@m@v@i@j@a@dAi@t@c@bCsAjFoC~BmAdAm@fAm@tAu@tLoGlB{@r@[bAa@r@_@~@[bGeC~GuC~@_@f@Uh@Wh@[f@]d@]d@_@b@c@b@c@^c@^g@^i@Zi@Xg@Xk@~@sBlDyHp@{Ab@_AxAwCXk@Zg@\\i@^g@^e@`@e@TULMf@g@~CqC|CqCh@i@j@o@h@m@b@m@j@w@Xc@\\g@h@w@FIbDyE~AaCr@eAd@s@f@y@z@yAtKgR\\k@\\i@^g@^e@^c@`@c@bAcA^]^[`@Y`@W^Ub@UtBeA^S^U\\YfB_Bj@k@f@i@h@o@f@m@h@q@d@o@`@o@`@o@Zk@Zi@Xm@Xm@Xo@b@mA`AsCPe@Rg@LYLYLWNYT_@Va@Xa@Xc@^c@f@i@d@g@vF{Fb@a@`@]b@]d@]ZOHGf@Wf@Uf@Sh@Qf@Md@Mh@Ih@Ij@Ih@GxBSb@Gb@G`@Ib@K`@K`@M`@O`@Qb@S^S`@W^U^W^[\\Y"
+        },
+        {
+          "leg_index": 3,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 46.9,
+          "duration_seconds": 6.8,
+          "maneuver_type": "turn",
+          "geometry": "evjaFbjhiVJV?FDJNr@"
+        },
+        {
+          "leg_index": 3,
+          "step_index": 3,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "cujaFbmhiV"
+        }
+      ],
+      "osrm_response_code": "Ok",
+      "api_call_timestamp": "2025-08-29T15:17:16.278759"
+    },
+    "5": {
+      "zone_id": "zone_000",
+      "day_number": 5,
+      "route_location_ids": [
+        207,
+        210
+      ],
+      "geometry_polyline": "k~f~EdfngVJOYaACQEQGYKWOUSSUOc@UQKSIOAKAGCIEGMKUIWIKOKq@OGAOIQKEEa@YQKSIYMMIIGGEIAIAK@OFIDKDUFQDQDUH[LUJULQLA?UJYL_@J]HSDMDA?KBQDOHMHGHGLITKTKLGDG@I?KCIEOIg@UQKGG?@GGGIGMGMEQAO?Q@UD]BU?UAUIo@ASAO@Q?EBIFOLMJIJCLCVENGJGJMN[Rg@Le@Ji@Dg@@e@@s@?s@@k@Bq@Fy@Fw@BW@WA]C[Ii@Ga@K[MQQOe@U_Ds@a@M_@WYYOQIOMUSc@KWMWOUKSMS[a@SYU_@U_@Sa@We@u@kAKOMQKMMKKIIEIEKCMCKCOAYCSAo@EmAGK?K?U@]BO?S?QAOCOCQGKESIQKOK]Wa@YQM_@U]Sk@WQGa@K_@GWESAUAa@BaBRo@JC@YDWFa@F]DW?MAQEWGA?c@SuAs@w@a@mAk@{@a@y@c@k@]c@U]Qy@c@{@e@y@a@s@[q@Ug@K]E_@?i@@uAPkAJwATm@JeHhAa@DYBK@YAWC]I_@KgCaAmD}A{B{@qCwAu@_@wBmAo@WWIWIYEWCSA_@AcAAy@CUAu@I[EmASUG_@Kk@QeA_@y@Yw@Wk@WkBy@q@Ya@UWMm@]_@SKIGIGMGQCQCQCWAc@@g@D_@F]FQDOLWVa@hAcBx@aBZe@dC}BPQLQFIBMBMXEPIZWf@e@^_@PSBAn@y@|@eApCwCh@u@t@aAZa@f@kAAU?UA_@EcAAGCo@Eg@Ec@Ea@ACCOCO?Q?A?O@ODWDUNk@JWHQJKJM\\]Z[\\a@X[V]N]Pe@Nc@FYFQKm@AMIg@CWGi@KcAEi@AG?[?W?S?e@?o@@yA?a@?o@C]Ce@OkBEYEYMq@WeAY_AQg@Yq@Oc@]w@c@eAMSOQa@g@]g@IQISI]G]Ge@Cg@?e@@g@@e@@c@?[Ae@OaBIu@Kq@Iq@IgAC_@I}@EcAI_BIiAEi@Og@S}@S{@YiBUuAOqAEk@CQE]KWKc@AKKc@AIPKPKNKZSRMTOVOVOVSTKROx@{@HWIOq@kBK[iA}CmAaEc@wAEOGMqAaDq@eB]cAMYm@yAaAaCISOa@Se@Um@M]Ma@I[EUG]ASCe@G]mAoDgAuCeAoCeAsCq@iBSg@iA}CgAwCgAoCeAsCcAuCeAqCeAsCeAqCeAqCiAwCEOGMeAuCoAgDqAgDoAiDeAoCACAICUEOK]M[CKWq@MYIWQPMH{A~AIHGHeBhBg@f@a@b@_A~@EDMMcB{BEGoA{AGK~@uAGIIKCCCACCeAuAWXY\\_@b@GFA@A?EAGEIIYY_@WEEEGICGEIOAM@IFQHM",
+      "total_distance_meters": 10979.5,
+      "total_duration_seconds": 1032.3,
+      "turn_by_turn_instructions": [
+        {
+          "leg_index": 0,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 60,
+          "duration_seconds": 14.4,
+          "maneuver_type": "depart",
+          "geometry": "k~f~EdfngVJOYaACQEQ"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 121,
+          "duration_seconds": 17.4,
+          "maneuver_type": "new name",
+          "geometry": "c_g~EnbngVGYKWOUSSUOc@UQKSIOA"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 4961,
+          "duration_seconds": 446.8,
+          "maneuver_type": "new name",
+          "geometry": "kdg~Et}mgVKAGCIEGMKUIWIKOKq@OGAOIQKEEa@YQKSIYMMIIGGEIAIAK@OFIDKDUFQDQDUH[LUJULQLA?UJYL_@J]HSDMDA?KBQDOHMHGHGLITKTKLGDG@I?KCIEOIg@UQKGG?@GGGIGMGMEQAO?Q@UD]BU?UAUIo@ASAO@Q?EBIFOLMJIJCLCVENGJGJMN[Rg@Le@Ji@Dg@@e@@s@?s@@k@Bq@Fy@Fw@BW@WA]C[Ii@Ga@K[MQQOe@U_Ds@a@M_@WYYOQIOMUSc@KWMWOUKSMS[a@SYU_@U_@Sa@We@u@kAKOMQKMMKKIIEIEKCMCKCOAYCSAo@EmAGK?K?U@]BO?S?QAOCOCQGKESIQKOK]Wa@YQM_@U]Sk@WQGa@K_@GWESAUAa@BaBRo@JC@YDWFa@F]DW?MAQEWGA?c@SuAs@w@a@mAk@{@a@y@c@k@]c@U]Qy@c@{@e@y@a@s@[q@Ug@K]E_@?i@@uAPkAJwATm@JeHhAa@DYBK@YAWC]I_@KgCaAmD}A{B{@qCwAu@_@wBmAo@WWIWIYEWCSA_@AcAAy@CUAu@I[EmASUG_@Kk@QeA_@y@Yw@Wk@WkBy@q@Ya@UWMm@]_@SKIGIGMGQCQCQCWAc@@g@D_@F]FQDOLWVa@hAcBx@aBZe@dC}BPQLQFIBMBM"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 3,
+          "instruction": "",
+          "distance_meters": 879.3,
+          "duration_seconds": 79.9,
+          "maneuver_type": "continue",
+          "geometry": "}|l~Ez~igVXEPIZWf@e@^_@PSBAn@y@|@eApCwCh@u@t@aAZa@f@kAAU?UA_@EcAAGCo@Eg@Ec@Ea@ACCOCO?Q?A?O@ODWDUNk@JWHQJKJM\\]Z[\\a@X[V]N]Pe@Nc@FYFQ"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 4,
+          "instruction": "",
+          "distance_meters": 201,
+          "duration_seconds": 16.6,
+          "maneuver_type": "turn",
+          "geometry": "gcl~EbphgVKm@AMIg@CWGi@KcAEi@AG?[?W?S?e@?o@"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 5,
+          "instruction": "",
+          "distance_meters": 1283.2,
+          "duration_seconds": 116.7,
+          "maneuver_type": "new name",
+          "geometry": "_el~EhbhgV@yA?a@?o@C]Ce@OkBEYEYMq@WeAY_AQg@Yq@Oc@]w@c@eAMSOQa@g@]g@IQISI]G]Ge@Cg@?e@@g@@e@@c@?[Ae@OaBIu@Kq@Iq@IgAC_@I}@EcAI_BIiAEi@Og@S}@S{@YiBUuAOqAEk@CQE]KWKc@AKKc@AI"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 6,
+          "instruction": "",
+          "distance_meters": 204.4,
+          "duration_seconds": 21.8,
+          "maneuver_type": "turn",
+          "geometry": "cyl~EdnegVPKPKNKZSRMTOVOVOVSTKROx@{@HW"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 7,
+          "instruction": "",
+          "distance_meters": 2517.9,
+          "duration_seconds": 195.1,
+          "maneuver_type": "turn",
+          "geometry": "sol~EjfegVIOq@kBK[iA}CmAaEc@wAEOGMqAaDq@eB]cAMYm@yAaAaCISOa@Se@Um@M]Ma@I[EUG]ASCe@G]mAoDgAuCeAoCeAsCq@iBSg@iA}CgAwCgAoCeAsCcAuCeAqCeAsCeAqCeAqCiAwCEOGMeAuCoAgDqAgDoAiDeAoCACAICUEOK]M[CKWq@MYIW"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 8,
+          "instruction": "",
+          "distance_meters": 279,
+          "duration_seconds": 19.8,
+          "maneuver_type": "turn",
+          "geometry": "avn~E~m`gVQPMH{A~AIHGHeBhBg@f@a@b@_A~@ED"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 9,
+          "instruction": "",
+          "distance_meters": 161.1,
+          "duration_seconds": 25.2,
+          "maneuver_type": "turn",
+          "geometry": "ebo~Ejz`gVMMcB{BEGoA{AGK"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 10,
+          "instruction": "",
+          "distance_meters": 52.5,
+          "duration_seconds": 11.3,
+          "maneuver_type": "end of road",
+          "geometry": "uho~Epr`gV~@uA"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 11,
+          "instruction": "",
+          "distance_meters": 76.4,
+          "duration_seconds": 23,
+          "maneuver_type": "turn",
+          "geometry": "ufo~Ezo`gVGIIKCCCACCeAuA"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 12,
+          "instruction": "",
+          "distance_meters": 69,
+          "duration_seconds": 16.9,
+          "maneuver_type": "turn",
+          "geometry": "yio~Edl`gVWXY\\_@b@GFA@"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 13,
+          "instruction": "",
+          "distance_meters": 113.6,
+          "duration_seconds": 27.4,
+          "maneuver_type": "turn",
+          "geometry": "ulo~Ejo`gVA?EAGEIIYY_@WEEEGICGEIOAM@IFQHM"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 14,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "_po~Efj`gV"
+        }
+      ],
+      "osrm_response_code": "Ok",
+      "api_call_timestamp": "2025-08-29T15:17:16.282386"
+    }
+  },
+  "metadata": {
+    "optimization_start_time": "2025-08-29T15:17:16.119478",
+    "optimization_end_time": "2025-08-29T15:17:16.327586",
+    "optimization_duration_seconds": 0.208108,
+    "config": {
+      "days_per_week": 5,
+      "utilization": 100,
+      "primary_hours_per_week": 24,
+      "hours_per_non_primary": 1,
+      "locations_per_day_max": 7,
+      "drive_inefficiency": 0,
+      "start_location": "primary"
+    },
+    "zone_id": "zone_000",
+    "n_primary_locations": 1,
+    "n_secondary_locations": 13,
+    "available_secondary_days": 4,
+    "stage1_quality_metrics": {
+      "avg_intra_cluster_distance": 11.29029411764706,
+      "cluster_size_std": 1.0897247358851685,
+      "min_cluster_size": 2,
+      "max_cluster_size": 5,
+      "n_clusters": 4
+    },
+    "osrm_integration": true,
+    "route_geometries_fetched": 4
+  },
+  "summary": {
+    "total_locations_visited": 14,
+    "total_drive_time_minutes": 89.3825
+  }
+}

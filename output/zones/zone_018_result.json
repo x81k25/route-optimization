@@ -1,0 +1,227 @@
+{
+  "primary_assignments": {
+    "1": 101,
+    "2": 44
+  },
+  "secondary_assignments": {
+    "3": [
+      105
+    ],
+    "4": [
+      30
+    ],
+    "5": [
+      173,
+      34,
+      209,
+      221
+    ]
+  },
+  "daily_routes": {
+    "1": [
+      101
+    ],
+    "2": [
+      44
+    ],
+    "3": [
+      105
+    ],
+    "4": [
+      30
+    ],
+    "5": [
+      173,
+      209,
+      221,
+      34
+    ]
+  },
+  "daily_drive_times": {
+    "1": 0.0,
+    "2": 0.0,
+    "3": 0.0,
+    "4": 0.0,
+    "5": 69.83249999999998
+  },
+  "route_geometries": {
+    "1": null,
+    "2": null,
+    "3": null,
+    "4": null,
+    "5": {
+      "zone_id": "zone_018",
+      "day_number": 5,
+      "route_location_ids": [
+        173,
+        209,
+        221,
+        34
+      ],
+      "geometry_polyline": "_i~{EhhdcU???lDAvE?nMBhDHdCF~ABb@\\tEV`CJx@VhBZlBv@rDh@|BRr@r@`CFRPf@L\\t@tBZx@pArCfDlGb@x@nFtJ~CzFdAnB~AvC~HvNz@~AfCvEtBvDFRr@jAh@`Ah@~@FLr@vAhE~HR^bKfRbEnHb@z@pM~U`FbJtJrQdEzHbAlB`JtPrGpLb@t@`B~Cd@bATb@l@pAz@hC`A|Cz@zC`BtFhBlGx@rCvA|EfBhGLZpAlEHTb@zAh@~AFPXr@dD|GPZZp@bAnBvC`GrAnCf@dAdCrEZn@bBrDlAxCN^f@vAx@fCj@xBp@tCr@lDRrAb@|Cn@pFe@~@g@z@mCnF[z@Ol@If@Y~BSfCGfA?h@@t@@^J|BBp@Bn@?p@GzAKvAKr@Mp@Kh@Ql@w@|B_@~@e@nAcAzCUz@q@fDUrACTEb@c@jEOnAKt@Y~A]lBi@rCg@bCs@fDc@|A[z@u@jAq@|@_ApAo@t@y@f@wAz@iBfAq@d@{B~@iClAkCnAoBt@gAj@wCpAuAx@qDzBy@j@qIfFuBhA_CpAc@Z}@j@k@b@UT]^w@v@yBxBsAvAcBfBuB~BeAlAk@h@o@h@k@\\i@\\cCzAoC|A{GjEeJzF}HdFsHpEaAd@cAZ}E`Au@LsI|AmDt@[FsQvDaNpCyN|CsGlAsGxA_Cf@}Bf@oAT[FyEbAe^lHwGtAuIfBa@LcAb@q@f@oAdA_DzCkBlBqAnAmAjAeBdB_@\\k@j@yDrD{BzBaC`C}AvAk@d@{AbAcAl@c@XaB|@yCnByG~DeDjBy@b@E@yD`BqFzBc@TgKhEmCjAqDxAmAh@eBp@}LlF_C~@g@PkA`@oBj@eDdAsA^wBn@E@eBd@wHbBqGpAsIlBsMlCsIjBC?e@Jw@PsA^eA^o@XgAh@uA`Am@f@qBnB{FhGmBpB}DfEsCxCsGbH{AbBgIxIqBrBKLqE~E_@`@MLmLfMaAdAcA`AIFgA~@k@\\q@f@kQzL_FjDuDhCo@f@kKnHs@^yAbAq@h@sBvAs@b@gAj@y@\\_@Nq@Nw@LwEZaGh@sHl@yEb@oF`@gDZ_EXkGj@}Kz@cRxAw@Ru@B_AWiAy@w@w@}ElH_EjGaEpGoOrUgBtCwDdGmA`C_CbFuDtLmW~kAmD|O}Qpz@gEtRmFbVmJdc@a@lBUtAyFb`@uEh[iF~]}AxJc@zB_@`BGT_@|AaAdDwEpNyDjLeA|CsNlb@_AlBa@x@m@dAaAvAw@bAy@~@{AtAw@n@wA`AoBhAeEzB_^fRaAp@]Xm@h@k@r@o@`A[f@[v@oIdTeOb`@}A~EsAvFeAfGs@`GqGj{@oJloAMhCCtA?|BDpBHnBNtBf@nDd@bC^zAp@|BdW|o@dHfQpInTrs@`iBb[tw@zHzRnu@zlBr_AdbCdChGhBpEdEtJdFxK|GbNlDdH\\v@VbARlAHn@}@RcIjB}Bh@?TXbg@yDAo@K{@?",
+      "total_distance_meters": 49918.1,
+      "total_duration_seconds": 4189.2,
+      "turn_by_turn_instructions": [
+        {
+          "leg_index": 0,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "depart",
+          "geometry": "_i~{EhhdcU??"
+        },
+        {
+          "leg_index": 0,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "_i~{EhhdcU"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 8024.8,
+          "duration_seconds": 407.9,
+          "maneuver_type": "depart",
+          "geometry": "_i~{EhhdcU?lDAvE?nMBhDHdCF~ABb@\\tEV`CJx@VhBZlBv@rDh@|BRr@r@`CFRPf@L\\t@tBZx@pArCfDlGb@x@nFtJ~CzFdAnB~AvC~HvNz@~AfCvEtBvDFRr@jAh@`Ah@~@FLr@vAhE~HR^bKfRbEnHb@z@pM~U`FbJtJrQdEzHbAlB`JtPrGpLb@t@`B~Cd@bATb@l@pAz@hC`A|Cz@zC`BtFhBlGx@rCvA|EfBhGLZpAlEHTb@zAh@~AFPXr@dD|GPZZp@bAnBvC`GrAnCf@dAdCrEZn@bBrDlAxCN^f@vAx@fCj@xBp@tCr@lDRrAb@|Cn@pF"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 1383.9,
+          "duration_seconds": 199.3,
+          "maneuver_type": "turn",
+          "geometry": "iew{Ep~rcUe@~@g@z@mCnF[z@Ol@If@Y~BSfCGfA?h@@t@@^J|BBp@Bn@?p@GzAKvAKr@Mp@Kh@Ql@w@|B_@~@e@nAcAzCUz@q@fDUrACTEb@c@jEOnAKt@Y~A"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 15899.2,
+          "duration_seconds": 2294.5,
+          "maneuver_type": "new name",
+          "geometry": "i}w{EpwucU]lBi@rCg@bCs@fDc@|A[z@u@jAq@|@_ApAo@t@y@f@wAz@iBfAq@d@{B~@iClAkCnAoBt@gAj@wCpAuAx@qDzBy@j@qIfFuBhA_CpAc@Z}@j@k@b@UT]^w@v@yBxBsAvAcBfBuB~BeAlAk@h@o@h@k@\\i@\\cCzAoC|A{GjEeJzF}HdFsHpEaAd@cAZ}E`Au@LsI|AmDt@[FsQvDaNpCyN|CsGlAsGxA_Cf@}Bf@oAT[FyEbAe^lHwGtAuIfBa@LcAb@q@f@oAdA_DzCkBlBqAnAmAjAeBdB_@\\k@j@yDrD{BzBaC`C}AvAk@d@{AbAcAl@c@XaB|@yCnByG~DeDjBy@b@E@yD`BqFzBc@TgKhEmCjAqDxAmAh@eBp@}LlF_C~@g@PkA`@oBj@eDdAsA^wBn@E@eBd@wHbBqGpAsIlBsMlCsIjBC?e@Jw@PsA^eA^o@XgAh@uA`Am@f@qBnB{FhGmBpB}DfEsCxCsGbH{AbBgIxIqBrBKLqE~E_@`@MLmLfMaAdAcA`AIFgA~@k@\\q@f@kQzL_FjDuDhCo@f@kKnHs@^yAbAq@h@sBvAs@b@gAj@y@\\_@Nq@Nw@LwEZaGh@sHl@yEb@oF`@gDZ_EXkGj@}Kz@cRxAw@Ru@B_AWiAy@w@w@"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 3,
+          "instruction": "",
+          "distance_meters": 3057.5,
+          "duration_seconds": 155.5,
+          "maneuver_type": "end of road",
+          "geometry": "ssp|EpycdU}ElH_EjGaEpGoOrUgBtCwDdGmA`C_CbFuDtLmW~kAmD|O"
+        },
+        {
+          "leg_index": 1,
+          "step_index": 4,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "cjs|EfnidU"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 0,
+          "instruction": "",
+          "distance_meters": 12142.3,
+          "duration_seconds": 618,
+          "maneuver_type": "depart",
+          "geometry": "cjs|EfnidU}Qpz@gEtRmFbVmJdc@a@lBUtAyFb`@uEh[iF~]}AxJc@zB_@`BGT_@|AaAdDwEpNyDjLeA|CsNlb@_AlBa@x@m@dAaAvAw@bAy@~@{AtAw@n@wA`AoBhAeEzB_^fRaAp@]Xm@h@k@r@o@`A[f@[v@oIdTeOb`@}A~EsAvFeAfGs@`GqGj{@oJloAMhCCtA?|BDpBHnBNtBf@nDd@bC^zAp@|BdW|o@dHfQpInT"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 1,
+          "instruction": "",
+          "distance_meters": 7275.6,
+          "duration_seconds": 369.9,
+          "maneuver_type": "new name",
+          "geometry": "o~x|Eru`eUrs@`iBb[tw@zHzRnu@zlBr_AdbCdChG"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 2,
+          "instruction": "",
+          "distance_meters": 1091.2,
+          "duration_seconds": 59.7,
+          "maneuver_type": "new name",
+          "geometry": "qhr|EreneUhBpEdEtJdFxK|GbNlDdH\\v@VbARlAHn@"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 3,
+          "instruction": "",
+          "distance_meters": 293.6,
+          "duration_seconds": 19.6,
+          "maneuver_type": "turn",
+          "geometry": "{fq|ExdpeU}@RcIjB}Bh@"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 4,
+          "instruction": "",
+          "distance_meters": 586.6,
+          "duration_seconds": 25.7,
+          "maneuver_type": "turn",
+          "geometry": "{vq|EbjpeU?TXbg@"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 5,
+          "instruction": "",
+          "distance_meters": 163.3,
+          "duration_seconds": 39.1,
+          "maneuver_type": "turn",
+          "geometry": "avq|E|rqeUyDAo@K{@?"
+        },
+        {
+          "leg_index": 2,
+          "step_index": 6,
+          "instruction": "",
+          "distance_meters": 0,
+          "duration_seconds": 0,
+          "maneuver_type": "arrive",
+          "geometry": "g_r|EnrqeU"
+        }
+      ],
+      "osrm_response_code": "Ok",
+      "api_call_timestamp": "2025-08-29T15:17:16.239292"
+    }
+  },
+  "metadata": {
+    "optimization_start_time": "2025-08-29T15:17:16.121831",
+    "optimization_end_time": "2025-08-29T15:17:16.244915",
+    "optimization_duration_seconds": 0.123084,
+    "config": {
+      "days_per_week": 5,
+      "utilization": 100,
+      "primary_hours_per_week": 24,
+      "hours_per_non_primary": 1,
+      "locations_per_day_max": 7,
+      "drive_inefficiency": 0,
+      "start_location": "primary"
+    },
+    "zone_id": "zone_018",
+    "n_primary_locations": 2,
+    "n_secondary_locations": 6,
+    "available_secondary_days": 3,
+    "stage1_quality_metrics": {
+      "avg_intra_cluster_distance": 45.96680555555556,
+      "cluster_size_std": 1.4142135623730951,
+      "min_cluster_size": 1,
+      "max_cluster_size": 4,
+      "n_clusters": 3
+    },
+    "osrm_integration": true,
+    "route_geometries_fetched": 1
+  },
+  "summary": {
+    "total_locations_visited": 8,
+    "total_drive_time_minutes": 69.83249999999998
+  }
+}

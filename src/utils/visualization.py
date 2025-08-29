@@ -15,19 +15,37 @@ from loguru import logger
 class RouteVisualizer:
     """Visualizes optimized routes on a map using Plotly."""
     
-    def __init__(self, locations_path: str = "data/subway_locations.json"):
+    def __init__(self, locations_path: str = "data/subway_locations.jsonl"):
         """
         Initialize visualizer with location data.
         
         Args:
-            locations_path: Path to locations JSON file
+            locations_path: Path to locations JSON or JSONL file
         """
-        with open(locations_path, 'r') as f:
-            data = json.load(f)
-        
+        if locations_path.endswith('.jsonl'):
+            # Handle JSONL format - one JSON object per line
+            locations_data = []
+            with open(locations_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        locations_data.append(json.loads(line))
+        else:
+            # Handle traditional JSON format
+            with open(locations_path, 'r') as f:
+                data = json.load(f)
+            
+            # Handle both old and new dataset formats
+            if 'subway_locations_california' in data:
+                locations_data = data['subway_locations_california'] 
+            elif 'subway_locations_san_francisco' in data:
+                locations_data = data['subway_locations_san_francisco']
+            else:
+                raise ValueError("Could not find locations in dataset")
+            
         self.locations = {
             loc['id']: loc 
-            for loc in data['subway_locations_san_francisco']
+            for loc in locations_data
         }
         
         # Color palette for different days
@@ -390,7 +408,7 @@ class RouteVisualizer:
 
 def visualize_routes(
     results_path: str = "output/optimization_result.json",
-    locations_path: str = "data/subway_locations.json",
+    locations_path: str = "data/subway_locations.jsonl",
     output_dir: str = "output"
 ):
     """

@@ -69,6 +69,51 @@ class OptimizationResult:
         total = len(self.primary_assignments)  # Primary locations
         total += sum(len(locs) for locs in self.secondary_assignments.values())  # Secondary locations
         return total
+    
+    def primary_store_count(self) -> int:
+        """Calculate total number of primary locations."""
+        return len(self.primary_assignments)
+    
+    def non_primary_store_count(self) -> int:
+        """Calculate total number of secondary/non-primary locations."""
+        return sum(len(locs) for locs in self.secondary_assignments.values())
+    
+    def total_primary_hours(self) -> float:
+        """Calculate total hours spent at primary locations."""
+        config = self.metadata.get('config', {})
+        primary_hours_per_week = config.get('primary_hours_per_week', 24)
+        return primary_hours_per_week
+    
+    def total_non_primary_hours(self) -> float:
+        """Calculate total hours spent at non-primary locations."""
+        config = self.metadata.get('config', {})
+        hours_per_non_primary = config.get('hours_per_non_primary', 1)
+        return self.non_primary_store_count() * hours_per_non_primary
+    
+    def unutilized_time(self) -> float:
+        """Calculate unutilized time in hours per week, including drive time only for secondary days."""
+        config = self.metadata.get('config', {})
+        days_per_week = config.get('days_per_week', 5)
+        utilization = config.get('utilization', 100) / 100.0
+        
+        # Total available hours per week (assuming 8 hours per working day)
+        total_available_hours = days_per_week * 8.0 * utilization
+        
+        # Used hours: location time + drive time (only for secondary days)
+        location_hours = self.total_primary_hours() + self.total_non_primary_hours()
+        
+        # Calculate drive time only for secondary days (not primary days)
+        secondary_drive_time = 0.0
+        for day, drive_time in self.daily_drive_times.items():
+            # Only count drive time if this day has secondary assignments (not primary)
+            if day in self.secondary_assignments:
+                secondary_drive_time += drive_time
+        
+        drive_hours = secondary_drive_time / 60.0  # Convert minutes to hours
+        used_hours = location_hours + drive_hours
+        
+        # Unutilized time (can be negative if over-utilized)
+        return float(total_available_hours - used_hours)
 
 
 class RouteOptimizer:
@@ -77,7 +122,7 @@ class RouteOptimizer:
     def __init__(
         self,
         config_path: str = "config/model-params.yaml",
-        locations_path: str = "data/subway_locations.json",
+        locations_path: str = "data/subway_locations.jsonl",
         zone_id: str = "default_zone"
     ):
         """
@@ -100,20 +145,58 @@ class RouteOptimizer:
         self.secondary_locations = [loc for loc in self.locations if loc.location_class == 'secondary']
     
     def _load_locations(self, locations_path: str) -> List[Location]:
-        """Load location data from JSON file."""
-        with open(locations_path, 'r') as f:
-            data = json.load(f)
-        
+        """Load location data from JSON or JSONL file."""
         locations = []
-        for loc_data in data['subway_locations_san_francisco']:
-            locations.append(Location(
-                id=loc_data['id'],
-                name=loc_data['name'],
-                location_class=loc_data['class'],
-                address=loc_data['address'],
-                latitude=loc_data['latitude'],
-                longitude=loc_data['longitude']
-            ))
+        
+        if locations_path.endswith('.jsonl'):
+            # Handle JSONL format - one JSON object per line
+            with open(locations_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        loc_data = json.loads(line)
+                        
+                        # Filter by zone_id if specified and zone_id exists in data
+                        if hasattr(self, 'zone_id') and 'zone_id' in loc_data:
+                            if loc_data.get('zone_id') != self.zone_id:
+                                continue  # Skip locations not in our zone
+                        
+                        locations.append(Location(
+                            id=loc_data['id'],
+                            name=loc_data['name'],
+                            location_class=loc_data['class'],
+                            address=loc_data['address'],
+                            latitude=loc_data['latitude'],
+                            longitude=loc_data['longitude']
+                        ))
+        else:
+            # Handle traditional JSON format
+            with open(locations_path, 'r') as f:
+                data = json.load(f)
+            
+            # Handle both old and new dataset formats
+            locations_key = None
+            if 'subway_locations_california' in data:
+                locations_key = 'subway_locations_california'
+            elif 'subway_locations_san_francisco' in data:
+                locations_key = 'subway_locations_san_francisco'
+            else:
+                raise ValueError("Could not find locations in dataset")
+            
+            for loc_data in data[locations_key]:
+                # Filter by zone_id if specified and zone_id exists in data
+                if hasattr(self, 'zone_id') and 'zone_id' in loc_data:
+                    if loc_data.get('zone_id') != self.zone_id:
+                        continue  # Skip locations not in our zone
+                
+                locations.append(Location(
+                    id=loc_data['id'],
+                    name=loc_data['name'],
+                    location_class=loc_data['class'],
+                    address=loc_data['address'],
+                    latitude=loc_data['latitude'],
+                    longitude=loc_data['longitude']
+                ))
         
         return locations
     
