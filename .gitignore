@@ -168,7 +168,7 @@ cython_debug/
 
 # Optimization results and outputs
 results/
-output/
+* output/
 *.csv
 *.xlsx
 plots/
@@ -181,6 +181,6 @@ figures/
 *.pb
 
 # Data files (uncomment if you don't want to track data)
-# data/*.csv
+* data/*.csv
 # data/*.json
 # *.db
