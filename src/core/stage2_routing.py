@@ -1,244 +1,37 @@
 """
 Stage 2: Daily Route Optimization
 
-Optimizes the route for a given set of locations using Greedy Nearest Neighbor + 2-opt.
+Functional programming implementation for route optimization.
+Converted from class-based DailyRouteOptimizer to functional approach.
 """
 
-import numpy as np
 import polars as pl
-from typing import List, Tuple, Dict, Union
-import itertools
+from typing import List, Tuple, Dict, Any
 from loguru import logger
 
+# Import functional implementations from stage4_route_optimization.py
+from .stage4_route_optimization import (
+    create_drive_time_lookup,
+    get_drive_time,
+    calculate_route_time,
+    greedy_nearest_neighbor,
+    two_opt_improvement,
+    exhaustive_search,
+    optimize_daily_route,
+    get_route_details
+)
 
-class DailyRouteOptimizer:
-    """Optimizes routes for a single day's locations."""
-    
-    def __init__(self, od_matrix: Union[str, pl.DataFrame]):
-        """
-        Initialize with OD matrix.
-        
-        Args:
-            od_matrix: Either path to pickled DataFrame (legacy) or Polars DataFrame directly
-        """
-        if isinstance(od_matrix, str):
-            # Legacy path-based initialization
-            import pickle
-            with open(od_matrix, 'rb') as f:
-                self.od_matrix = pickle.load(f)
-        else:
-            # New DataFrame-based initialization
-            self.od_matrix = od_matrix
-        
-        # Create lookup dictionary for quick drive time access
-        self.drive_time_lookup = {}
-        for row in self.od_matrix.iter_rows():
-            origin_id, dest_id = row[1], row[2]  # origin_id, destination_id from OSRM format
-            drive_time = row[5]  # duration_minutes
-            self.drive_time_lookup[(origin_id, dest_id)] = drive_time
-    
-    def get_drive_time(self, origin_id: int, dest_id: int) -> float:
-        """Get drive time between two locations."""
-        if origin_id == dest_id:
-            return 0.0
-        return self.drive_time_lookup.get((origin_id, dest_id), float('inf'))
-    
-    def greedy_nearest_neighbor(self, location_ids: List[int], start_location_id: int = None) -> Tuple[List[int], float]:
-        """
-        Solve TSP using Greedy Nearest Neighbor algorithm.
-        
-        Args:
-            location_ids: List of location IDs to visit
-            start_location_id: Starting location (if None, uses first location)
-            
-        Returns:
-            Tuple of (route, total_drive_time)
-        """
-        if len(location_ids) <= 1:
-            return location_ids, 0.0
-        
-        # Choose starting location
-        current_location = start_location_id if start_location_id is not None else location_ids[0]
-        unvisited = set(location_ids) - {current_location}
-        route = [current_location]
-        total_time = 0.0
-        
-        # Greedy selection: always visit nearest unvisited location
-        while unvisited:
-            nearest_location = min(
-                unvisited,
-                key=lambda loc: self.get_drive_time(current_location, loc)
-            )
-            
-            drive_time = self.get_drive_time(current_location, nearest_location)
-            total_time += drive_time
-            
-            route.append(nearest_location)
-            unvisited.remove(nearest_location)
-            current_location = nearest_location
-        
-        return route, total_time
-    
-    def two_opt_improvement(self, route: List[int], max_iterations: int = 100) -> Tuple[List[int], float]:
-        """
-        Improve route using 2-opt local search.
-        
-        Args:
-            route: Initial route as list of location IDs
-            max_iterations: Maximum number of improvement iterations
-            
-        Returns:
-            Tuple of (improved_route, total_drive_time)
-        """
-        if len(route) <= 3:
-            return route, self._calculate_route_time(route)
-        
-        best_route = route.copy()
-        best_time = self._calculate_route_time(best_route)
-        
-        for iteration in range(max_iterations):
-            improved = False
-            
-            # Try all possible 2-opt swaps
-            for i in range(1, len(route) - 2):
-                for j in range(i + 1, len(route)):
-                    if j - i == 1:  # Skip adjacent edges
-                        continue
-                    
-                    # Create new route by reversing segment between i and j
-                    new_route = route[:i] + route[i:j+1][::-1] + route[j+1:]
-                    new_time = self._calculate_route_time(new_route)
-                    
-                    if new_time < best_time:
-                        best_route = new_route.copy()
-                        best_time = new_time
-                        improved = True
-            
-            if improved:
-                route = best_route.copy()
-            else:
-                break  # No more improvements found
-        
-        return best_route, best_time
-    
-    def _calculate_route_time(self, route: List[int]) -> float:
-        """Calculate total drive time for a route."""
-        if len(route) <= 1:
-            return 0.0
-        
-        total_time = 0.0
-        for i in range(len(route) - 1):
-            total_time += self.get_drive_time(route[i], route[i + 1])
-        
-        return total_time
-    
-    def exhaustive_search(self, location_ids: List[int]) -> Tuple[List[int], float]:
-        """
-        Solve TSP using exhaustive search (brute force).
-        Only use for small problems (≤ 8 locations).
-        
-        Args:
-            location_ids: List of location IDs to visit
-            
-        Returns:
-            Tuple of (optimal_route, total_drive_time)
-        """
-        if len(location_ids) > 8:
-            raise ValueError("Exhaustive search only supported for ≤ 8 locations")
-        
-        if len(location_ids) <= 1:
-            return location_ids, 0.0
-        
-        best_route = None
-        best_time = float('inf')
-        
-        # Fix first location, permute the rest
-        first_location = location_ids[0]
-        remaining_locations = location_ids[1:]
-        
-        for perm in itertools.permutations(remaining_locations):
-            route = [first_location] + list(perm)
-            route_time = self._calculate_route_time(route)
-            
-            if route_time < best_time:
-                best_route = route
-                best_time = route_time
-        
-        return best_route, best_time
-    
-    def optimize_route(
-        self, 
-        location_ids: List[int], 
-        start_location_id: int = None,
-        use_exhaustive_if_small: bool = True
-    ) -> Tuple[List[int], float, Dict[str, any]]:
-        """
-        Main method to optimize a route for given locations.
-        
-        Args:
-            location_ids: List of location IDs to visit
-            start_location_id: Starting location (if None, uses first location)
-            use_exhaustive_if_small: Use exhaustive search for ≤ 5 locations
-            
-        Returns:
-            Tuple of (route, total_time, metadata)
-        """
-        if not location_ids:
-            return [], 0.0, {'algorithm': 'empty'}
-        
-        metadata = {
-            'n_locations': len(location_ids),
-            'start_location': start_location_id or location_ids[0]
-        }
-        
-        # Choose algorithm based on problem size
-        if use_exhaustive_if_small and len(location_ids) <= 5:
-            # Use exhaustive search for small problems
-            route, total_time = self.exhaustive_search(location_ids)
-            metadata['algorithm'] = 'exhaustive_search'
-            metadata['optimal'] = True
-        else:
-            # Use greedy + 2-opt for larger problems
-            route, _ = self.greedy_nearest_neighbor(location_ids, start_location_id)
-            route, total_time = self.two_opt_improvement(route)
-            metadata['algorithm'] = 'greedy_plus_2opt'
-            metadata['optimal'] = False
-        
-        metadata['total_drive_time_minutes'] = total_time
-        
-        return route, total_time, metadata
-    
-    def get_route_details(self, route: List[int]) -> List[Dict[str, any]]:
-        """
-        Get detailed information about each step in the route.
-        
-        Args:
-            route: List of location IDs in order
-            
-        Returns:
-            List of step details including drive times
-        """
-        if len(route) <= 1:
-            return []
-        
-        details = []
-        cumulative_time = 0.0
-        
-        for i in range(len(route) - 1):
-            from_id = route[i]
-            to_id = route[i + 1]
-            drive_time = self.get_drive_time(from_id, to_id)
-            cumulative_time += drive_time
-            
-            details.append({
-                'step': i + 1,
-                'from_location_id': from_id,
-                'to_location_id': to_id,
-                'drive_time_minutes': drive_time,
-                'cumulative_time_minutes': cumulative_time
-            })
-        
-        return details
+# Re-export functions for backward compatibility
+__all__ = [
+    'create_drive_time_lookup',
+    'get_drive_time', 
+    'calculate_route_time',
+    'greedy_nearest_neighbor',
+    'two_opt_improvement', 
+    'exhaustive_search',
+    'optimize_daily_route',
+    'get_route_details'
+]
 
 
 def load_location_names(locations_path: str = "data/subway_locations.json") -> Dict[int, str]:
@@ -255,17 +48,28 @@ def load_location_names(locations_path: str = "data/subway_locations.json") -> D
 
 
 if __name__ == "__main__":
-    # Example usage
-    optimizer = DailyRouteOptimizer()
+    # Example usage with functional approach
+    import polars as pl
+    
+    # Create mock OD matrix for testing
+    mock_od_data = [
+        {'zone_id': 'test', 'origin_id': 2, 'destination_id': 3, 'distance_meters': 1000, 'duration_seconds': 180, 'duration_minutes': 3.0, 'osrm_response_code': 'Ok', 'api_call_timestamp': None},
+        {'zone_id': 'test', 'origin_id': 2, 'destination_id': 4, 'distance_meters': 1500, 'duration_seconds': 300, 'duration_minutes': 5.0, 'osrm_response_code': 'Ok', 'api_call_timestamp': None},
+        {'zone_id': 'test', 'origin_id': 3, 'destination_id': 2, 'distance_meters': 1000, 'duration_seconds': 180, 'duration_minutes': 3.0, 'osrm_response_code': 'Ok', 'api_call_timestamp': None},
+        {'zone_id': 'test', 'origin_id': 3, 'destination_id': 4, 'distance_meters': 800, 'duration_seconds': 120, 'duration_minutes': 2.0, 'osrm_response_code': 'Ok', 'api_call_timestamp': None},
+        {'zone_id': 'test', 'origin_id': 4, 'destination_id': 2, 'distance_meters': 1500, 'duration_seconds': 300, 'duration_minutes': 5.0, 'osrm_response_code': 'Ok', 'api_call_timestamp': None},
+        {'zone_id': 'test', 'origin_id': 4, 'destination_id': 3, 'distance_meters': 800, 'duration_seconds': 120, 'duration_minutes': 2.0, 'osrm_response_code': 'Ok', 'api_call_timestamp': None}
+    ]
+    od_matrix_df = pl.DataFrame(mock_od_data)
     
     # Test with a sample set of locations
-    test_locations = [2, 3, 4, 5, 6]  # Sample location IDs
+    test_locations = [2, 3, 4]  # Sample location IDs
     
-    logger.info("Route Optimization Example:")
-    logger.info("==========================")
+    logger.info("Route Optimization Example (Functional):")
+    logger.info("=======================================")
     
-    # Optimize route
-    route, total_time, metadata = optimizer.optimize_route(test_locations)
+    # Optimize route using functional approach
+    route, total_time, metadata = optimize_daily_route(test_locations, od_matrix_df)
     
     # Load location names for display
     location_names = load_location_names()
@@ -280,7 +84,8 @@ if __name__ == "__main__":
     
     # Show step-by-step details
     logger.info(f"\nRoute details:")
-    details = optimizer.get_route_details(route)
+    drive_time_lookup = create_drive_time_lookup(od_matrix_df)
+    details = get_route_details(route, drive_time_lookup)
     for step in details:
         from_name = location_names.get(step['from_location_id'], f"Location {step['from_location_id']}")
         to_name = location_names.get(step['to_location_id'], f"Location {step['to_location_id']}")

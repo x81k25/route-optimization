@@ -40,6 +40,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Common optimization approaches: genetic algorithms, simulated annealing, ant colony optimization
 - Benchmark against standard test datasets (Solomon instances, VRPLIB)
 
+## Infrastructure Setup
+
+This project uses a **local OSRM server** running at `http://192.168.50.2:32050` for routing calculations. This means:
+- No rate limits for OSRM routing calls
+- Fast local network access for distance matrices and route geometry fetching
+- The OSRM server handles routing between coordinates (not geocoding addresses to coordinates)
+
+Note: OSRM does routing, not geocoding. For address-to-coordinate conversion, we still use external services like Nominatim.
+
 ---
 
 # instructions-of-the-day

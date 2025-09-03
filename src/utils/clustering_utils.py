@@ -90,24 +90,53 @@ def kmeans_cluster_locations(locations_df: pl.DataFrame, n_clusters: int, random
     Returns:
         DataFrame with additional 'cluster_id' column
     """
-    if len(locations_df) < n_clusters:
-        logger.warning(f"Fewer locations ({len(locations_df)}) than clusters ({n_clusters})")
-        # Assign each location to its own cluster
-        return locations_df.with_columns(
-            pl.arange(0, len(locations_df)).alias('cluster_id')
+    # Filter out locations with null coordinates
+    valid_locations = locations_df.filter(
+        (pl.col('latitude').is_not_null()) & (pl.col('longitude').is_not_null())
+    )
+    
+    null_locations = locations_df.filter(
+        (pl.col('latitude').is_null()) | (pl.col('longitude').is_null())
+    )
+    
+    logger.info(f"K-means clustering: {len(valid_locations)} valid locations, {len(null_locations)} excluded (null coordinates)")
+    
+    if len(valid_locations) == 0:
+        logger.error("No valid coordinates found for clustering")
+        return locations_df.with_columns(pl.lit(None).alias('cluster_id'))
+    
+    if len(valid_locations) < n_clusters:
+        logger.warning(f"Fewer valid locations ({len(valid_locations)}) than clusters ({n_clusters})")
+        # Assign each valid location to its own cluster
+        valid_with_clusters = valid_locations.with_columns(
+            pl.arange(0, len(valid_locations)).alias('cluster_id')
+        )
+    else:
+        # Extract coordinates from valid locations only
+        coordinates = valid_locations.select(['latitude', 'longitude']).to_numpy()
+        
+        # Perform K-means clustering
+        kmeans = KMeans(n_clusters=n_clusters, random_state=random_seed, n_init=10)
+        cluster_labels = kmeans.fit_predict(coordinates)
+        
+        # Add cluster labels to valid locations
+        valid_with_clusters = valid_locations.with_columns(
+            pl.Series('cluster_id', cluster_labels)
         )
     
-    # Extract coordinates
-    coordinates = locations_df.select(['latitude', 'longitude']).to_numpy()
-    
-    # Perform K-means clustering
-    kmeans = KMeans(n_clusters=n_clusters, random_state=random_seed, n_init=10)
-    cluster_labels = kmeans.fit_predict(coordinates)
-    
-    # Add cluster labels to dataframe
-    return locations_df.with_columns(
-        pl.Series('cluster_id', cluster_labels)
+    # Add null cluster_id to null locations
+    null_with_clusters = null_locations.with_columns(
+        pl.lit(None).alias('cluster_id')
     )
+    
+    # Combine back together, preserving original order
+    result = pl.concat([valid_with_clusters, null_with_clusters], how="vertical")
+    
+    # Sort by original index if available, otherwise by id
+    if 'id' in result.columns:
+        result = result.sort('id')
+    
+    return result
 
 
 def geographic_cluster_locations(locations_df: pl.DataFrame, target_size: int) -> pl.DataFrame:

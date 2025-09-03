@@ -53,6 +53,41 @@ class RouteGeometry:
     api_call_timestamp: datetime
 
 
+def validate_california_coordinates(locations: List[Location], zone_id: str) -> List[Location]:
+    """
+    Validate that all locations are within California bounds.
+    
+    California approximate bounds:
+    - Latitude: 32.5° to 42.0° N
+    - Longitude: -124.5° to -114.0° W
+    
+    Args:
+        locations: List of Location objects
+        zone_id: Zone identifier for logging
+        
+    Returns:
+        List of valid locations within California bounds
+    """
+    CA_LAT_MIN, CA_LAT_MAX = 32.5, 42.0
+    CA_LON_MIN, CA_LON_MAX = -124.5, -114.0
+    
+    valid_locations = []
+    invalid_count = 0
+    
+    for loc in locations:
+        if (CA_LAT_MIN <= loc.latitude <= CA_LAT_MAX and 
+            CA_LON_MIN <= loc.longitude <= CA_LON_MAX):
+            valid_locations.append(loc)
+        else:
+            logger.warning(f"Zone {zone_id}: Location {loc.location_id} ({loc.name}) at ({loc.latitude}, {loc.longitude}) is outside California bounds")
+            invalid_count += 1
+    
+    if invalid_count > 0:
+        logger.warning(f"Zone {zone_id}: Filtered out {invalid_count} locations outside California bounds")
+    
+    return valid_locations
+
+
 def build_coordinates_string(locations: List[Location]) -> str:
     """
     Build OSRM-compatible coordinate string from locations.
@@ -67,6 +102,81 @@ def build_coordinates_string(locations: List[Location]) -> str:
     for loc in locations:
         coords.append(f"{loc.longitude},{loc.latitude}")
     return ";".join(coords)
+
+
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """
+    Calculate haversine distance between two points in meters.
+    
+    Args:
+        lat1, lon1: First point coordinates
+        lat2, lon2: Second point coordinates
+        
+    Returns:
+        Distance in meters
+    """
+    from math import radians, cos, sin, asin, sqrt
+    
+    # Convert to radians
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    
+    # Earth radius in meters
+    r = 6371000
+    return r * c
+
+
+def generate_fallback_od_matrix(
+    locations: List[Location], 
+    zone_id: str, 
+    api_call_time: datetime
+) -> ODMatrixResult:
+    """
+    Generate fallback OD matrix using haversine distances when OSRM API fails.
+    
+    Args:
+        locations: List of Location objects
+        zone_id: Zone identifier
+        api_call_time: Timestamp of the API call attempt
+        
+    Returns:
+        ODMatrixResult with estimated distances and durations
+    """
+    n_locations = len(locations)
+    location_ids = [loc.location_id for loc in locations]
+    
+    # Build distance matrix using haversine
+    distance_matrix = np.zeros((n_locations, n_locations))
+    
+    for i in range(n_locations):
+        for j in range(n_locations):
+            if i == j:
+                distance_matrix[i, j] = 0.0
+            else:
+                dist = haversine_distance(
+                    locations[i].latitude, locations[i].longitude,
+                    locations[j].latitude, locations[j].longitude
+                )
+                distance_matrix[i, j] = dist
+    
+    # Estimate duration from distance (assume 30 km/h average speed = 8.33 m/s)
+    duration_matrix = distance_matrix / 8.33
+    
+    logger.info(f"Generated fallback OD matrix for zone {zone_id}")
+    
+    return ODMatrixResult(
+        zone_id=zone_id,
+        distance_matrix=distance_matrix,
+        duration_matrix=duration_matrix,
+        location_ids=location_ids,
+        osrm_response_code="Fallback",
+        api_call_timestamp=api_call_time
+    )
 
 
 def fetch_od_matrix(
@@ -89,11 +199,20 @@ def fetch_od_matrix(
         requests.RequestException: If API call fails
         ValueError: If response format is invalid
     """
-    if len(locations) > 25:
-        logger.warning(f"Zone {zone_id}: {len(locations)} locations exceeds recommended 25 limit")
+    # Validate coordinates are within California bounds
+    valid_locations = validate_california_coordinates(locations, zone_id)
     
-    # Build coordinate string
-    coordinates = build_coordinates_string(locations)
+    if len(valid_locations) == 0:
+        raise ValueError(f"Zone {zone_id}: No valid locations within California bounds")
+    
+    if len(valid_locations) != len(locations):
+        logger.warning(f"Zone {zone_id}: Using {len(valid_locations)} valid locations out of {len(locations)} total")
+    
+    if len(valid_locations) > 25:
+        logger.warning(f"Zone {zone_id}: {len(valid_locations)} valid locations exceeds recommended 25 limit")
+    
+    # Build coordinate string from valid locations
+    coordinates = build_coordinates_string(valid_locations)
     
     # Build request URL
     endpoint = f"{OSRM_BASE_URL}/table/v1/driving/{coordinates}"
@@ -112,17 +231,30 @@ def fetch_od_matrix(
         response.raise_for_status()
         data = response.json()
         
+    except requests.Timeout as e:
+        logger.error(f"OSRM Table API timeout (30s) for zone {zone_id} with {len(valid_locations)} locations: {e}")
+        logger.error(f"Endpoint: {endpoint}")
+        logger.error(f"Coordinates: {coordinates}")
+        
+        # Generate dummy OD matrix with estimated distances
+        logger.warning(f"Generating fallback OD matrix using haversine distances for zone {zone_id}")
+        return generate_fallback_od_matrix(valid_locations, zone_id, api_call_time)
+        
     except requests.RequestException as e:
-        logger.error(f"OSRM API request failed for zone {zone_id}: {e}")
-        raise
+        logger.error(f"OSRM Table API request failed for zone {zone_id}: {e}")
+        logger.error(f"Endpoint: {endpoint}")
+        
+        # Generate dummy OD matrix as fallback
+        logger.warning(f"Generating fallback OD matrix using haversine distances for zone {zone_id}")
+        return generate_fallback_od_matrix(valid_locations, zone_id, api_call_time)
         
     # Validate response
     if data.get("code") != "Ok":
         raise ValueError(f"OSRM API returned error for zone {zone_id}: {data.get('message', 'Unknown error')}")
     
-    # Extract matrices
-    n_locations = len(locations)
-    location_ids = [loc.location_id for loc in locations]
+    # Extract matrices (use valid locations only)
+    n_locations = len(valid_locations)
+    location_ids = [loc.location_id for loc in valid_locations]
     
     # Duration matrix (seconds)
     durations = data.get("durations", [])
@@ -157,6 +289,80 @@ def fetch_od_matrix(
     )
 
 
+def generate_fallback_route_geometry(
+    locations: List[Location],
+    zone_id: str,
+    day_number: int,
+    api_call_time: datetime
+) -> RouteGeometry:
+    """
+    Generate fallback route geometry using straight-line estimates when OSRM API fails.
+    
+    Args:
+        locations: Ordered list of locations for the route
+        zone_id: Zone identifier
+        day_number: Day number
+        api_call_time: Timestamp of the API call attempt
+        
+    Returns:
+        RouteGeometry with estimated distances and dummy polyline
+    """
+    if len(locations) < 2:
+        raise ValueError(f"Need at least 2 locations for fallback route")
+    
+    # Calculate total distance using haversine
+    total_distance = 0.0
+    for i in range(len(locations) - 1):
+        dist = haversine_distance(
+            locations[i].latitude, locations[i].longitude,
+            locations[i + 1].latitude, locations[i + 1].longitude
+        )
+        total_distance += dist
+    
+    # Estimate duration (assume 30 km/h average speed = 8.33 m/s)
+    total_duration = total_distance / 8.33
+    
+    # Generate dummy polyline and basic turn instructions
+    dummy_polyline = "o|sbFx}liU" + "?" * (len(locations) * 2)
+    instructions = []
+    
+    for i in range(len(locations) - 1):
+        # Depart instruction
+        instructions.append({
+            "leg_index": i,
+            "step_index": 0,
+            "instruction": "",
+            "distance_meters": 0,
+            "duration_seconds": 0,
+            "maneuver_type": "depart",
+            "geometry": "o|sbFx}liU??"
+        })
+        # Arrive instruction
+        instructions.append({
+            "leg_index": i,
+            "step_index": 1,
+            "instruction": "",
+            "distance_meters": 0,
+            "duration_seconds": 0,
+            "maneuver_type": "arrive",
+            "geometry": "o|sbFx}liU"
+        })
+    
+    logger.info(f"Generated fallback route geometry for zone {zone_id}, day {day_number}")
+    
+    return RouteGeometry(
+        zone_id=zone_id,
+        day_number=day_number,
+        route_location_ids=[loc.location_id for loc in locations],
+        geometry_polyline=dummy_polyline,
+        turn_by_turn_instructions=instructions,
+        total_distance_meters=total_distance,
+        total_duration_seconds=total_duration,
+        osrm_response_code="Fallback",
+        api_call_timestamp=api_call_time
+    )
+
+
 def fetch_route_geometry(
     zone_id: str,
     day_number: int, 
@@ -184,8 +390,20 @@ def fetch_route_geometry(
     if len(route_locations) < 2:
         raise ValueError(f"Route must have at least 2 locations, got {len(route_locations)}")
     
-    # Build coordinate string
-    coordinates = build_coordinates_string(route_locations)
+    # Validate coordinates are within California bounds
+    valid_locations = validate_california_coordinates(route_locations, zone_id)
+    
+    if len(valid_locations) == 0:
+        raise ValueError(f"Zone {zone_id}, day {day_number}: No valid locations within California bounds")
+    
+    if len(valid_locations) < 2:
+        raise ValueError(f"Zone {zone_id}, day {day_number}: Need at least 2 valid locations for route, got {len(valid_locations)}")
+    
+    if len(valid_locations) != len(route_locations):
+        logger.warning(f"Zone {zone_id}, day {day_number}: Using {len(valid_locations)} valid locations out of {len(route_locations)} total")
+    
+    # Build coordinate string from valid locations
+    coordinates = build_coordinates_string(valid_locations)
     
     # Build request URL
     endpoint = f"{OSRM_BASE_URL}/route/v1/driving/{coordinates}"
@@ -207,9 +425,22 @@ def fetch_route_geometry(
         response.raise_for_status()
         data = response.json()
         
+    except requests.Timeout as e:
+        logger.error(f"OSRM Route API timeout (30s) for zone {zone_id}, day {day_number} with {len(valid_locations)} stops: {e}")
+        logger.error(f"Endpoint: {endpoint}")
+        logger.error(f"Coordinates: {coordinates}")
+        
+        # Generate dummy route geometry as fallback
+        logger.warning(f"Generating fallback route geometry for zone {zone_id}, day {day_number}")
+        return generate_fallback_route_geometry(valid_locations, zone_id, day_number, api_call_time)
+        
     except requests.RequestException as e:
         logger.error(f"OSRM Route API request failed for zone {zone_id}, day {day_number}: {e}")
-        raise
+        logger.error(f"Endpoint: {endpoint}")
+        
+        # Generate dummy route geometry as fallback
+        logger.warning(f"Generating fallback route geometry for zone {zone_id}, day {day_number}")
+        return generate_fallback_route_geometry(valid_locations, zone_id, day_number, api_call_time)
         
     # Validate response
     if data.get("code") != "Ok":
@@ -253,7 +484,7 @@ def fetch_route_geometry(
     return RouteGeometry(
         zone_id=zone_id,
         day_number=day_number,
-        route_location_ids=[loc.location_id for loc in route_locations],
+        route_location_ids=[loc.location_id for loc in valid_locations],
         geometry_polyline=geometry_polyline,
         turn_by_turn_instructions=instructions,
         total_distance_meters=total_distance,

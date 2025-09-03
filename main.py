@@ -11,9 +11,13 @@ from pathlib import Path
 from typing import List
 
 from loguru import logger
-from src.core.main_optimizer import RouteOptimizer
-from src.utils.visualization import visualize_routes
-from src.utils.clustering_utils import add_zone_ids_to_jsonl_dataset, default_cluster_config
+from src.core.stage6_orchestrator import (
+    load_config,
+    optimize_single_zone as orchestrator_optimize_single_zone,
+    optimize_multiple_zones
+)
+from src.core.stage0_data_ingestion import load_locations_from_jsonl
+from src.utils.clustering_utils import cluster_locations
 
 
 def get_available_zones(locations_path: str = "data/subway_locations.jsonl") -> List[str]:
@@ -47,32 +51,34 @@ def get_available_zones(locations_path: str = "data/subway_locations.jsonl") -> 
     return sorted(list(zones))
 
 
-def optimize_single_zone(zone_id: str, locations_path: str = "data/subway_locations.jsonl") -> tuple:
-    """Optimize a single zone and return results."""
-    try:
-        logger.info(f"Starting optimization for {zone_id}")
-        
-        # Initialize optimizer for this zone
-        optimizer = RouteOptimizer(zone_id=zone_id, locations_path=locations_path)
-        
-        # Run optimization
-        result = optimizer.optimize()
-        
-        # Save individual zone results
-        output_dir = Path("output/zones")
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
-        zone_output_path = output_dir / f"{zone_id}_result.json"
-        optimizer.save_solution(result, str(zone_output_path))
-        
-        logger.info(f"Completed {zone_id}: {result.total_locations_visited()} locations, "
-                   f"{result.total_drive_time():.1f} min drive time")
-        
-        return (zone_id, result, None)
-        
-    except Exception as e:
-        logger.error(f"Failed to optimize {zone_id}: {e}")
-        return (zone_id, None, str(e))
+def run_single_zone_optimization(zone_id: str, locations_path: str = "data/subway_locations.jsonl") -> None:
+    """Run optimization for a single zone using new functional architecture."""
+    logger.info(f"Starting single-zone optimization for {zone_id}...")
+    
+    # Load configuration and data
+    config = load_config()
+    locations_df = load_locations_from_jsonl(locations_path, zone_id)
+    
+    if len(locations_df) == 0:
+        logger.error(f"No locations found for zone {zone_id}")
+        return
+    
+    # Run complete optimization pipeline
+    zone_report = orchestrator_optimize_single_zone(
+        locations_df=locations_df,
+        config=config,
+        zone_id=zone_id,
+        generate_visualizations=True,
+        save_results=True,
+        output_dir="output"
+    )
+    
+    # Print summary
+    logger.info(f"Completed {zone_id}:")
+    logger.info(f"  Locations: {zone_report['metrics_summary']['total_locations_visited']}")
+    logger.info(f"  Drive time: {zone_report['metrics_summary']['total_drive_time_minutes']:.1f} minutes")
+    logger.info(f"  Primary stores: {zone_report['metrics_summary']['primary_store_count']}")
+    logger.info(f"  Secondary stores: {zone_report['metrics_summary']['non_primary_store_count']}")
 
 
 def run_clustering(
@@ -107,7 +113,21 @@ def run_clustering(
     columns_to_keep = [col for col in locations_df.columns if col not in ['zone_id', 'class']]
     clean_df = locations_df.select(columns_to_keep)
     
-    logger.info(f"Loaded {len(clean_df)} locations, stripped existing zone assignments")
+    # Filter out locations with null coordinates and set their zone_id to null
+    valid_locations = clean_df.filter(
+        (pl.col('latitude').is_not_null()) & (pl.col('longitude').is_not_null())
+    )
+    
+    null_locations = clean_df.filter(
+        (pl.col('latitude').is_null()) | (pl.col('longitude').is_null())
+    ).with_columns(
+        pl.lit(None).alias('zone_id'),
+        pl.lit('secondary').alias('class')  # Default class for excluded locations
+    )
+    
+    logger.info(f"Loaded {len(clean_df)} locations total:")
+    logger.info(f"  - {len(valid_locations)} with valid coordinates (will be clustered)")
+    logger.info(f"  - {len(null_locations)} with null coordinates (excluded from clustering, zone_id set to null)")
     
     # Create clustering config
     config = {
@@ -122,18 +142,30 @@ def run_clustering(
     # Import and run clustering
     from src.utils.clustering_utils import cluster_locations
     
-    logger.info(f"Clustering with config: {config}")
-    clustered_df, quality_metrics = cluster_locations(clean_df, config)
+    logger.info(f"Clustering valid locations with config: {config}")
+    if len(valid_locations) > 0:
+        clustered_valid_df, quality_metrics = cluster_locations(valid_locations, config)
+        
+        # Combine clustered valid locations with null locations
+        final_df = pl.concat([clustered_valid_df, null_locations], how="vertical")
+        
+        # Sort by original ID to maintain order
+        if 'id' in final_df.columns:
+            final_df = final_df.sort('id')
+    else:
+        logger.warning("No valid locations found for clustering!")
+        final_df = null_locations
+        quality_metrics = {'n_clusters': 0}
     
     # Write updated locations back to file
-    clustered_df.write_ndjson(locations_path)
+    final_df.write_ndjson(locations_path)
     
     logger.info(f"Successfully re-clustered locations:")
     logger.info(f"  Created {quality_metrics['n_clusters']} zones")
     logger.info(f"  Zone sizes: {quality_metrics['min_cluster_size']} - {quality_metrics['max_cluster_size']}")
     logger.info(f"  Average cluster size: {quality_metrics['avg_cluster_size']:.1f}")
-    logger.info(f"  Primary stores: {len(clustered_df.filter(pl.col('class') == 'primary'))}")
-    logger.info(f"  Secondary stores: {len(clustered_df.filter(pl.col('class') == 'secondary'))}")
+    logger.info(f"  Primary stores: {len(final_df.filter(pl.col('class') == 'primary'))}")
+    logger.info(f"  Secondary stores: {len(final_df.filter(pl.col('class') == 'secondary'))}")
     logger.info(f"Updated {locations_path} with new zone assignments")
 
 
@@ -152,26 +184,12 @@ def main(single_zone: str = None, max_workers: int = None, max_zones: int = None
     locations_path = "data/subway_locations.jsonl"
     
     if single_zone:
-        # Single zone processing (original behavior)
-        logger.info(f"Running single-zone optimization for {single_zone}...")
-        
-        optimizer = RouteOptimizer(zone_id=single_zone, locations_path=locations_path)
-        result = optimizer.optimize()
-        
-        # Display results
-        optimizer.print_solution(result)
-        
-        # Save results
-        optimizer.save_solution(result, "output/optimization_result.json")
-        
-        # Generate visualizations
-        logger.info("\n" + "=" * 60)
-        logger.info("Generating Route Visualizations...")
-        logger.info("=" * 60)
-        visualize_routes(locations_path=locations_path)
+        # Single zone processing using new functional architecture
+        run_single_zone_optimization(single_zone, locations_path)
+        logger.info("Single zone optimization complete!")
         
     else:
-        # Multi-zone concurrent processing
+        # Multi-zone concurrent processing using new architecture
         available_zones = get_available_zones(locations_path)
         
         # Limit to first N zones if max_zones specified
@@ -181,82 +199,57 @@ def main(single_zone: str = None, max_workers: int = None, max_zones: int = None
         else:
             logger.info(f"Found {len(available_zones)} zones to optimize: {', '.join(available_zones)}")
         
-        if max_workers is None:
-            max_workers = min(cpu_count(), len(available_zones))
+        # Load configuration
+        config = load_config()
         
-        logger.info(f"Running concurrent optimization with {max_workers} workers...")
+        logger.info(f"Running concurrent optimization with up to {max_workers or 'CPU count'} workers...")
         logger.info("This may take several minutes for OSRM API calls...")
         
-        # Run concurrent optimization
-        zone_results = {}
-        zone_errors = {}
+        # Run multi-zone optimization
+        zone_reports = optimize_multiple_zones(
+            locations_path=locations_path,
+            config=config,
+            zone_ids=available_zones,
+            max_workers=max_workers,
+            generate_visualizations=True,
+            save_results=True,
+            output_dir="output"
+        )
         
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all zone optimization tasks
-            future_to_zone = {
-                executor.submit(optimize_single_zone, zone_id, locations_path): zone_id
-                for zone_id in available_zones
-            }
-            
-            # Collect results as they complete
-            for future in as_completed(future_to_zone):
-                zone_id, result, error = future.result()
-                
-                if error:
-                    zone_errors[zone_id] = error
-                else:
-                    zone_results[zone_id] = result
+        # Print summary
+        successful_zones = {k: v for k, v in zone_reports.items() if 'error' not in v}
+        failed_zones = {k: v for k, v in zone_reports.items() if 'error' in v}
         
-        # Generate summary report
         logger.info("\n" + "=" * 80)
         logger.info("MULTI-ZONE OPTIMIZATION SUMMARY")
         logger.info("=" * 80)
         
-        if zone_results:
-            total_locations = sum(r.total_locations_visited() for r in zone_results.values())
-            total_drive_time = sum(r.total_drive_time() for r in zone_results.values())
+        if successful_zones:
+            total_locations = sum(r['metrics_summary']['total_locations_visited'] for r in successful_zones.values())
+            total_drive_time = sum(r['metrics_summary']['total_drive_time_minutes'] for r in successful_zones.values())
             
-            logger.info(f"Successfully optimized: {len(zone_results)} zones")
+            logger.info(f"Successfully optimized: {len(successful_zones)} zones")
             logger.info(f"Total locations: {total_locations}")
             logger.info(f"Total drive time: {total_drive_time:.1f} minutes ({total_drive_time/60:.1f} hours)")
-            logger.info(f"Average drive time per zone: {total_drive_time/len(zone_results):.1f} minutes")
+            logger.info(f"Average drive time per zone: {total_drive_time/len(successful_zones):.1f} minutes")
             
             # Show per-zone summary
             logger.info("\nPer-Zone Results:")
-            for zone_id in sorted(zone_results.keys()):
-                result = zone_results[zone_id]
-                logger.info(f"  {zone_id}: {result.total_locations_visited()} locations, "
-                           f"{result.total_drive_time():.1f} min")
+            for zone_id in sorted(successful_zones.keys()):
+                report = successful_zones[zone_id]
+                logger.info(f"  {zone_id}: {report['metrics_summary']['total_locations_visited']} locations, "
+                           f"{report['metrics_summary']['total_drive_time_minutes']:.1f} min")
         
-        if zone_errors:
-            logger.error(f"\nFailed zones ({len(zone_errors)}):")
-            for zone_id, error in zone_errors.items():
-                logger.error(f"  {zone_id}: {error}")
+        if failed_zones:
+            logger.error(f"\nFailed zones ({len(failed_zones)}):")
+            for zone_id, report in failed_zones.items():
+                logger.error(f"  {zone_id}: {report.get('error', 'Unknown error')}")
         
-        # Combine results for overall visualization (optional)
-        if zone_results:
-            logger.info("\n" + "=" * 60)
-            logger.info("Saving combined results...")
-            
-            # Save flattened JSONL format for tabular viewing
-            with open("output/multi_zone_summary.jsonl", 'w') as f:
-                for zone_id in sorted(zone_results.keys()):
-                    result = zone_results[zone_id]
-                    zone_record = {
-                        'zone_id': zone_id,
-                        'locations_visited': result.total_locations_visited(),
-                        'primary_store_count': result.primary_store_count(),
-                        'non_primary_store_count': result.non_primary_store_count(),
-                        'total_primary_hours': result.total_primary_hours(),
-                        'total_non_primary_hours': result.total_non_primary_hours(),
-                        'unutilized_time': result.unutilized_time(),
-                        'drive_time_minutes': result.total_drive_time(),
-                        'optimization_time_seconds': result.metadata['optimization_duration_seconds']
-                    }
-                    f.write(json.dumps(zone_record) + '\n')
-            
-            logger.info("Saved flattened results to output/multi_zone_summary.jsonl")
-            logger.info("Individual zone results saved to output/zones/")
+        logger.info(f"\nResults saved to output/ directory")
+        logger.info(f"Multi-zone summary: output/multi_zone_summary.json")
+        logger.info(f"Individual zone reports: output/zones/")
+        if successful_zones:
+            logger.info(f"Visualizations: output/visualizations/")
 
 
 if __name__ == "__main__":
@@ -275,9 +268,10 @@ if __name__ == "__main__":
             logger.info("  python main.py --cluster --min 5 --max 20  # Custom cluster sizes")
             logger.info("  python main.py --cluster --primary-min 1 --primary-max 2  # Custom primary store range")
             logger.info("  python main.py --cluster --method geographic  # Use geographic clustering")
+            logger.info("  python main.py --geocode          # Fix coordinates by geocoding all addresses")
             sys.exit(0)
         elif sys.argv[1].startswith("zone_"):
-            main(single_zone=sys.argv[1])
+            run_single_zone_optimization(sys.argv[1])
         elif sys.argv[1] == "--workers" and len(sys.argv) > 2:
             if len(sys.argv) > 3 and sys.argv[3] == "--zones":
                 main(max_workers=int(sys.argv[2]), max_zones=int(sys.argv[4]))
@@ -324,6 +318,15 @@ if __name__ == "__main__":
                 primary_max=primary_max,
                 method=method
             )
+        elif sys.argv[1] == "--geocode":
+            logger.info("Starting geocoding process to fix coordinates...")
+            from src.utils.geocoding_utils import main as geocoding_main
+            result = geocoding_main()
+            if result == 0:
+                logger.info("Geocoding completed successfully!")
+            else:
+                logger.error("Geocoding failed!")
+                sys.exit(result)
         else:
             logger.error(f"Unknown argument: {sys.argv[1]}")
             sys.exit(1)

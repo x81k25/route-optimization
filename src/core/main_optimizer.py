@@ -1,454 +1,432 @@
 """
 Main Route Optimization Orchestrator
 
-Coordinates Stage 1 (day assignment) and Stage 2 (route optimization) 
-to solve the complete route optimization problem.
+Functional programming implementation that coordinates Stage 1 (day assignment) 
+and Stage 2 (route optimization) to solve the complete route optimization problem.
 """
 
 import json
 import yaml
 import polars as pl
 from typing import Dict, List, Tuple, Any
-from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
 
-from .stage1_assignment import DayAssignmentOptimizer
-from .stage2_routing import DailyRouteOptimizer
-from ..utils.osrm_utils import fetch_route_geometry, convert_locations_from_polars, RouteGeometry
+from .stage1_assignment import assign_days_to_secondary_locations, get_od_matrix_polars
+from .stage2_routing import optimize_daily_route
+from ..utils.osrm_utils import fetch_route_geometry, convert_locations_from_polars
 
 
-@dataclass
-class OptimizationConfig:
-    """Configuration parameters for route optimization."""
-    days_per_week: int
-    utilization: float
-    primary_hours_per_week: int
-    hours_per_non_primary: int
-    locations_per_day_max: int
-    drive_inefficiency: float
-    start_location: str = "primary"
-    
-    @classmethod
-    def from_yaml(cls, config_path: str = "config/model-params.yaml"):
-        """Load configuration from YAML file."""
-        with open(config_path, 'r') as f:
-            data = yaml.safe_load(f)
-        
-        params = data['model_params']
-        return cls(**params)
+def load_config(config_path: str = "config/model-params.yaml") -> Dict[str, Any]:
+    """Load configuration from YAML file."""
+    with open(config_path, 'r') as f:
+        data = yaml.safe_load(f)
+    return data['model_params']
 
 
-@dataclass 
-class Location:
-    """Location data structure."""
-    id: int
-    name: str
-    location_class: str  # 'primary' or 'secondary'
-    address: str
-    latitude: float
-    longitude: float
-
-
-@dataclass
-class OptimizationResult:
-    """Complete optimization result with route geometry."""
-    primary_assignments: Dict[int, int]  # day -> primary_location_id
-    secondary_assignments: Dict[int, List[int]]  # day -> list of secondary_location_ids  
-    daily_routes: Dict[int, List[int]]  # day -> optimized route
-    daily_drive_times: Dict[int, float]  # day -> total drive time
-    route_geometries: Dict[int, RouteGeometry]  # day -> detailed route geometry
-    metadata: Dict[str, Any]
+def load_locations_from_jsonl(locations_path: str, zone_id: str = None) -> pl.DataFrame:
+    """Load location data from JSONL file and return as Polars DataFrame."""
+    data = []
     
-    def total_drive_time(self) -> float:
-        """Calculate total drive time across all days."""
-        return sum(self.daily_drive_times.values())
-    
-    def total_locations_visited(self) -> int:
-        """Calculate total number of locations visited."""
-        total = len(self.primary_assignments)  # Primary locations
-        total += sum(len(locs) for locs in self.secondary_assignments.values())  # Secondary locations
-        return total
-    
-    def primary_store_count(self) -> int:
-        """Calculate total number of primary locations."""
-        return len(self.primary_assignments)
-    
-    def non_primary_store_count(self) -> int:
-        """Calculate total number of secondary/non-primary locations."""
-        return sum(len(locs) for locs in self.secondary_assignments.values())
-    
-    def total_primary_hours(self) -> float:
-        """Calculate total hours spent at primary locations."""
-        config = self.metadata.get('config', {})
-        primary_hours_per_week = config.get('primary_hours_per_week', 24)
-        return primary_hours_per_week
-    
-    def total_non_primary_hours(self) -> float:
-        """Calculate total hours spent at non-primary locations."""
-        config = self.metadata.get('config', {})
-        hours_per_non_primary = config.get('hours_per_non_primary', 1)
-        return self.non_primary_store_count() * hours_per_non_primary
-    
-    def unutilized_time(self) -> float:
-        """Calculate unutilized time in hours per week, including drive time only for secondary days."""
-        config = self.metadata.get('config', {})
-        days_per_week = config.get('days_per_week', 5)
-        utilization = config.get('utilization', 100) / 100.0
+    if locations_path.endswith('.jsonl'):
+        with open(locations_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    loc_data = json.loads(line)
+                    
+                    # Filter by zone_id if specified
+                    if zone_id and 'zone_id' in loc_data:
+                        if loc_data.get('zone_id') != zone_id:
+                            continue
+                    
+                    data.append({
+                        'location_id': loc_data['id'],
+                        'zone_id': loc_data.get('zone_id', zone_id or 'default'),
+                        'name': loc_data['name'],
+                        'location_class': loc_data['class'],
+                        'address': loc_data['address'],
+                        'latitude': loc_data['latitude'],
+                        'longitude': loc_data['longitude'],
+                        'source_system': 'jsonl_file'
+                    })
+    else:
+        # Handle traditional JSON format
+        with open(locations_path, 'r') as f:
+            json_data = json.load(f)
         
-        # Total available hours per week (assuming 8 hours per working day)
-        total_available_hours = days_per_week * 8.0 * utilization
-        
-        # Used hours: location time + drive time (only for secondary days)
-        location_hours = self.total_primary_hours() + self.total_non_primary_hours()
-        
-        # Calculate drive time only for secondary days (not primary days)
-        secondary_drive_time = 0.0
-        for day, drive_time in self.daily_drive_times.items():
-            # Only count drive time if this day has secondary assignments (not primary)
-            if day in self.secondary_assignments:
-                secondary_drive_time += drive_time
-        
-        drive_hours = secondary_drive_time / 60.0  # Convert minutes to hours
-        used_hours = location_hours + drive_hours
-        
-        # Unutilized time (can be negative if over-utilized)
-        return float(total_available_hours - used_hours)
-
-
-class RouteOptimizer:
-    """Main route optimization orchestrator with OSRM integration."""
-    
-    def __init__(
-        self,
-        config_path: str = "config/model-params.yaml",
-        locations_path: str = "data/subway_locations.jsonl",
-        zone_id: str = "default_zone"
-    ):
-        """
-        Initialize route optimizer with OSRM integration.
-        
-        Args:
-            config_path: Path to configuration YAML file
-            locations_path: Path to locations JSON file  
-            zone_id: Zone identifier for this optimization
-        """
-        self.config = OptimizationConfig.from_yaml(config_path)
-        self.zone_id = zone_id
-        self.locations = self._load_locations(locations_path)
-        
-        # Convert to Polars DataFrame for zone processing
-        self.zone_df = self._locations_to_polars()
-        
-        # Separate primary and secondary locations
-        self.primary_locations = [loc for loc in self.locations if loc.location_class == 'primary']
-        self.secondary_locations = [loc for loc in self.locations if loc.location_class == 'secondary']
-    
-    def _load_locations(self, locations_path: str) -> List[Location]:
-        """Load location data from JSON or JSONL file."""
-        locations = []
-        
-        if locations_path.endswith('.jsonl'):
-            # Handle JSONL format - one JSON object per line
-            with open(locations_path, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        loc_data = json.loads(line)
-                        
-                        # Filter by zone_id if specified and zone_id exists in data
-                        if hasattr(self, 'zone_id') and 'zone_id' in loc_data:
-                            if loc_data.get('zone_id') != self.zone_id:
-                                continue  # Skip locations not in our zone
-                        
-                        locations.append(Location(
-                            id=loc_data['id'],
-                            name=loc_data['name'],
-                            location_class=loc_data['class'],
-                            address=loc_data['address'],
-                            latitude=loc_data['latitude'],
-                            longitude=loc_data['longitude']
-                        ))
+        locations_key = None
+        if 'subway_locations_california' in json_data:
+            locations_key = 'subway_locations_california'
+        elif 'subway_locations_san_francisco' in json_data:
+            locations_key = 'subway_locations_san_francisco'
         else:
-            # Handle traditional JSON format
-            with open(locations_path, 'r') as f:
-                data = json.load(f)
-            
-            # Handle both old and new dataset formats
-            locations_key = None
-            if 'subway_locations_california' in data:
-                locations_key = 'subway_locations_california'
-            elif 'subway_locations_san_francisco' in data:
-                locations_key = 'subway_locations_san_francisco'
-            else:
-                raise ValueError("Could not find locations in dataset")
-            
-            for loc_data in data[locations_key]:
-                # Filter by zone_id if specified and zone_id exists in data
-                if hasattr(self, 'zone_id') and 'zone_id' in loc_data:
-                    if loc_data.get('zone_id') != self.zone_id:
-                        continue  # Skip locations not in our zone
-                
-                locations.append(Location(
-                    id=loc_data['id'],
-                    name=loc_data['name'],
-                    location_class=loc_data['class'],
-                    address=loc_data['address'],
-                    latitude=loc_data['latitude'],
-                    longitude=loc_data['longitude']
-                ))
+            raise ValueError("Could not find locations in dataset")
         
-        return locations
-    
-    def _locations_to_polars(self) -> pl.DataFrame:
-        """Convert locations to Polars DataFrame."""
-        data = []
-        for loc in self.locations:
+        for loc_data in json_data[locations_key]:
+            if zone_id and 'zone_id' in loc_data:
+                if loc_data.get('zone_id') != zone_id:
+                    continue
+            
             data.append({
-                'location_id': loc.id,
-                'zone_id': self.zone_id,
-                'name': loc.name,
-                'location_class': loc.location_class,
-                'address': loc.address,
-                'latitude': loc.latitude,
-                'longitude': loc.longitude,
+                'location_id': loc_data['id'],
+                'zone_id': loc_data.get('zone_id', zone_id or 'default'),
+                'name': loc_data['name'],
+                'location_class': loc_data['class'],
+                'address': loc_data['address'],
+                'latitude': loc_data['latitude'],
+                'longitude': loc_data['longitude'],
                 'source_system': 'json_file'
             })
-        return pl.DataFrame(data)
     
-    def _assign_primary_days(self) -> Dict[int, int]:
-        """
-        Assign primary locations to days.
-        Simple assignment: one primary location per day.
-        
-        Returns:
-            Dictionary mapping day -> primary_location_id
-        """
-        primary_assignments = {}
-        
-        for i, primary_location in enumerate(self.primary_locations):
-            day = i + 1  # Days start from 1
-            primary_assignments[day] = primary_location.id
-        
-        return primary_assignments
+    return pl.DataFrame(data)
+
+
+def separate_primary_secondary_locations(locations_df: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame]:
+    """Separate locations into primary and secondary DataFrames."""
+    primary_df = locations_df.filter(pl.col('location_class') == 'primary')
+    secondary_df = locations_df.filter(pl.col('location_class') == 'secondary')
+    return primary_df, secondary_df
+
+
+def assign_primary_locations_to_days(primary_df: pl.DataFrame) -> Dict[int, int]:
+    """
+    Assign primary locations to days.
+    Simple assignment: one primary location per day.
     
-    def _calculate_available_secondary_days(self) -> int:
-        """Calculate how many days are available for secondary locations."""
-        primary_days_used = len(self.primary_locations)
-        return max(0, self.config.days_per_week - primary_days_used)
+    Returns:
+        Dictionary mapping day -> primary_location_id
+    """
+    primary_assignments = {}
+    primary_locations = primary_df.to_dicts()
     
-    def optimize(self) -> OptimizationResult:
-        """
-        Main optimization method that coordinates both stages.
+    for i, location in enumerate(primary_locations):
+        day = i + 1  # Days start from 1
+        primary_assignments[day] = location['location_id']
+    
+    return primary_assignments
+
+
+def calculate_available_secondary_days(primary_count: int, days_per_week: int) -> int:
+    """Calculate how many days are available for secondary locations."""
+    return max(0, days_per_week - primary_count)
+
+
+def calculate_total_drive_time(daily_drive_times: Dict[int, float]) -> float:
+    """Calculate total drive time across all days."""
+    return sum(daily_drive_times.values())
+
+
+def calculate_total_locations_visited(primary_assignments: Dict[int, int], 
+                                    secondary_assignments: Dict[int, List[int]]) -> int:
+    """Calculate total number of locations visited."""
+    total = len(primary_assignments)  # Primary locations
+    total += sum(len(locs) for locs in secondary_assignments.values())  # Secondary locations
+    return total
+
+
+def calculate_primary_store_count(primary_assignments: Dict[int, int]) -> int:
+    """Calculate total number of primary locations."""
+    return len(primary_assignments)
+
+
+def calculate_non_primary_store_count(secondary_assignments: Dict[int, List[int]]) -> int:
+    """Calculate total number of secondary/non-primary locations."""
+    return sum(len(locs) for locs in secondary_assignments.values())
+
+
+def calculate_total_primary_hours(config: Dict[str, Any]) -> float:
+    """Calculate total hours spent at primary locations."""
+    return config.get('primary_hours_per_week', 24)
+
+
+def calculate_total_non_primary_hours(secondary_assignments: Dict[int, List[int]], 
+                                    config: Dict[str, Any]) -> float:
+    """Calculate total hours spent at non-primary locations."""
+    hours_per_non_primary = config.get('hours_per_non_primary', 1)
+    non_primary_count = calculate_non_primary_store_count(secondary_assignments)
+    return non_primary_count * hours_per_non_primary
+
+
+def calculate_unutilized_time(primary_assignments: Dict[int, int],
+                            secondary_assignments: Dict[int, List[int]],
+                            daily_drive_times: Dict[int, float],
+                            config: Dict[str, Any]) -> float:
+    """Calculate unutilized time in hours per week, including drive time only for secondary days."""
+    days_per_week = config.get('days_per_week', 5)
+    utilization = config.get('utilization', 100) / 100.0
+    
+    # Total available hours per week (assuming 8 hours per working day)
+    total_available_hours = days_per_week * 8.0 * utilization
+    
+    # Used hours: location time + drive time (only for secondary days)
+    location_hours = (calculate_total_primary_hours(config) + 
+                     calculate_total_non_primary_hours(secondary_assignments, config))
+    
+    # Calculate drive time only for secondary days (not primary days)
+    secondary_drive_time = 0.0
+    for day, drive_time in daily_drive_times.items():
+        # Only count drive time if this day has secondary assignments (not primary)
+        if day in secondary_assignments:
+            secondary_drive_time += drive_time
+    
+    drive_hours = secondary_drive_time / 60.0  # Convert minutes to hours
+    used_hours = location_hours + drive_hours
+    
+    # Unutilized time (can be negative if over-utilized)
+    return float(total_available_hours - used_hours)
+
+
+def optimize_zone(locations_df: pl.DataFrame, config: Dict[str, Any], zone_id: str) -> Dict[str, Any]:
+    """
+    Main optimization function that coordinates both stages.
+    
+    Args:
+        locations_df: DataFrame containing location data
+        config: Configuration dictionary
+        zone_id: Zone identifier
         
-        Returns:
-            Complete optimization result
-        """
-        start_time = datetime.now()
+    Returns:
+        Dictionary containing complete optimization result
+    """
+    start_time = datetime.now()
+    
+    # Separate primary and secondary locations
+    primary_df, secondary_df = separate_primary_secondary_locations(locations_df)
+    
+    # Stage 1: Assign primary locations to days
+    primary_assignments = assign_primary_locations_to_days(primary_df)
+    
+    # Calculate available days for secondary locations
+    available_secondary_days = calculate_available_secondary_days(
+        len(primary_assignments), config['days_per_week']
+    )
+    
+    if available_secondary_days <= 0:
+        # No days available for secondary locations
+        secondary_assignments = {}
+        daily_routes = {day: [primary_id] for day, primary_id in primary_assignments.items()}
+        daily_drive_times = {day: 0.0 for day in primary_assignments}
+        route_geometries = {day: None for day in primary_assignments}
+    else:
+        # Get OD matrix for secondary locations
+        od_matrix_df = get_od_matrix_polars(zone_id, secondary_df)
         
-        # Stage 1: Assign primary locations to days
-        primary_assignments = self._assign_primary_days()
-        
-        # Calculate available days for secondary locations
-        available_secondary_days = self._calculate_available_secondary_days()
-        
-        if available_secondary_days <= 0:
-            # No days available for secondary locations
-            secondary_assignments = {}
-            daily_routes = {day: [primary_id] for day, primary_id in primary_assignments.items()}
-            daily_drive_times = {day: 0.0 for day in primary_assignments}
-        else:
-            # Initialize day assigner with zone data and get OSRM matrix
-            secondary_df = self.zone_df.filter(pl.col('location_class') == 'secondary')
-            day_assigner = DayAssignmentOptimizer(self.zone_id, secondary_df)
-            
-            # Stage 1: Assign secondary locations to available days
-            secondary_clusters = day_assigner.assign_days(
-                available_secondary_days=available_secondary_days,
-                max_locations_per_day=self.config.locations_per_day_max,
-                use_swap_optimization=True
-            )
-            
-            # Convert cluster IDs to actual day numbers
-            secondary_assignments = {}
-            available_days = [d for d in range(1, self.config.days_per_week + 1) 
-                            if d not in primary_assignments]
-            
-            for cluster_id, location_ids in secondary_clusters.items():
-                if cluster_id - 1 < len(available_days):  # cluster_id starts from 1
-                    day = available_days[cluster_id - 1]
-                    secondary_assignments[day] = location_ids
-            
-            # Stage 2: Optimize routes for each day
-            daily_routes = {}
-            daily_drive_times = {}
-            route_geometries = {}
-            
-            # Initialize route optimizer with OD matrix
-            route_optimizer = DailyRouteOptimizer(day_assigner.get_od_matrix_polars())
-            
-            # Primary days (single location, no routing needed)
-            for day, primary_id in primary_assignments.items():
-                daily_routes[day] = [primary_id]
-                daily_drive_times[day] = 0.0
-                # No route geometry needed for single location
-                route_geometries[day] = None
-            
-            # Secondary days (optimize routes)
-            for day, location_ids in secondary_assignments.items():
-                route, drive_time, route_metadata = route_optimizer.optimize_route(
-                    location_ids=location_ids,
-                    use_exhaustive_if_small=True
-                )
-                daily_routes[day] = route
-                daily_drive_times[day] = drive_time
-                
-                # Fetch detailed route geometry
-                if len(route) > 1:
-                    route_locations = [loc for loc in day_assigner.locations if loc.location_id in route]
-                    # Reorder locations according to optimized route
-                    ordered_locations = []
-                    for loc_id in route:
-                        for loc in route_locations:
-                            if loc.location_id == loc_id:
-                                ordered_locations.append(loc)
-                                break
-                    
-                    route_geometry = fetch_route_geometry(
-                        zone_id=self.zone_id,
-                        day_number=day,
-                        route_locations=ordered_locations,
-                        include_steps=True
-                    )
-                    route_geometries[day] = route_geometry
-                else:
-                    route_geometries[day] = None
-        
-        end_time = datetime.now()
-        
-        # Compile metadata
-        metadata = {
-            'optimization_start_time': start_time.isoformat(),
-            'optimization_end_time': end_time.isoformat(),
-            'optimization_duration_seconds': (end_time - start_time).total_seconds(),
-            'config': self.config.__dict__,
-            'zone_id': self.zone_id,
-            'n_primary_locations': len(self.primary_locations),
-            'n_secondary_locations': len(self.secondary_locations),
-            'available_secondary_days': available_secondary_days,
-            'stage1_quality_metrics': day_assigner.calculate_cluster_quality(secondary_clusters) 
-                                    if available_secondary_days > 0 else {},
-            'osrm_integration': True,
-            'route_geometries_fetched': sum(1 for rg in route_geometries.values() if rg is not None)
-        }
-        
-        return OptimizationResult(
-            primary_assignments=primary_assignments,
-            secondary_assignments=secondary_assignments,
-            daily_routes=daily_routes,
-            daily_drive_times=daily_drive_times,
-            route_geometries=route_geometries,
-            metadata=metadata
+        # Stage 1: Assign secondary locations to available days
+        secondary_clusters = assign_days_to_secondary_locations(
+            secondary_df=secondary_df,
+            zone_id=zone_id,
+            available_secondary_days=available_secondary_days,
+            max_locations_per_day=config['locations_per_day_max'],
+            use_swap_optimization=True
         )
-    
-    def print_solution(self, result: OptimizationResult) -> None:
-        """Print human-readable optimization results."""
-        logger.info("Route Optimization Results")
-        logger.info("=" * 50)
         
-        # Summary statistics
-        logger.info(f"Total locations: {result.total_locations_visited()}")
-        logger.info(f"Total drive time: {result.total_drive_time():.1f} minutes")
-        logger.info(f"Optimization time: {result.metadata['optimization_duration_seconds']:.2f} seconds")
-        logger.info(f"Zone ID: {result.metadata.get('zone_id', 'N/A')}")
-        logger.info(f"Route geometries fetched: {result.metadata.get('route_geometries_fetched', 0)}")
-        logger.info("")
+        # Convert cluster IDs to actual day numbers
+        secondary_assignments = {}
+        available_days = [d for d in range(1, config['days_per_week'] + 1) 
+                        if d not in primary_assignments]
         
-        # Create location lookup
-        location_lookup = {loc.id: loc.name for loc in self.locations}
+        for cluster_id, location_ids in secondary_clusters.items():
+            if cluster_id - 1 < len(available_days):  # cluster_id starts from 1
+                day = available_days[cluster_id - 1]
+                secondary_assignments[day] = location_ids
         
-        # Print daily schedules
-        all_days = sorted(set(result.primary_assignments.keys()) | set(result.secondary_assignments.keys()))
+        # Stage 2: Optimize routes for each day
+        daily_routes = {}
+        daily_drive_times = {}
+        route_geometries = {}
         
-        for day in all_days:
-            logger.info(f"Day {day}:")
+        # Primary days (single location, no routing needed)
+        for day, primary_id in primary_assignments.items():
+            daily_routes[day] = [primary_id]
+            daily_drive_times[day] = 0.0
+            route_geometries[day] = None
+        
+        # Secondary days (optimize routes)
+        for day, location_ids in secondary_assignments.items():
+            route, drive_time, route_metadata = optimize_daily_route(
+                location_ids=location_ids,
+                od_matrix_df=od_matrix_df,
+                use_exhaustive_if_small=True
+            )
+            daily_routes[day] = route
+            daily_drive_times[day] = drive_time
             
-            if day in result.primary_assignments:
-                primary_id = result.primary_assignments[day]
-                logger.info(f"  PRIMARY: {location_lookup[primary_id]} (full day)")
-                logger.info(f"  Drive time: 0.0 minutes")
-            
-            elif day in result.secondary_assignments:
-                location_ids = result.secondary_assignments[day]
-                route = result.daily_routes[day]
-                drive_time = result.daily_drive_times[day]
+            # Fetch detailed route geometry
+            if len(route) > 1:
+                route_locations_df = secondary_df.filter(
+                    pl.col('location_id').is_in(route)
+                )
+                route_locations = convert_locations_from_polars(route_locations_df)
                 
-                logger.info(f"  SECONDARY ({len(location_ids)} locations):")
-                logger.info(f"  Route: {' → '.join([location_lookup[loc_id] for loc_id in route])}")
-                logger.info(f"  Drive time: {drive_time:.1f} minutes")
+                # Reorder locations according to optimized route
+                ordered_locations = []
+                for loc_id in route:
+                    for loc in route_locations:
+                        if loc.location_id == loc_id:
+                            ordered_locations.append(loc)
+                            break
                 
-                # Show route geometry info if available
-                if day in result.route_geometries and result.route_geometries[day]:
-                    route_geom = result.route_geometries[day]
-                    logger.info(f"  Route geometry: {len(route_geom.turn_by_turn_instructions)} turn instructions")
-                    logger.info(f"  Total distance: {route_geom.total_distance_meters:.0f} meters")
-            
-            logger.info("")
-        
-        # Quality metrics
-        if result.metadata['stage1_quality_metrics']:
-            logger.info("Clustering Quality Metrics:")
-            for metric, value in result.metadata['stage1_quality_metrics'].items():
-                logger.info(f"  {metric}: {value:.2f}")
-    
-    def save_solution(self, result: OptimizationResult, output_path: str) -> None:
-        """Save optimization results to JSON file."""
-        # Convert result to serializable format
-        route_geometries_serializable = {}
-        for day, route_geom in result.route_geometries.items():
-            if route_geom:
-                route_geometries_serializable[day] = {
-                    'zone_id': route_geom.zone_id,
-                    'day_number': route_geom.day_number,
-                    'route_location_ids': route_geom.route_location_ids,
-                    'geometry_polyline': route_geom.geometry_polyline,
-                    'total_distance_meters': route_geom.total_distance_meters,
-                    'total_duration_seconds': route_geom.total_duration_seconds,
-                    'turn_by_turn_instructions': route_geom.turn_by_turn_instructions,
-                    'osrm_response_code': route_geom.osrm_response_code,
-                    'api_call_timestamp': route_geom.api_call_timestamp.isoformat()
-                }
+                route_geometry = fetch_route_geometry(
+                    zone_id=zone_id,
+                    day_number=day,
+                    route_locations=ordered_locations,
+                    include_steps=True
+                )
+                route_geometries[day] = route_geometry
             else:
-                route_geometries_serializable[day] = None
+                route_geometries[day] = None
+    
+    end_time = datetime.now()
+    
+    # Calculate quality metrics for secondary clustering
+    stage1_quality_metrics = {}
+    if available_secondary_days > 0 and secondary_clusters:
+        from .stage1_assignment import calculate_cluster_quality
+        stage1_quality_metrics = calculate_cluster_quality(secondary_clusters, secondary_df)
+    
+    # Compile metadata
+    metadata = {
+        'optimization_start_time': start_time.isoformat(),
+        'optimization_end_time': end_time.isoformat(),
+        'optimization_duration_seconds': (end_time - start_time).total_seconds(),
+        'config': config,
+        'zone_id': zone_id,
+        'n_primary_locations': len(primary_df),
+        'n_secondary_locations': len(secondary_df),
+        'available_secondary_days': available_secondary_days,
+        'stage1_quality_metrics': stage1_quality_metrics,
+        'osrm_integration': True,
+        'route_geometries_fetched': sum(1 for rg in route_geometries.values() if rg is not None)
+    }
+    
+    return {
+        'primary_assignments': primary_assignments,
+        'secondary_assignments': secondary_assignments,
+        'daily_routes': daily_routes,
+        'daily_drive_times': daily_drive_times,
+        'route_geometries': route_geometries,
+        'metadata': metadata
+    }
+
+
+def print_optimization_solution(optimization_result: Dict[str, Any], locations_df: pl.DataFrame) -> None:
+    """Print human-readable optimization results."""
+    logger.info("Route Optimization Results")
+    logger.info("=" * 50)
+    
+    # Extract data
+    primary_assignments = optimization_result['primary_assignments']
+    secondary_assignments = optimization_result['secondary_assignments']
+    daily_routes = optimization_result['daily_routes']
+    daily_drive_times = optimization_result['daily_drive_times']
+    route_geometries = optimization_result['route_geometries']
+    metadata = optimization_result['metadata']
+    
+    # Summary statistics
+    total_locations = calculate_total_locations_visited(primary_assignments, secondary_assignments)
+    total_drive_time = calculate_total_drive_time(daily_drive_times)
+    
+    logger.info(f"Total locations: {total_locations}")
+    logger.info(f"Total drive time: {total_drive_time:.1f} minutes")
+    logger.info(f"Optimization time: {metadata['optimization_duration_seconds']:.2f} seconds")
+    logger.info(f"Zone ID: {metadata.get('zone_id', 'N/A')}")
+    logger.info(f"Route geometries fetched: {metadata.get('route_geometries_fetched', 0)}")
+    logger.info("")
+    
+    # Create location lookup
+    location_lookup = {row['location_id']: row['name'] for row in locations_df.to_dicts()}
+    
+    # Print daily schedules
+    all_days = sorted(set(primary_assignments.keys()) | set(secondary_assignments.keys()))
+    
+    for day in all_days:
+        logger.info(f"Day {day}:")
         
-        solution_data = {
-            'primary_assignments': result.primary_assignments,
-            'secondary_assignments': result.secondary_assignments,
-            'daily_routes': result.daily_routes,
-            'daily_drive_times': result.daily_drive_times,
-            'route_geometries': route_geometries_serializable,
-            'metadata': result.metadata,
-            'summary': {
-                'total_locations_visited': result.total_locations_visited(),
-                'total_drive_time_minutes': result.total_drive_time()
+        if day in primary_assignments:
+            primary_id = primary_assignments[day]
+            logger.info(f"  PRIMARY: {location_lookup[primary_id]} (full day)")
+            logger.info(f"  Drive time: 0.0 minutes")
+        
+        elif day in secondary_assignments:
+            location_ids = secondary_assignments[day]
+            route = daily_routes[day]
+            drive_time = daily_drive_times[day]
+            
+            logger.info(f"  SECONDARY ({len(location_ids)} locations):")
+            logger.info(f"  Route: {' → '.join([location_lookup[loc_id] for loc_id in route])}")
+            logger.info(f"  Drive time: {drive_time:.1f} minutes")
+            
+            # Show route geometry info if available
+            if day in route_geometries and route_geometries[day]:
+                route_geom = route_geometries[day]
+                logger.info(f"  Route geometry: {len(route_geom.turn_by_turn_instructions)} turn instructions")
+                logger.info(f"  Total distance: {route_geom.total_distance_meters:.0f} meters")
+        
+        logger.info("")
+    
+    # Quality metrics
+    if metadata['stage1_quality_metrics']:
+        logger.info("Clustering Quality Metrics:")
+        for metric, value in metadata['stage1_quality_metrics'].items():
+            logger.info(f"  {metric}: {value:.2f}")
+
+
+def save_optimization_solution(optimization_result: Dict[str, Any], output_path: str) -> None:
+    """Save optimization results to JSON file."""
+    # Convert route geometries to serializable format
+    route_geometries_serializable = {}
+    for day, route_geom in optimization_result['route_geometries'].items():
+        if route_geom:
+            route_geometries_serializable[day] = {
+                'zone_id': route_geom.zone_id,
+                'day_number': route_geom.day_number,
+                'route_location_ids': route_geom.route_location_ids,
+                'geometry_polyline': route_geom.geometry_polyline,
+                'total_distance_meters': route_geom.total_distance_meters,
+                'total_duration_seconds': route_geom.total_duration_seconds,
+                'turn_by_turn_instructions': route_geom.turn_by_turn_instructions,
+                'osrm_response_code': route_geom.osrm_response_code,
+                'api_call_timestamp': route_geom.api_call_timestamp.isoformat()
             }
+        else:
+            route_geometries_serializable[day] = None
+    
+    # Extract data for summary
+    primary_assignments = optimization_result['primary_assignments']
+    secondary_assignments = optimization_result['secondary_assignments']
+    daily_drive_times = optimization_result['daily_drive_times']
+    
+    solution_data = {
+        'primary_assignments': primary_assignments,
+        'secondary_assignments': secondary_assignments,
+        'daily_routes': optimization_result['daily_routes'],
+        'daily_drive_times': daily_drive_times,
+        'route_geometries': route_geometries_serializable,
+        'metadata': optimization_result['metadata'],
+        'summary': {
+            'total_locations_visited': calculate_total_locations_visited(primary_assignments, secondary_assignments),
+            'total_drive_time_minutes': calculate_total_drive_time(daily_drive_times)
         }
-        
-        with open(output_path, 'w') as f:
-            json.dump(solution_data, f, indent=2, default=str)
-        
-        logger.info(f"Solution saved to {output_path}")
+    }
+    
+    with open(output_path, 'w') as f:
+        json.dump(solution_data, f, indent=2, default=str)
+    
+    logger.info(f"Solution saved to {output_path}")
 
 
 if __name__ == "__main__":
     # Example usage
-    optimizer = RouteOptimizer(zone_id="sf_subway_zone")
+    config = load_config()
+    zone_id = "sf_subway_zone"
+    locations_df = load_locations_from_jsonl("data/subway_locations.jsonl", zone_id)
     
     logger.info("Starting route optimization with OSRM integration...")
-    result = optimizer.optimize()
+    result = optimize_zone(locations_df, config, zone_id)
     
     # Display results
-    optimizer.print_solution(result)
+    print_optimization_solution(result, locations_df)
     
     # Save results
-    optimizer.save_solution(result, "output/optimization_result.json")
+    save_optimization_solution(result, "output/optimization_result.json")
