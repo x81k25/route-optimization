@@ -1,0 +1,553 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Optimization - Aggregate Report</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <!-- DataTables Buttons CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap5.min.css">
+    
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            max-width: 1400px;
+            margin-top: 20px;
+        }
+        .summary-stats {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 1px solid #404040;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            padding: 10px;
+            background: #333333;
+            border-radius: 5px;
+            border-left: 4px solid #4a9eff;
+            color: #e0e0e0;
+        }
+        .table-container {
+            background: #2a2a2a;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 1px solid #404040;
+            margin: 0 20px 20px 20px;
+        }
+        /* DataTables Dark Theme Override */
+        table.dataTable {
+            background-color: #2a2a2a !important;
+            color: #e0e0e0 !important;
+        }
+        table.dataTable thead th {
+            background-color: #4a9eff !important;
+            color: white !important;
+            border-bottom: 1px solid #555555 !important;
+        }
+        table.dataTable tbody td {
+            background-color: #333333 !important;
+            color: #e0e0e0 !important;
+            border-top: 1px solid #555555 !important;
+        }
+        table.dataTable tbody tr:nth-child(even) td {
+            background-color: #2a2a2a !important;
+        }
+        table.dataTable tbody tr:hover td {
+            background-color: #404040 !important;
+            color: #ffffff !important;
+        }
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            color: #e0e0e0 !important;
+        }
+        .dataTables_wrapper .dataTables_filter input,
+        .dataTables_wrapper .dataTables_length select {
+            background-color: #404040 !important;
+            color: #e0e0e0 !important;
+            border: 1px solid #555 !important;
+        }
+        .table-responsive {
+            border-radius: 8px;
+        }
+        .map-container {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .map-container .plotly-graph-div {
+            border-radius: 8px !important;
+            width: 100% !important;
+        }
+        .map-container .main-svg {
+            width: 100% !important;
+            border-radius: 8px !important;
+        }
+        .map-container .plotly-graph-div .main-svg {
+            border-radius: 8px !important;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #ffffff;
+        }
+        .text-muted {
+            color: #888888 !important;
+        }
+        /* DataTables filter positioning - multiple selectors to catch different structures */
+        #aggregate-table_filter,
+        .dataTables_filter,
+        div[id$="_filter"] {
+            text-align: left !important;
+            position: relative !important;
+            left: -20px !important;
+            margin-bottom: 15px !important;
+            padding-left: 0 !important;
+        }
+        #aggregate-table_filter label,
+        .dataTables_filter label,
+        div[id$="_filter"] label {
+            margin-left: 0 !important;
+            padding-left: 0 !important;
+        }
+        #aggregate-table_filter input,
+        .dataTables_filter input,
+        div[id$="_filter"] input {
+            margin-left: 5px !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">Route Optimization - Zone Aggregate Report</h1>
+                
+                
+    <div class="summary-stats">
+        <h3>Summary Statistics</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <strong>Total Zones:</strong> 24
+            </div>
+            <div class="stat-item">
+                <strong>Average Weekly Duration:</strong> 24.0 hrs
+            </div>
+            <div class="stat-item">
+                <strong>Average Utilization:</strong> 60.1%
+            </div>
+            <div class="stat-item">
+                <strong>Average POS Time:</strong> 22.1 hrs
+            </div>
+            <div class="stat-item">
+                <strong>Average Drive Time:</strong> 2.0 hrs
+            </div>
+        </div>
+    </div>
+    
+                
+                <div class="table-container">
+                    <h3 class="mb-3">Zone-Level Metrics</h3>
+                    <div class="table-responsive" style="overflow-x: auto; max-width: 100%;">
+                        <div style="max-width: 100%; overflow: hidden;">
+                            <table id="aggregate-table" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Zone ID</th>
+                                    <th>Primary Locations</th>
+                                    <th>Secondary Locations</th>
+                                    <th>Weekly Duration (hrs)</th>
+                                    <th>Utilization (%)</th>
+                                    <th>Overutilized Days</th>
+                                    <th>Underutilized Days</th>
+                                    <th>Total POS Time (hrs)</th>
+                                    <th>Total Drive Time (hrs)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                
+            <tr>
+                <td>zone_000</td>
+                <td>2</td>
+                <td>9</td>
+                <td>36.73</td>
+                <td>91.8%</td>
+                <td>2</td>
+                <td>1</td>
+                <td>33.00</td>
+                <td>3.73</td>
+            </tr>
+        
+            <tr>
+                <td>zone_003</td>
+                <td>1</td>
+                <td>13</td>
+                <td>44.98</td>
+                <td>112.4%</td>
+                <td>2</td>
+                <td>0</td>
+                <td>37.00</td>
+                <td>7.98</td>
+            </tr>
+        
+            <tr>
+                <td>zone_004</td>
+                <td>1</td>
+                <td>10</td>
+                <td>38.25</td>
+                <td>95.6%</td>
+                <td>1</td>
+                <td>1</td>
+                <td>34.00</td>
+                <td>4.25</td>
+            </tr>
+        
+            <tr>
+                <td>zone_005</td>
+                <td>3</td>
+                <td>2</td>
+                <td>26.00</td>
+                <td>65.0%</td>
+                <td>0</td>
+                <td>2</td>
+                <td>26.00</td>
+                <td>0.00</td>
+            </tr>
+        
+            <tr>
+                <td>zone_006</td>
+                <td>0</td>
+                <td>10</td>
+                <td>11.33</td>
+                <td>28.3%</td>
+                <td>0</td>
+                <td>5</td>
+                <td>10.00</td>
+                <td>1.33</td>
+            </tr>
+        
+            <tr>
+                <td>zone_007</td>
+                <td>2</td>
+                <td>8</td>
+                <td>36.36</td>
+                <td>90.9%</td>
+                <td>2</td>
+                <td>1</td>
+                <td>32.00</td>
+                <td>4.36</td>
+            </tr>
+        
+            <tr>
+                <td>zone_008</td>
+                <td>0</td>
+                <td>6</td>
+                <td>6.41</td>
+                <td>16.0%</td>
+                <td>0</td>
+                <td>5</td>
+                <td>6.00</td>
+                <td>0.41</td>
+            </tr>
+        
+            <tr>
+                <td>zone_009</td>
+                <td>3</td>
+                <td>4</td>
+                <td>28.69</td>
+                <td>71.7%</td>
+                <td>0</td>
+                <td>2</td>
+                <td>28.00</td>
+                <td>0.69</td>
+            </tr>
+        
+            <tr>
+                <td>zone_010</td>
+                <td>0</td>
+                <td>5</td>
+                <td>5.00</td>
+                <td>12.5%</td>
+                <td>0</td>
+                <td>5</td>
+                <td>5.00</td>
+                <td>0.00</td>
+            </tr>
+        
+            <tr>
+                <td>zone_011</td>
+                <td>0</td>
+                <td>7</td>
+                <td>8.07</td>
+                <td>20.2%</td>
+                <td>0</td>
+                <td>5</td>
+                <td>7.00</td>
+                <td>1.07</td>
+            </tr>
+        
+            <tr>
+                <td>zone_012</td>
+                <td>1</td>
+                <td>6</td>
+                <td>31.47</td>
+                <td>78.7%</td>
+                <td>0</td>
+                <td>2</td>
+                <td>30.00</td>
+                <td>1.47</td>
+            </tr>
+        
+            <tr>
+                <td>zone_015</td>
+                <td>1</td>
+                <td>5</td>
+                <td>30.81</td>
+                <td>77.0%</td>
+                <td>0</td>
+                <td>2</td>
+                <td>29.00</td>
+                <td>1.81</td>
+            </tr>
+        
+            <tr>
+                <td>zone_016</td>
+                <td>1</td>
+                <td>9</td>
+                <td>36.26</td>
+                <td>90.6%</td>
+                <td>1</td>
+                <td>1</td>
+                <td>33.00</td>
+                <td>3.26</td>
+            </tr>
+        
+            <tr>
+                <td>zone_018</td>
+                <td>3</td>
+                <td>3</td>
+                <td>27.59</td>
+                <td>69.0%</td>
+                <td>0</td>
+                <td>2</td>
+                <td>27.00</td>
+                <td>0.59</td>
+            </tr>
+        
+            <tr>
+                <td>zone_019</td>
+                <td>3</td>
+                <td>0</td>
+                <td>24.00</td>
+                <td>60.0%</td>
+                <td>0</td>
+                <td>0</td>
+                <td>24.00</td>
+                <td>0.00</td>
+            </tr>
+        
+            <tr>
+                <td>zone_020</td>
+                <td>1</td>
+                <td>7</td>
+                <td>35.31</td>
+                <td>88.3%</td>
+                <td>1</td>
+                <td>1</td>
+                <td>31.00</td>
+                <td>4.31</td>
+            </tr>
+        
+            <tr>
+                <td>zone_021</td>
+                <td>3</td>
+                <td>2</td>
+                <td>26.00</td>
+                <td>65.0%</td>
+                <td>0</td>
+                <td>2</td>
+                <td>26.00</td>
+                <td>0.00</td>
+            </tr>
+        
+            <tr>
+                <td>zone_022</td>
+                <td>0</td>
+                <td>20</td>
+                <td>23.50</td>
+                <td>58.8%</td>
+                <td>1</td>
+                <td>4</td>
+                <td>20.00</td>
+                <td>3.50</td>
+            </tr>
+        
+            <tr>
+                <td>zone_023</td>
+                <td>0</td>
+                <td>8</td>
+                <td>8.44</td>
+                <td>21.1%</td>
+                <td>0</td>
+                <td>5</td>
+                <td>8.00</td>
+                <td>0.44</td>
+            </tr>
+        
+            <tr>
+                <td>zone_024</td>
+                <td>2</td>
+                <td>0</td>
+                <td>24.70</td>
+                <td>61.8%</td>
+                <td>1</td>
+                <td>0</td>
+                <td>24.00</td>
+                <td>0.70</td>
+            </tr>
+        
+            <tr>
+                <td>zone_025</td>
+                <td>0</td>
+                <td>10</td>
+                <td>10.94</td>
+                <td>27.4%</td>
+                <td>0</td>
+                <td>5</td>
+                <td>10.00</td>
+                <td>0.94</td>
+            </tr>
+        
+            <tr>
+                <td>zone_026</td>
+                <td>0</td>
+                <td>2</td>
+                <td>2.00</td>
+                <td>5.0%</td>
+                <td>0</td>
+                <td>2</td>
+                <td>2.00</td>
+                <td>0.00</td>
+            </tr>
+        
+            <tr>
+                <td>zone_027</td>
+                <td>1</td>
+                <td>14</td>
+                <td>42.41</td>
+                <td>106.0%</td>
+                <td>2</td>
+                <td>0</td>
+                <td>38.00</td>
+                <td>4.41</td>
+            </tr>
+        
+            <tr>
+                <td>zone_028</td>
+                <td>0</td>
+                <td>10</td>
+                <td>11.69</td>
+                <td>29.2%</td>
+                <td>0</td>
+                <td>5</td>
+                <td>10.00</td>
+                <td>1.69</td>
+            </tr>
+        
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Map Section -->
+                
+                <div class="table-container mt-3">
+                    <h3 class="mb-1">All Zones Map</h3>
+                    <div class="map-container">
+                        <html>
+<head><meta charset="utf-8" /></head>
+<body>
+    <div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.1.0.min.js" integrity="sha256-Ei4740bWZhaUTQuD6q9yQlgVCMPBz6CZWhevDYPv93A=" crossorigin="anonymous"></script>                <div id="zones-map" class="plotly-graph-div" style="height:800px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("zones-map")) {                    Plotly.newPlot(                        "zones-map",                        [{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[34.2776949,34.1718001],"legendgroup":"zone_000","lon":[-118.502159,-118.5360993],"marker":{"color":"#FF6B6B","size":16,"symbol":"star"},"mode":"markers","name":"zone_000 Primary","showlegend":false,"text":["zone_000 - Subway - Granada Hills (PRIMARY)","zone_000 - Subway - Tarzana (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[34.1550942,34.1923707,34.19225,34.1434757,34.0404549,34.4440519,34.3957632,34.4227441,34.346005],"legendgroup":"zone_000","lon":[-118.7563696,-118.9371231,-118.7811391,-118.6996233,-118.5533565,-118.5113938,-119.5139933,-119.2890033,-119.0827002],"marker":{"color":"#FF6B6B","size":8},"mode":"markers","name":"zone_000 Secondary","showlegend":false,"text":["zone_000 - Subway - Agoura Hills","zone_000 - Subway - Newbury Park","zone_000 - Subway - Oak Park","zone_000 - Subway - Calabasas","zone_000 - Subway - Pacific Palisades","zone_000 - Subway - Saugus","zone_000 - Subway - Carpinteria","zone_000 - Subway - Ojai","zone_000 - Subway - Santa Paula"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[36.6047049],"legendgroup":"zone_003","lon":[-119.5235433],"marker":{"color":"#4ECDC4","size":16,"symbol":"star"},"mode":"markers","name":"zone_003 Primary","showlegend":false,"text":["zone_003 - Subway - Parlier (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[36.5398521,36.5456696,36.6264606,36.5179272,36.7348427,36.9834352,37.2621736,36.7485451,36.4308767,37.0373471,36.543291,36.6244156,36.4154913],"legendgroup":"zone_003","lon":[-119.8361582,-119.4003642,-119.685399,-119.5608194,-120.0608706,-119.7156658,-119.699711,-120.3867336,-119.85992,-119.5173856,-119.2869758,-119.3114106,-119.0980538],"marker":{"color":"#4ECDC4","size":8},"mode":"markers","name":"zone_003 Secondary","showlegend":false,"text":["zone_003 - Subway - Caruthers","zone_003 - Subway - Dinuba","zone_003 - Subway - Fowler","zone_003 - Subway - Kingsburg","zone_003 - Subway - Kerman","zone_003 - Subway - Friant","zone_003 - Subway - Coarsegold","zone_003 - Subway - Mendota","zone_003 - Subway - Riverdale","zone_003 - Subway - Prather","zone_003 - Subway - Orosi","zone_003 - Subway - Orange Cove","zone_003 - Subway - Woodlake"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[38.2268068],"legendgroup":"zone_004","lon":[-121.4285719],"marker":{"color":"#45B7D1","size":16,"symbol":"star"},"mode":"markers","name":"zone_004 Primary","showlegend":false,"text":["zone_004 - Subway - Thornton (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[38.712422,38.8484792,38.8177072,38.6785426,38.662374,38.3529668,38.2538248,38.4959199,38.661782,38.6834914],"legendgroup":"zone_004","lon":[-121.3635701,-121.1676892,-121.1899066,-121.2277405,-120.9675766,-120.9363075,-121.2952032,-121.0988634,-120.9367191,-121.4547965],"marker":{"color":"#45B7D1","size":8},"mode":"markers","name":"zone_004 Secondary","showlegend":false,"text":["zone_004 - Subway - Antelope","zone_004 - Subway - Penryn","zone_004 - Subway - Loomis","zone_004 - Subway - Orangevale","zone_004 - Subway - Cameron Park","zone_004 - Subway - Ione","zone_004 - Subway - Galt","zone_004 - Subway - Rancho Murieta","zone_004 - Subway - Shingle Springs","zone_004 - Subway - Rio Linda"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[40.902608,40.9438711,40.939058],"legendgroup":"zone_005","lon":[-124.0816851,-124.1014516,-123.6289712],"marker":{"color":"#96CEB4","size":16,"symbol":"star"},"mode":"markers","name":"zone_005 Primary","showlegend":false,"text":["zone_005 - Subway - Arcata (PRIMARY)","zone_005 - Subway - Mckinleyville (PRIMARY)","zone_005 - Subway - Willow Creek (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[40.5833107,40.728887],"legendgroup":"zone_005","lon":[-124.1462937,-122.9384485],"marker":{"color":"#96CEB4","size":8},"mode":"markers","name":"zone_005 Secondary","showlegend":false,"text":["zone_005 - Subway - Fortuna","zone_005 - Subway - Weaverville"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[37.6085834,37.6382986,37.594696,37.4939874,37.3881389,36.9858901,37.7995409,37.7086149,37.8241877,37.3137956],"legendgroup":"zone_006","lon":[-120.9388453,-120.7688624,-120.8695354,-120.8754886,-120.7349388,-120.626713,-120.9980954,-121.0776571,-121.289756,-121.0209544],"marker":{"color":"#FFEAA7","size":8},"mode":"markers","name":"zone_006 Secondary","showlegend":false,"text":["zone_006 - Subway - Ceres","zone_006 - Subway - Waterford","zone_006 - Subway - Hughson","zone_006 - Subway - Turlock Ca","zone_006 - Subway - Livingston","zone_006 - Subway - Dos Palos","zone_006 - Subway - Escalon","zone_006 - Subway - Salida","zone_006 - Subway - Lathrop","zone_006 - Subway - Newman"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[36.2106871,35.6014578],"legendgroup":"zone_007","lon":[-119.1125664,-119.3569058],"marker":{"color":"#DDA0DD","size":16,"symbol":"star"},"mode":"markers","name":"zone_007 Primary","showlegend":false,"text":["zone_007 - Subway - Lindsay (PRIMARY)","zone_007 - Subway - Wasco (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[35.40011,35.6161529,35.9884782,36.0981212,36.0650526,35.8879373,35.6747168,35.2542436],"legendgroup":"zone_007","lon":[-119.3978,-119.6916017,-119.9602793,-119.561239,-119.312848,-119.274612,-119.2283807,-118.9145031],"marker":{"color":"#DDA0DD","size":8},"mode":"markers","name":"zone_007 Secondary","showlegend":false,"text":["zone_007 - Subway - Buttonwillow","zone_007 - Subway - Lost Hills","zone_007 - Subway - Kettleman City","zone_007 - Subway - Corcoran","zone_007 - Subway - Tipton","zone_007 - Subway - Earlimart","zone_007 - Subway - Mcfarland","zone_007 - Subway - Lamont"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[33.7535038,33.5698783,32.7941674,32.6352764,33.2788883,33.0373459],"legendgroup":"zone_008","lon":[-116.3037129,-116.0900968,-115.5700871,-116.1668237,-115.965705,-115.6255594],"marker":{"color":"#98D8C8","size":8},"mode":"markers","name":"zone_008 Secondary","showlegend":false,"text":["zone_008 - Subway - Bermuda Dunes","zone_008 - Subway - Mecca","zone_008 - Subway - Imperial","zone_008 - Subway - Jacumba","zone_008 - Subway - Salton City","zone_008 - Subway - Westmorland"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[34.9603255,35.1361979,34.5961898],"legendgroup":"zone_009","lon":[-120.573984,-120.6247285,-120.140255],"marker":{"color":"#F7DC6F","size":16,"symbol":"star"},"mode":"markers","name":"zone_009 Primary","showlegend":false,"text":["zone_009 - Subway - Guadalupe (PRIMARY)","zone_009 - Subway - Pismo Beach (PRIMARY)","zone_009 - Subway - Solvang (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[34.7439169,35.0364305,35.3102978,35.368678],"legendgroup":"zone_009","lon":[-120.2755464,-120.4856885,-120.8287987,-120.8447302],"marker":{"color":"#F7DC6F","size":8},"mode":"markers","name":"zone_009 Secondary","showlegend":false,"text":["zone_009 - Subway - Los Alamos","zone_009 - Subway - Nipomo","zone_009 - Subway - Los Osos","zone_009 - Subway - Morro Bay"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[39.3088225,39.2348957,38.7636018,39.8127543,39.1740584],"legendgroup":"zone_010","lon":[-120.5457615,-120.0196718,-120.5755193,-120.462698,-120.1366247],"marker":{"color":"#BB8FCE","size":8},"mode":"markers","name":"zone_010 Secondary","showlegend":false,"text":["zone_010 - Subway - Cisco Grove","zone_010 - Subway - Kings Beach","zone_010 - Subway - Pollock Pines","zone_010 - Subway - Portola","zone_010 - Subway - Tahoe City"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[34.507376,34.2473042,33.9453479,34.1355678,35.2616362,34.8288114,34.90404],"legendgroup":"zone_011","lon":[-117.4000095,-116.8838757,-116.5004713,-116.3154714,-116.6901401,-116.692539,-116.8873022],"marker":{"color":"#85C1E9","size":8},"mode":"markers","name":"zone_011 Secondary","showlegend":false,"text":["zone_011 - Subway - Adelanto","zone_011 - Subway - Big Bear Lake","zone_011 - Subway - Desert Hot Springs","zone_011 - Subway - Joshua Tree","zone_011 - Subway - Fort Irwin","zone_011 - Subway - Newberry Springs","zone_011 - Subway - Yermo"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[33.045186],"legendgroup":"zone_012","lon":[-116.863639],"marker":{"color":"#F8C471","size":16,"symbol":"star"},"mode":"markers","name":"zone_012 Primary","showlegend":false,"text":["zone_012 - Subway - Ramona (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[32.83405,32.8519314,32.7171776,32.6598956,32.5803951,32.9927643],"legendgroup":"zone_012","lon":[-116.749,-116.9324064,-116.8777114,-117.0327466,-117.1319363,-117.2700384],"marker":{"color":"#F8C471","size":8},"mode":"markers","name":"zone_012 Secondary","showlegend":false,"text":["zone_012 - Subway - Alpine","zone_012 - Subway - Lakeside","zone_012 - Subway - Jamul","zone_012 - Subway - Bonita","zone_012 - Subway - Imperial Beach","zone_012 - Subway - Solana Beach"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[38.3313713],"legendgroup":"zone_015","lon":[-122.7156567],"marker":{"color":"#82E0AA","size":16,"symbol":"star"},"mode":"markers","name":"zone_015 Primary","showlegend":false,"text":["zone_015 - Subway - Cotati (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[38.8039796,38.6105241,38.4079867,39.0481486,39.3913852],"legendgroup":"zone_015","lon":[-123.0162465,-122.8727578,-122.8392256,-122.9242252,-123.347748],"marker":{"color":"#82E0AA","size":8},"mode":"markers","name":"zone_015 Secondary","showlegend":false,"text":["zone_015 - Subway - Cloverdale","zone_015 - Subway - Healdsburg","zone_015 - Subway - Sebastopol","zone_015 - Subway - Lakeport","zone_015 - Subway - Willits"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[36.2037696],"legendgroup":"zone_016","lon":[-121.1299055],"marker":{"color":"#F1948A","size":16,"symbol":"star"},"mode":"markers","name":"zone_016 Primary","showlegend":false,"text":["zone_016 - Subway - King City (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[36.9842675,36.9377938,36.8013917,36.6846739,36.7621652,36.6080904,37.0451426,36.6081107,36.9868902],"legendgroup":"zone_016","lon":[-121.9148618,-121.7762493,-121.6647354,-121.7949761,-121.7539908,-121.9258009,-122.0282727,-121.845999,-121.9645238],"marker":{"color":"#F1948A","size":8},"mode":"markers","name":"zone_016 Secondary","showlegend":false,"text":["zone_016 - Subway - Aptos","zone_016 - Subway - Freedom","zone_016 - Subway - Prunedale","zone_016 - Subway - Marina","zone_016 - Subway - Castroville","zone_016 - Subway - Pacific Grove","zone_016 - Subway - Scotts Valley","zone_016 - Subway - Seaside","zone_016 - Subway - Soquel"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[39.2041533,39.748487,39.7765108],"legendgroup":"zone_018","lon":[-122.0042837,-122.2007294,-121.5915878],"marker":{"color":"#85C0C8","size":16,"symbol":"star"},"mode":"markers","name":"zone_018 Primary","showlegend":false,"text":["zone_018 - Subway - Colusa (PRIMARY)","zone_018 - Subway - Orland (PRIMARY)","zone_018 - Subway - Paradise (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[39.7453948,39.5263184,39.2826793],"legendgroup":"zone_018","lon":[-122.0148086,-122.2125399,-121.6616428],"marker":{"color":"#85C0C8","size":8},"mode":"markers","name":"zone_018 Secondary","showlegend":false,"text":["zone_018 - Subway - Hamilton City","zone_018 - Subway - Willows","zone_018 - Subway - Live Oak"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[41.494913,40.8894782,40.3024865],"legendgroup":"zone_019","lon":[-120.5428579,-121.653547,-121.2346722],"marker":{"color":"#D7DBDD","size":16,"symbol":"star"},"mode":"markers","name":"zone_019 Primary","showlegend":false,"text":["zone_019 - Subway - Alturas (PRIMARY)","zone_019 - Subway - Burney (PRIMARY)","zone_019 - Subway - Chester (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[35.1251902],"legendgroup":"zone_020","lon":[-117.983422],"marker":{"color":"#FADBD8","size":16,"symbol":"star"},"mode":"markers","name":"zone_020 Primary","showlegend":false,"text":["zone_020 - Subway - California City (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[35.0103236,35.0546211,34.8654348,35.6537008,35.6282533,35.7084064,36.6056926],"legendgroup":"zone_020","lon":[-117.6530506,-118.173845,-118.1772636,-117.644486,-118.4737546,-118.4511409,-118.063577],"marker":{"color":"#FADBD8","size":8},"mode":"markers","name":"zone_020 Secondary","showlegend":false,"text":["zone_020 - Subway - Boron","zone_020 - Subway - Mojave","zone_020 - Subway - Rosamond","zone_020 - Subway - China Lake","zone_020 - Subway - Lake Isabella","zone_020 - Subway - Wofford Heights","zone_020 - Subway - Lone Pine"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[38.0834491,38.2398279,37.4857971],"legendgroup":"zone_021","lon":[-120.5602845,-120.3635597,-119.9659457],"marker":{"color":"#D5DBDB","size":16,"symbol":"star"},"mode":"markers","name":"zone_021 Primary","showlegend":false,"text":["zone_021 - Subway - Angels Camp (PRIMARY)","zone_021 - Subway - Arnold (PRIMARY)","zone_021 - Subway - Mariposa (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[38.1924435,38.1918724],"legendgroup":"zone_021","lon":[-120.6766661,-120.8262002],"marker":{"color":"#D5DBDB","size":8},"mode":"markers","name":"zone_021 Secondary","showlegend":false,"text":["zone_021 - Subway - San Andreas","zone_021 - Subway - Valley Springs"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[34.1835377,34.1995811,34.2219021,34.1194322,34.0999799,34.1144487,34.0425882,34.2601694,34.106145,33.9712184,33.8974532,33.8599237,33.8461687,34.1021488,34.0908071,33.8930692,33.9586803,33.7901755,33.7745314,33.7346914],"legendgroup":"zone_022","lon":[-118.1594519,-118.1898865,-118.2363393,-118.19736,-118.1503213,-118.0911844,-118.0318512,-118.31505,-118.065324,-118.1877989,-118.0088156,-118.0480693,-118.0424905,-118.3221825,-118.384883,-118.353071,-118.4386611,-118.3136167,-118.3763054,-118.3533608],"marker":{"color":"#EBF5FB","size":8},"mode":"markers","name":"zone_022 Secondary","showlegend":false,"text":["zone_022 - Subway - Altadena","zone_022 - Subway - La Canada","zone_022 - Subway - La Crescenta","zone_022 - Subway - Highland Park","zone_022 - Subway - South Pasadena","zone_022 - Subway - San Gabriel","zone_022 - Subway - South El Monte","zone_022 - Subway - Sunland","zone_022 - Subway - Temple City","zone_022 - Subway - Bell","zone_022 - Subway - La Mirada","zone_022 - Subway - Cerritos","zone_022 - Subway - La Palma","zone_022 - Subway - Hollywood","zone_022 - Subway - West Hollywood","zone_022 - Subway - Lawndale","zone_022 - Subway - Playa Del Rey","zone_022 - Subway - Lomita","zone_022 - Subway - Rolling Hills Estates","zone_022 - Subway - Rancho Palos Verdes"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[37.5110301,37.4954295,37.6838234,37.6516769,37.6392707,37.4700543,37.4241855,37.5871495],"legendgroup":"zone_023","lon":[-122.2930202,-122.2463211,-122.4638616,-122.4910127,-122.4225561,-122.4350407,-122.1708331,-122.0229169],"marker":{"color":"#E8F8F5","size":8},"mode":"markers","name":"zone_023 Secondary","showlegend":false,"text":["zone_023 - Subway - Belmont","zone_023 - Subway - San Carlos","zone_023 - Subway - Colma","zone_023 - Subway - Pacifica","zone_023 - Subway - San Bruno","zone_023 - Subway - Half Moon Bay","zone_023 - Subway - Stanford","zone_023 - Subway - Union City"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[41.3101651,41.7310241],"legendgroup":"zone_024","lon":[-122.3168266,-122.6350551],"marker":{"color":"#FDF2E9","size":16,"symbol":"star"},"mode":"markers","name":"zone_024 Primary","showlegend":false,"text":["zone_024 - Subway - Mount Shasta (PRIMARY)","zone_024 - Subway - Yreka (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[33.9255142,33.9955517,33.2906827,33.3723753,33.6844696,33.7104347,33.5924859,33.6366456,33.6484933,33.6273144],"legendgroup":"zone_025","lon":[-116.8868917,-117.0593939,-117.225985,-117.2532013,-117.1684741,-117.1928791,-117.123663,-117.5993532,-117.5762785,-117.2767933],"marker":{"color":"#F4F6F6","size":8},"mode":"markers","name":"zone_025 Secondary","showlegend":false,"text":["zone_025 - Subway - Banning","zone_025 - Subway - Calimesa","zone_025 - Subway - Bonsall","zone_025 - Subway - Fallbrook","zone_025 - Subway - Menifee","zone_025 - Subway - Sun City","zone_025 - Subway - Winchester","zone_025 - Subway - Rancho Santa Margarita","zone_025 - Subway - Trabuco Canyon","zone_025 - Subway - Wildomar"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[33.6063619,34.85083],"legendgroup":"zone_026","lon":[-114.6043293,-114.62433],"marker":{"color":"#FDEDEC","size":8},"mode":"markers","name":"zone_026 Secondary","showlegend":false,"text":["zone_026 - Subway - Blythe","zone_026 - Subway - Needles"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[38.0286732],"legendgroup":"zone_027","lon":[-121.960043],"marker":{"color":"#EAF2F8","size":16,"symbol":"star"},"mode":"markers","name":"zone_027 Primary","showlegend":false,"text":["zone_027 - Subway - Bay Point (PRIMARY)"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[37.8513866,37.7981586,37.9535772,38.0088229,38.1687599,37.8709074,37.946102,37.895749,37.8600297,37.8785298,37.982973,38.0285388,37.9946557,37.87307],"legendgroup":"zone_027","lon":[-122.0328169,-121.9234993,-121.954836,-122.2702687,-122.253445,-122.2677266,-122.5239501,-122.1040894,-122.1253236,-122.18233,-122.0681218,-122.2660058,-122.2864553,-122.5112899],"marker":{"color":"#EAF2F8","size":8},"mode":"markers","name":"zone_027 Secondary","showlegend":false,"text":["zone_027 - Subway - Alamo","zone_027 - Subway - Danville","zone_027 - Subway - Clayton","zone_027 - Subway - Hercules","zone_027 - Subway - American Canyon","zone_027 - Subway - Berkeley","zone_027 - Subway - Greenbrae","zone_027 - Subway - Lafayette","zone_027 - Subway - Moraga","zone_027 - Subway - Orinda","zone_027 - Subway - Pacheco","zone_027 - Subway - Rodeo","zone_027 - Subway - Pinole","zone_027 - Subway - Marin City"],"type":"scattermapbox"},{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cextra\u003e\u003c\u002fextra\u003e","lat":[34.2432587,34.0181357,33.9221137,34.0341817,34.1134429,34.0552966,34.0447143,33.608299,33.8154134,34.383064],"legendgroup":"zone_028","lon":[-117.2805483,-117.5577505,-117.5603815,-117.31284,-117.764077,-117.7058546,-117.8485808,-117.7317033,-117.8211057,-117.4038461],"marker":{"color":"#E9F7EF","size":8},"mode":"markers","name":"zone_028 Secondary","showlegend":false,"text":["zone_028 - Subway - Crestline","zone_028 - Subway - Eastvale","zone_028 - Subway - Norco","zone_028 - Subway - Grand Terrace","zone_028 - Subway - La Verne","zone_028 - Subway - Montclair","zone_028 - Subway - Walnut","zone_028 - Subway - Laguna Woods","zone_028 - Subway - Villa Park","zone_028 - Subway - Oak Hills"],"type":"scattermapbox"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"mapbox":{"center":{"lat":36.28726158302752,"lon":-119.7886732646789},"style":"carto-positron","zoom":5},"margin":{"l":0,"r":0,"t":50,"b":0},"title":{},"height":800,"showlegend":true,"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)"},                        {"responsive": true}                    )                };            </script>        </div>
+</body>
+</html>
+                    </div>
+                </div>
+            
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS -->
+    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    <!-- DataTables Buttons JS -->
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.bootstrap5.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.print.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            $('#aggregate-table').DataTable({
+                "pageLength": 25,
+                "order": [[ 3, "desc" ]], // Sort by weekly duration descending
+                "columnDefs": [
+                    { 
+                        "targets": [1, 2, 5, 6], // Primary count, secondary count, over/under days
+                        "className": "text-center"
+                    },
+                    { 
+                        "targets": [3, 4, 7, 8], // Duration, utilization, position time, drive time  
+                        "className": "text-center"
+                    },
+                    { "targets": 0, "width": "10%" }, // Zone ID
+                    { "targets": 1, "width": "8%" }, // Primary Locations
+                    { "targets": 2, "width": "8%" }, // Secondary Locations  
+                    { "targets": 3, "width": "12%" }, // Weekly Duration
+                    { "targets": 4, "width": "10%" }, // Utilization
+                    { "targets": 5, "width": "8%" }, // Overutilized Days
+                    { "targets": 6, "width": "8%" }, // Underutilized Days
+                    { "targets": 7, "width": "12%" }, // Total POS Time
+                    { "targets": 8, "width": "12%" } // Total Drive Time
+                ],
+                "dom": 'Bfrtip',
+                "buttons": [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ],
+                "responsive": true,
+                "language": {
+                    "search": "Filter zones:",
+                    "lengthMenu": "Show _MENU_ zones per page",
+                    "info": "Showing _START_ to _END_ of _TOTAL_ zones",
+                    "paginate": {
+                        "previous": "Previous",
+                        "next": "Next"
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -3,8 +3,10 @@
 # standard library imports
 import argparse
 import json
+import os
 import sys
 from typing import List, Optional, Set
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 3rd-party imports
 from loguru import logger
@@ -48,41 +50,54 @@ def extract(
 
 
 # ------------------------------------------------------------------------------
-# optimizization orchestrator
+# optimizization 
 # ------------------------------------------------------------------------------
 
 def optimization_orchstrator(
     pos: pl.DataFrame
 ) -> pl.DataFrame:
     """
-    runs all zone level optimization for routes
+    runs all zone level optimization for routes using parallel processing
 
     :param pos: DataFrame containing all pos information
     :return: DataFrame containing a detailed route itinerary for all zones
     """
     pos_optimize = pos.clone()
 
-    # get zone count
+    # get zone count and determine worker threads
     zone_count = pos['zone_id'].n_unique()
     zones_ids = pos['zone_id'].unique()
-    logger.info(f"optimizing {zone_count} zone(s)")
+    max_workers = max(1, os.cpu_count() // 2)
+    logger.info(f"optimizing {zone_count} zone(s) using {max_workers} threads")
 
-    # optimize zones
-    itinerary = pl.DataFrame()
-
+    # prepare zone data for parallel processing
+    zone_data_list = []
     for zone_id in zones_ids:
         pos_zone = pos_optimize.filter(pl.col("zone_id") == zone_id)
-        itinerary_zone = optimize(
-            pos_zone=pos_zone
-        )
-        itinerary = pl.concat([itinerary, itinerary_zone], how = 'vertical')        
+        zone_data_list.append(pos_zone)
 
+    # optimize zones in parallel
+    itinerary_list = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # submit all optimization tasks
+        future_to_zone = {executor.submit(optimize, pos_zone): pos_zone['zone_id'].unique()[0] 
+                         for pos_zone in zone_data_list}
+        
+        # collect results as they complete
+        for future in as_completed(future_to_zone):
+            zone_id = future_to_zone[future]
+            try:
+                itinerary_zone = future.result()
+                itinerary_list.append(itinerary_zone)
+                logger.info(f"completed optimization for zone {zone_id}")
+            except Exception as exc:
+                logger.error(f"zone {zone_id} generated an exception: {exc}")
+                raise
+
+    # combine all results
+    itinerary = pl.concat(itinerary_list, how='vertical')        
     return itinerary
 
-
-# ------------------------------------------------------------------------------
-# optimize zones
-# ------------------------------------------------------------------------------
 
 def optimize(
     pos_zone: pl.DataFrame
@@ -160,14 +175,33 @@ def report(
         local=local
     )
 
-    if local:
+    logger.info("aggregate report generated")
+    logger.info(aggregate_report)
+
+    # additional local report components to build
+    if local:       
+        # create local reports
         core.report.zone(
             itinerary=itinerary_reporting            
         )
 
+        aggregate_report_summary = aggregate_report.select([
+            pl.col('weekly_duration').mean().alias("average_weekly_duration"),
+            pl.col('utilization').mean().alias("average_utilization"),
+            pl.col('overutilized_days').mean().alias("average_overutilized_days"),
+            pl.col('underutilized_days').mean().alias("average_underutilized_days"),
+            pl.col('total_pos_time').mean().alias("average_daily_pos_time"),
+            pl.col('total_drive_time').mean().alias("average_daily_drive_time"),
+        ])
 
-    logger.info("aggregate report generated")
-    logger.info(aggregate_report)
+        logger.info("aggregate_report_summary:")
+        print(aggregate_report_summary)
+        
+        # save aggregate summary to JSONL
+        summary_records = aggregate_report_summary.to_pandas().to_dict(orient='records')
+        with open('./output/aggregate_summary.jsonl', 'w') as f:
+            for record in summary_records:
+                f.write(json.dumps(record) + '\n')
 
     return
 
@@ -213,20 +247,20 @@ def main(
         local=local
     )
 
-    # save itinerary to JSON when local is True
+    # save itinerary to JSONL when local is True
     if local:
-        itinerary_json = itinerary.to_pandas().to_json(orient='records', indent=2)
-        with open('./output/itinerary.json', 'w') as f:
-            f.write(itinerary_json)
-
-    # commit data to permanent data store
-
-    # generate ad-hoc outputs
-#    generate(
-#        zones=zones,
-#        report=report
-#    )
-
+        itinerary_pandas = itinerary.to_pandas()
+        # Convert any numpy arrays to lists for JSON serialization
+        for col in itinerary_pandas.columns:
+            if itinerary_pandas[col].dtype == 'object':
+                itinerary_pandas[col] = itinerary_pandas[col].apply(
+                    lambda x: x.tolist() if hasattr(x, 'tolist') else x
+                )
+        
+        itinerary_records = itinerary_pandas.to_dict(orient='records')
+        with open('./output/itinerary.jsonl', 'w') as f:
+            for record in itinerary_records:
+                f.write(json.dumps(record, default=str) + '\n')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Example script with command line arguments')

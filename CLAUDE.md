@@ -59,6 +59,44 @@ Note: OSRM does routing, not geocoding. For address-to-coordinate conversion, we
 
 # short-term-memory - add all temporary notes about your current task here
 
+## Script Runtime Performance
+
+### Sequential Implementation (Baseline)
+**Total Runtime**: ~22.76 seconds
+- Start time: 2025-09-04 15:43:20.634
+- End time: 2025-09-04 15:43:43.396  
+- Duration: 22.762 seconds
+
+### Multi-threaded Implementation (ThreadPoolExecutor)
+**Total Runtime**: ~6.36 seconds
+- Start time: 2025-09-04 15:46:49.586
+- End time: 2025-09-04 15:46:55.944
+- Duration: 6.358 seconds
+- **Performance Improvement**: 3.58x faster (72% reduction in runtime)
+
+**Configuration**:
+- Worker threads: 12 (cpu_count() // 2)
+- Parallel zone processing with ThreadPoolExecutor
+- Thread-safe OSRM API calls
+
+**Performance Breakdown**:
+- Data extraction: ~0.01 seconds
+- Route optimization for 24 zones: ~6.35 seconds (was 22.75 seconds)
+- Report generation: included in total time
+
+**Key Stats**:
+- 24 zones optimized in parallel
+- 206 locations processed (51 filtered out for null zone_ids)
+- Uses local OSRM server at 192.168.50.2:32050 for fast routing
+- Generates individual HTML reports for each zone
+- Primary locations: 8h/day assignments
+- Secondary locations: clustered and optimized using TSP algorithms
+
+**Threading Benefits**:
+- Efficient I/O parallelization for OSRM API calls
+- CPU cores utilized for simultaneous optimization calculations  
+- Maintains data integrity with proper thread synchronization
+
 ## Thoughts on Route Optimization Solutions
 
 Based on the model-params.yaml and subway_locations.json data:
