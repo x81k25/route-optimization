@@ -144,6 +144,8 @@ def cluster_secondary_pos(
     Returns:
         Updated itinerary DataFrame with secondary locations assigned to available days
     """
+    from ..utils.clustering_utils import haversine_distance
+    
     # Load config
     config = load_config()
     hours_per_non_primary = config.get("hours_per_non_primary", 1)
@@ -177,26 +179,26 @@ def cluster_secondary_pos(
     
     logger.info(f"Found {n_available_days} available days for secondary clustering")
     
-    # Extract secondary location IDs and create distance matrix from OD matrix
+    # Extract secondary location IDs and coordinates
     secondary_ids = secondary_df['pos_id'].to_list()
+    secondary_coords = secondary_df.select(['latitude', 'longitude']).to_numpy()
     
-    # Build distance matrix from OD matrix (using duration in minutes)
+    # Build distance matrix using haversine distance (in kilometers)
     distance_matrix = np.zeros((len(secondary_ids), len(secondary_ids)))
     
-    for i, id1 in enumerate(secondary_ids):
-        for j, id2 in enumerate(secondary_ids):
+    for i in range(len(secondary_ids)):
+        for j in range(len(secondary_ids)):
             if i != j:
-                # Find duration between these two locations in OD matrix
-                duration_row = od_matrix.filter(
-                    (pl.col('origin_id') == id1) & (pl.col('destination_id') == id2)
+                # Calculate haversine distance between locations
+                distance_km = haversine_distance(
+                    secondary_coords[i, 0], secondary_coords[i, 1],  # lat1, lon1
+                    secondary_coords[j, 0], secondary_coords[j, 1]   # lat2, lon2
                 )
-                if not duration_row.is_empty():
-                    duration_minutes = duration_row['duration_minutes'].item()
-                    distance_matrix[i, j] = duration_minutes
+                distance_matrix[i, j] = distance_km
     
-    # Perform hierarchical clustering
-    clusters = _cluster_locations_hierarchical(
-        distance_matrix, secondary_ids, n_available_days, locations_per_day_max
+    # Perform K-means clustering
+    clusters = _cluster_locations_kmeans(
+        secondary_coords, secondary_ids, n_available_days, locations_per_day_max
     )
     
     # Assign clusters to available days and update itinerary
@@ -338,6 +340,59 @@ def _enforce_cluster_size_constraints(
                 cluster_counter += 1
     
     return adjusted_clusters
+
+
+def _cluster_locations_kmeans(
+    coordinates: np.ndarray,
+    location_ids: List[int], 
+    n_clusters: int, 
+    max_locations_per_cluster: int = 7
+) -> Dict[int, List[int]]:
+    """
+    Cluster locations into days using K-means clustering.
+    
+    Args:
+        coordinates: array of [lat, lon] coordinates for locations
+        location_ids: list of location IDs
+        n_clusters: number of clusters (available secondary days)
+        max_locations_per_cluster: maximum locations per cluster
+        
+    Returns:
+        dictionary mapping cluster_id to list of location_ids
+    """
+    from sklearn.cluster import KMeans
+    
+    n_locations = len(location_ids)
+    
+    # Handle empty case
+    if n_locations == 0:
+        return {}
+    
+    # Handle single location case
+    if n_locations == 1:
+        return {1: location_ids.copy()}
+    
+    # Handle case where we have more clusters than locations
+    if n_locations <= n_clusters:
+        return {i+1: [location_ids[i]] for i in range(n_locations)}
+    
+    # Perform K-means clustering
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(coordinates)
+    
+    # Group locations by cluster
+    cluster_assignments = {}
+    for idx, cluster_id in enumerate(cluster_labels):
+        if cluster_id not in cluster_assignments:
+            cluster_assignments[cluster_id] = []
+        cluster_assignments[cluster_id].append(location_ids[idx])
+    
+    # Handle constraint violations (clusters too large)
+    cluster_assignments = _enforce_cluster_size_constraints(
+        cluster_assignments, max_locations_per_cluster
+    )
+    
+    return cluster_assignments
 
 
 def gen_secondary_routes(

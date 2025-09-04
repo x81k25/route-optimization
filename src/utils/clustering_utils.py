@@ -92,6 +92,41 @@ def calculate_distance_matrix(
     return distance_matrix
 
 
+def identify_noise_points(
+    locations_df: pl.DataFrame,
+    noise_threshold_km: float = 150.0,
+    min_neighbors: int = 2
+) -> pl.DataFrame:
+    """
+    Identify geographically isolated points as noise.
+    
+    :param locations_df: DataFrame with 'latitude', 'longitude' columns
+    :param noise_threshold_km: minimum distance to consider point isolated
+    :param min_neighbors: minimum neighbors within threshold to not be noise
+    :return: DataFrame with additional 'is_noise' boolean column
+    """
+    coords = locations_df.select(['latitude', 'longitude']).to_numpy()
+    n = len(coords)
+    is_noise = np.zeros(n, dtype=bool)
+    
+    for i in range(n):
+        # Calculate distances to all other points
+        distances = []
+        for j in range(n):
+            if i != j:
+                dist = haversine_distance(coords[i, 0], coords[i, 1], coords[j, 0], coords[j, 1])
+                distances.append(dist)
+        
+        # Count neighbors within threshold
+        neighbors_within_threshold = sum(1 for d in distances if d <= noise_threshold_km)
+        
+        # Mark as noise if too few close neighbors
+        if neighbors_within_threshold < min_neighbors:
+            is_noise[i] = True
+    
+    return locations_df.with_columns(pl.Series("is_noise", is_noise))
+
+
 def kmeans_cluster_locations(
     locations_df: pl.DataFrame, 
     n_clusters: int, 
@@ -401,20 +436,29 @@ def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tup
     np.random.seed(config['random_seed'])
     random.seed(config['random_seed'])
     
-    # Determine number of clusters
+    # Identify and filter out noise points
+    locations_with_noise = identify_noise_points(locations_df)
+    noise_points = locations_with_noise.filter(pl.col('is_noise') == True)
+    clusterable_locations = locations_with_noise.filter(pl.col('is_noise') == False).drop('is_noise')
+    
+    if len(noise_points) > 0:
+        logger.info(f"Identified {len(noise_points)} noise points (isolated locations)")
+        logger.info(f"Clustering remaining {len(clusterable_locations)} locations")
+    
+    # Determine number of clusters based on clusterable locations only
     target_size = (config['min_locations_per_cluster'] + config['max_locations_per_cluster']) // 2
-    n_clusters = max(1, len(locations_df) // target_size)
+    n_clusters = max(1, len(clusterable_locations) // target_size)
     
     logger.info(f"Target cluster size: {target_size}, creating {n_clusters} initial clusters")
     
-    # Perform initial clustering
+    # Perform initial clustering on clusterable locations only
     if config['method'] == "kmeans":
-        clustered_df = kmeans_cluster_locations(locations_df, n_clusters, config['random_seed'])
+        clustered_df = kmeans_cluster_locations(clusterable_locations, n_clusters, config['random_seed'])
     elif config['method'] == "geographic":
-        clustered_df = geographic_cluster_locations(locations_df, target_size)
+        clustered_df = geographic_cluster_locations(clusterable_locations, target_size)
     else:
         logger.warning(f"Unknown method {config['method']}, using kmeans")
-        clustered_df = kmeans_cluster_locations(locations_df, n_clusters, config['random_seed'])
+        clustered_df = kmeans_cluster_locations(clusterable_locations, n_clusters, config['random_seed'])
     
     # Balance cluster sizes and assign zone_ids
     balanced_df = balance_cluster_sizes(clustered_df, config['min_locations_per_cluster'], config['max_locations_per_cluster'])
@@ -422,8 +466,17 @@ def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tup
     # Assign primary store status
     final_df = assign_primary_stores(balanced_df, config)
     
-    # Calculate quality metrics
-    quality_metrics = calculate_quality_metrics(final_df)
+    # Add noise points back with null zone_ids
+    if len(noise_points) > 0:
+        noise_with_null_zones = noise_points.drop('is_noise').with_columns(
+            pl.lit(None, dtype=pl.String).alias('zone_id'),
+            pl.lit('secondary').alias('class')  # Default to secondary for noise points
+        )
+        final_df = pl.concat([final_df, noise_with_null_zones])
+        logger.info(f"Added {len(noise_points)} noise points with null zone_ids")
+    
+    # Calculate quality metrics (excluding noise points)
+    quality_metrics = calculate_quality_metrics(final_df.filter(pl.col('zone_id').is_not_null()))
     
     logger.info(f"Created {quality_metrics['n_clusters']} clusters")
     logger.info(f"Cluster sizes: min={quality_metrics['min_cluster_size']}, "
@@ -543,20 +596,20 @@ def add_zone_ids_to_json_dataset(
 
 
 if __name__ == "__main__":
-    # Configuration for California Subway locations
+    # Configuration for California Subway locations - optimized for ~100% utilization
     config = {
-        'min_locations_per_cluster': 3,
-        'max_locations_per_cluster': 15,  # Good for route optimization (< 25 limit)
+        'min_locations_per_cluster': 10,  # Increased from 3 for better utilization
+        'max_locations_per_cluster': 20,  # Increased from 15 for better utilization
         'method': 'kmeans',
         'random_seed': 42,
-        'primary_store_min': 0,
-        'primary_store_max': 3
+        'primary_store_min': 1,  # Changed from 0 to ensure each zone has at least 1 primary
+        'primary_store_max': 3   # Keep max at 3
     }
     
     # Add zone_ids to the JSONL dataset
     quality_metrics = add_zone_ids_to_jsonl_dataset(
-        input_file="data/subway_locations.jsonl",
-        output_file="data/subway_locations.jsonl",
+        input_file="data/locations.jsonl",  # Updated file path
+        output_file="data/locations.jsonl", # Updated file path
         config=config
     )
     
