@@ -5,17 +5,28 @@ Creates geographic zones from location data with configurable cluster sizes.
 Uses pure functions and Polars DataFrames for data processing.
 """
 
+# standard library imports
 import json
-import numpy as np
-from typing import Dict, Tuple
-from loguru import logger
 import random
-from sklearn.cluster import KMeans
+from typing import Any, Dict, Tuple
+
+# 3rd-party imports
+import numpy as np
 import polars as pl
+from loguru import logger
+from sklearn.cluster import KMeans
 
 
-def default_cluster_config() -> Dict[str, any]:
-    """Default configuration for clustering algorithm."""
+# ------------------------------------------------------------------------------
+# supporting functions
+# ------------------------------------------------------------------------------
+
+def default_cluster_config() -> Dict[str, Any]:
+    """
+    Default configuration for clustering algorithm.
+    
+    :return: dictionary with default clustering configuration
+    """
     return {
         'min_locations_per_cluster': 3,
         'max_locations_per_cluster': 25,
@@ -26,26 +37,30 @@ def default_cluster_config() -> Dict[str, any]:
     }
 
 
-def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def haversine_distance(
+    lat1: float, 
+    lon1: float, 
+    lat2: float, 
+    lon2: float
+) -> float:
     """
     Calculate haversine distance between two points in kilometers.
     
-    Args:
-        lat1, lon1: First point coordinates
-        lat2, lon2: Second point coordinates
-        
-    Returns:
-        Distance in kilometers
+    :param lat1: latitude of first point
+    :param lon1: longitude of first point
+    :param lat2: latitude of second point
+    :param lon2: longitude of second point
+    :return: distance in kilometers
     """
-    R = 6371.0  # Earth radius in kilometers
+    R = 6371.0  # earth radius in kilometers
     
-    # Convert to radians
+    # convert to radians
     lat1_rad = np.radians(lat1)
     lon1_rad = np.radians(lon1)
     lat2_rad = np.radians(lat2)
     lon2_rad = np.radians(lon2)
     
-    # Haversine formula
+    # haversine formula
     dlat = lat2_rad - lat1_rad
     dlon = lon2_rad - lon1_rad
     
@@ -55,15 +70,14 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return R * c
 
 
-def calculate_distance_matrix(locations_df: pl.DataFrame) -> np.ndarray:
+def calculate_distance_matrix(
+    locations_df: pl.DataFrame
+) -> np.ndarray:
     """
     Calculate distance matrix between all location pairs.
     
-    Args:
-        locations_df: DataFrame with 'latitude' and 'longitude' columns
-        
-    Returns:
-        Distance matrix (n x n)
+    :param locations_df: DataFrame with 'latitude' and 'longitude' columns
+    :return: distance matrix (n x n)
     """
     coords = locations_df.select(['latitude', 'longitude']).to_numpy()
     n = len(coords)
@@ -78,19 +92,20 @@ def calculate_distance_matrix(locations_df: pl.DataFrame) -> np.ndarray:
     return distance_matrix
 
 
-def kmeans_cluster_locations(locations_df: pl.DataFrame, n_clusters: int, random_seed: int = 42) -> pl.DataFrame:
+def kmeans_cluster_locations(
+    locations_df: pl.DataFrame, 
+    n_clusters: int, 
+    random_seed: int = 42
+) -> pl.DataFrame:
     """
     Perform K-means clustering on locations.
     
-    Args:
-        locations_df: DataFrame with location data including 'latitude', 'longitude'
-        n_clusters: Number of clusters
-        random_seed: Random seed for reproducibility
-        
-    Returns:
-        DataFrame with additional 'cluster_id' column
+    :param locations_df: DataFrame with location data including 'latitude', 'longitude'
+    :param n_clusters: number of clusters
+    :param random_seed: random seed for reproducibility
+    :return: DataFrame with additional 'cluster_id' column
     """
-    # Filter out locations with null coordinates
+    # filter out locations with null coordinates
     valid_locations = locations_df.filter(
         (pl.col('latitude').is_not_null()) & (pl.col('longitude').is_not_null())
     )
@@ -99,66 +114,66 @@ def kmeans_cluster_locations(locations_df: pl.DataFrame, n_clusters: int, random
         (pl.col('latitude').is_null()) | (pl.col('longitude').is_null())
     )
     
-    logger.info(f"K-means clustering: {len(valid_locations)} valid locations, {len(null_locations)} excluded (null coordinates)")
+    logger.info(f"k-means clustering: {len(valid_locations)} valid locations, {len(null_locations)} excluded (null coordinates)")
     
     if len(valid_locations) == 0:
-        logger.error("No valid coordinates found for clustering")
+        logger.error("no valid coordinates found for clustering")
         return locations_df.with_columns(pl.lit(None).alias('cluster_id'))
     
     if len(valid_locations) < n_clusters:
-        logger.warning(f"Fewer valid locations ({len(valid_locations)}) than clusters ({n_clusters})")
-        # Assign each valid location to its own cluster
+        logger.warning(f"fewer valid locations ({len(valid_locations)}) than clusters ({n_clusters})")
+        # assign each valid location to its own cluster
         valid_with_clusters = valid_locations.with_columns(
             pl.arange(0, len(valid_locations)).alias('cluster_id')
         )
     else:
-        # Extract coordinates from valid locations only
+        # extract coordinates from valid locations only
         coordinates = valid_locations.select(['latitude', 'longitude']).to_numpy()
         
-        # Perform K-means clustering
+        # perform K-means clustering
         kmeans = KMeans(n_clusters=n_clusters, random_state=random_seed, n_init=10)
         cluster_labels = kmeans.fit_predict(coordinates)
         
-        # Add cluster labels to valid locations
+        # add cluster labels to valid locations
         valid_with_clusters = valid_locations.with_columns(
             pl.Series('cluster_id', cluster_labels)
         )
     
-    # Add null cluster_id to null locations
+    # add null cluster_id to null locations
     null_with_clusters = null_locations.with_columns(
         pl.lit(None).alias('cluster_id')
     )
     
-    # Combine back together, preserving original order
+    # combine back together, preserving original order
     result = pl.concat([valid_with_clusters, null_with_clusters], how="vertical")
     
-    # Sort by original index if available, otherwise by id
+    # sort by original index if available, otherwise by id
     if 'id' in result.columns:
         result = result.sort('id')
     
     return result
 
 
-def geographic_cluster_locations(locations_df: pl.DataFrame, target_size: int) -> pl.DataFrame:
+def geographic_cluster_locations(
+    locations_df: pl.DataFrame, 
+    target_size: int
+) -> pl.DataFrame:
     """
     Simple geographic clustering based on latitude bands.
     
-    Args:
-        locations_df: DataFrame with location data
-        target_size: Target number of locations per cluster
-        
-    Returns:
-        DataFrame with additional 'cluster_id' column
+    :param locations_df: DataFrame with location data
+    :param target_size: target number of locations per cluster
+    :return: DataFrame with additional 'cluster_id' column
     """
-    # Sort by latitude
+    # sort by latitude
     sorted_df = locations_df.sort('latitude')
     
-    # Calculate number of clusters
+    # calculate number of clusters
     n_clusters = max(1, len(sorted_df) // target_size)
     locations_per_cluster = len(sorted_df) // n_clusters
     remainder = len(sorted_df) % n_clusters
     
-    # Assign cluster IDs
+    # assign cluster IDs
     cluster_ids = []
     current_cluster = 0
     locations_in_current = 0
@@ -167,7 +182,7 @@ def geographic_cluster_locations(locations_df: pl.DataFrame, target_size: int) -
         cluster_ids.append(current_cluster)
         locations_in_current += 1
         
-        # Determine when to move to next cluster
+        # determine when to move to next cluster
         cluster_size_limit = locations_per_cluster + (1 if current_cluster < remainder else 0)
         
         if locations_in_current >= cluster_size_limit and current_cluster < n_clusters - 1:
@@ -187,15 +202,12 @@ def balance_cluster_sizes(
     """
     Balance cluster sizes to respect min/max constraints.
     
-    Args:
-        clustered_df: DataFrame with 'cluster_id' column
-        min_size: Minimum locations per cluster
-        max_size: Maximum locations per cluster
-        
-    Returns:
-        DataFrame with rebalanced cluster assignments
+    :param clustered_df: DataFrame with 'cluster_id' column
+    :param min_size: minimum locations per cluster
+    :param max_size: maximum locations per cluster
+    :return: DataFrame with rebalanced cluster assignments
     """
-    # Get cluster sizes
+    # get cluster sizes
     cluster_sizes = (
         clustered_df
         .group_by('cluster_id')
@@ -203,12 +215,12 @@ def balance_cluster_sizes(
         .sort('cluster_id')
     )
     
-    # Identify problematic clusters
+    # identify problematic clusters
     oversized = cluster_sizes.filter(pl.col('size') > max_size)['cluster_id'].to_list()
     undersized = cluster_sizes.filter(pl.col('size') < min_size)['cluster_id'].to_list()
     
     if not oversized and not undersized:
-        # Already balanced, just convert cluster_ids to zone_ids
+        # already balanced, just convert cluster_ids to zone_ids
         return clustered_df.with_columns(
             pl.col('cluster_id').map_elements(
                 lambda x: f"zone_{x:03d}", 
@@ -216,36 +228,36 @@ def balance_cluster_sizes(
             ).alias('zone_id')
         ).drop('cluster_id')
     
-    # Collect all locations from problematic clusters
+    # collect all locations from problematic clusters
     problem_locations = clustered_df.filter(
         pl.col('cluster_id').is_in(oversized + undersized)
     ).drop('cluster_id')
     
-    # Keep good clusters
+    # keep good clusters
     good_clusters = clustered_df.filter(
         ~pl.col('cluster_id').is_in(oversized + undersized)
     )
     
-    # Re-cluster problematic locations
+    # re-cluster problematic locations
     if len(problem_locations) > 0:
         target_size = (min_size + max_size) // 2
         n_new_clusters = max(1, len(problem_locations) // target_size)
         
-        # Use K-means for re-clustering
+        # use K-means for re-clustering
         rebalanced = kmeans_cluster_locations(problem_locations, n_new_clusters)
         
-        # Adjust cluster IDs to not conflict with good clusters
+        # adjust cluster IDs to not conflict with good clusters
         max_good_cluster = good_clusters['cluster_id'].max() if len(good_clusters) > 0 else -1
         rebalanced = rebalanced.with_columns(
             (pl.col('cluster_id') + max_good_cluster + 1).alias('cluster_id')
         )
         
-        # Combine good and rebalanced clusters
+        # combine good and rebalanced clusters
         result_df = pl.concat([good_clusters, rebalanced])
     else:
         result_df = good_clusters
     
-    # Convert to zone_ids
+    # convert to zone_ids
     return result_df.with_columns(
         pl.col('cluster_id').map_elements(
             lambda x: f"zone_{x:03d}", 
@@ -254,15 +266,14 @@ def balance_cluster_sizes(
     ).drop('cluster_id')
 
 
-def calculate_cluster_centers(clustered_df: pl.DataFrame) -> pl.DataFrame:
+def calculate_cluster_centers(
+    clustered_df: pl.DataFrame
+) -> pl.DataFrame:
     """
     Calculate geographic centers for each cluster.
     
-    Args:
-        clustered_df: DataFrame with 'zone_id', 'latitude', 'longitude' columns
-        
-    Returns:
-        DataFrame with zone centers
+    :param clustered_df: DataFrame with 'zone_id', 'latitude', 'longitude' columns
+    :return: DataFrame with zone centers
     """
     return (
         clustered_df
@@ -276,16 +287,16 @@ def calculate_cluster_centers(clustered_df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def assign_primary_stores(clustered_df: pl.DataFrame, config: Dict[str, any]) -> pl.DataFrame:
+def assign_primary_stores(
+    clustered_df: pl.DataFrame, 
+    config: Dict[str, Any]
+) -> pl.DataFrame:
     """
     Randomly assign primary store status to locations within each cluster.
     
-    Args:
-        clustered_df: DataFrame with 'zone_id' column
-        config: Configuration with primary_store_min and primary_store_max
-        
-    Returns:
-        DataFrame with 'class' column updated for primary stores
+    :param clustered_df: DataFrame with 'zone_id' column
+    :param config: configuration with primary_store_min and primary_store_max
+    :return: DataFrame with 'class' column updated for primary stores
     """
     random.seed(config['random_seed'])
     
@@ -294,12 +305,12 @@ def assign_primary_stores(clustered_df: pl.DataFrame, config: Dict[str, any]) ->
     for zone_id in clustered_df['zone_id'].unique():
         zone_locations = clustered_df.filter(pl.col('zone_id') == zone_id)
         
-        # Determine number of primary stores for this zone
+        # determine number of primary stores for this zone
         min_primary = config['primary_store_min']
         max_primary = min(config['primary_store_max'], len(zone_locations))
         n_primary = random.randint(min_primary, max_primary)
         
-        # Randomly select primary stores
+        # randomly select primary stores
         zone_data = zone_locations.to_dicts()
         if n_primary > 0:
             primary_indices = random.sample(range(len(zone_data)), n_primary)
@@ -309,7 +320,7 @@ def assign_primary_stores(clustered_df: pl.DataFrame, config: Dict[str, any]) ->
                 else:
                     row['class'] = 'secondary'
         else:
-            # All secondary if n_primary = 0
+            # all secondary if n_primary = 0
             for row in zone_data:
                 row['class'] = 'secondary'
         
@@ -456,7 +467,7 @@ def add_zone_ids_to_jsonl_dataset(
     # Write to JSONL with zone_ids
     clustered_df.write_ndjson(output_file)
     
-    logger.info(f"Saved dataset with zone_ids to {output_file}")
+    logger.info(f"saved dataset with zone_ids to {output_file}")
     return quality_metrics
 
 
@@ -527,7 +538,7 @@ def add_zone_ids_to_json_dataset(
     with open(output_file, 'w') as f:
         json.dump(output_data, f, indent=2)
     
-    logger.info(f"Saved dataset with zone_ids to {output_file}")
+    logger.info(f"saved dataset with zone_ids to {output_file}")
     return quality_metrics
 
 
@@ -549,8 +560,13 @@ if __name__ == "__main__":
         config=config
     )
     
-    print(f"\nClustering Results:")
-    print(f"Created {quality_metrics['n_clusters']} zones")
-    print(f"Average locations per zone: {quality_metrics['avg_cluster_size']:.1f}")
-    print(f"Zone size range: {quality_metrics['min_cluster_size']} - {quality_metrics['max_cluster_size']}")
-    print(f"Average intra-cluster distance: {quality_metrics['avg_intra_cluster_distance']:.1f} km")
+    print(f"clustering results:")
+    print(f"created {quality_metrics['n_clusters']} zones")
+    print(f"average locations per zone: {quality_metrics['avg_cluster_size']:.1f}")
+    print(f"zone size range: {quality_metrics['min_cluster_size']} - {quality_metrics['max_cluster_size']}")
+    print(f"average intra-cluster distance: {quality_metrics['avg_intra_cluster_distance']:.1f} km")
+
+
+# ------------------------------------------------------------------------------
+# end of clustering_utils.py
+# ------------------------------------------------------------------------------

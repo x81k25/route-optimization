@@ -187,3 +187,4 @@ figures/
 
 # custom ignores
 .dev
+.bak

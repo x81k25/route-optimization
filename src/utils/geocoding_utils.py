@@ -15,15 +15,24 @@ Or from project root:
     uv run python src/utils/geocoding_utils.py
 """
 
+# standard library imports
 import json
-import time
-import requests
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
 import logging
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
-# Configure logging
+# 3rd-party imports
+import requests
+
+# ------------------------------------------------------------------------------
+# supporting functions
+# ------------------------------------------------------------------------------
+
+# configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(levelname)s | %(message)s'
@@ -32,7 +41,17 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Location:
-    """Data class for location information"""
+    """
+    Data class for location information.
+    
+    :param id: unique location identifier
+    :param name: location name
+    :param address: street address
+    :param latitude: latitude coordinate
+    :param longitude: longitude coordinate
+    :param zone_id: zone identifier
+    :param class_type: location classification
+    """
     id: int
     name: str
     address: str
@@ -77,7 +96,7 @@ class NominatimGeocoder(GeocodeProvider):
                 result = results[0]
                 lat = float(result['lat'])
                 lon = float(result['lon'])
-                logger.debug(f"Geocoded '{address}' -> {lat:.4f}, {lon:.4f}")
+                logger.debug(f"geocoded '{address}' -> {lat:.4f}, {lon:.4f}")
                 return (lat, lon)
             else:
                 logger.warning(f"No results for address: {address}")
@@ -112,7 +131,7 @@ class GoogleGeocoder(GeocodeProvider):
                 location = data['results'][0]['geometry']['location']
                 lat = float(location['lat'])
                 lon = float(location['lng'])
-                logger.debug(f"Geocoded '{address}' -> {lat:.4f}, {lon:.4f}")
+                logger.debug(f"geocoded '{address}' -> {lat:.4f}, {lon:.4f}")
                 return (lat, lon)
             else:
                 logger.warning(f"Google geocoding failed for '{address}': {data['status']}")
@@ -122,11 +141,18 @@ class GoogleGeocoder(GeocodeProvider):
             logger.error(f"Google geocoding failed for '{address}': {e}")
             return None
 
-def load_locations(file_path: Path) -> List[Location]:
-    """Load locations from JSONL file"""
+def load_locations(
+    file_path: Path
+) -> List[Location]:
+    """
+    Load locations from JSONL file.
+    
+    :param file_path: path to JSONL file
+    :return: list of Location objects
+    """
     locations = []
     
-    logger.info(f"Loading locations from {file_path}")
+    logger.info(f"loading locations from {file_path}")
     
     with open(file_path, 'r', encoding='utf-8') as f:
         for line_num, line in enumerate(f, 1):
@@ -148,20 +174,29 @@ def load_locations(file_path: Path) -> List[Location]:
                 locations.append(location)
                 
             except (json.JSONDecodeError, KeyError, ValueError) as e:
-                logger.error(f"Error parsing line {line_num}: {e}")
+                logger.error(f"error parsing line {line_num}: {e}")
                 continue
     
-    logger.info(f"Loaded {len(locations)} locations")
+    logger.info(f"loaded {len(locations)} locations")
     return locations
 
-def save_locations(locations: List[Location], file_path: Path) -> None:
-    """Save locations to JSONL file"""
-    logger.info(f"Saving {len(locations)} locations to {file_path}")
+def save_locations(
+    locations: List[Location], 
+    file_path: Path
+) -> None:
+    """
+    Save locations to JSONL file.
     
-    # Create backup of original file
+    :param locations: list of Location objects
+    :param file_path: path where to save JSONL file
+    :return: None
+    """
+    logger.info(f"saving {len(locations)} locations to {file_path}")
+    
+    # create backup of original file
     backup_path = file_path.with_suffix('.jsonl.backup')
     if file_path.exists():
-        logger.info(f"Creating backup at {backup_path}")
+        logger.info(f"creating backup at {backup_path}")
         backup_path.write_bytes(file_path.read_bytes())
     
     with open(file_path, 'w', encoding='utf-8') as f:
@@ -177,7 +212,7 @@ def save_locations(locations: List[Location], file_path: Path) -> None:
             }
             f.write(json.dumps(data) + '\n')
     
-    logger.info(f"Successfully saved locations to {file_path}")
+    logger.info(f"successfully saved locations to {file_path}")
 
 def geocode_single_location(location: Location, geocoder: GeocodeProvider, index: int, total: int) -> Tuple[Location, bool]:
     """Geocode a single location and return updated location with success flag"""
@@ -259,30 +294,39 @@ def geocode_locations(locations: List[Location], geocoder: GeocodeProvider, max_
     logger.info(f"Concurrent geocoding completed: {updated_count} updated, {failed_count} failed (set to null)")
     return updated_count
 
+
+# ------------------------------------------------------------------------------
+# main function
+# ------------------------------------------------------------------------------
+
 def main():
-    """Main function to run geocoding process"""
-    # File paths
+    """
+    Main function to run geocoding process.
+    
+    :return: exit code (0 for success, 1 for failure)
+    """
+    # file paths
     project_root = Path(__file__).parent.parent.parent
     data_file = project_root / "data" / "subway_locations.jsonl"
     
     if not data_file.exists():
-        logger.error(f"Data file not found: {data_file}")
+        logger.error(f"data file not found: {data_file}")
         return 1
     
-    # Load locations
+    # load locations
     try:
         locations = load_locations(data_file)
     except Exception as e:
-        logger.error(f"Failed to load locations: {e}")
+        logger.error(f"failed to load locations: {e}")
         return 1
     
     if not locations:
-        logger.error("No locations loaded")
+        logger.error("no locations loaded")
         return 1
     
-    # Initialize geocoder (using Nominatim as free option)
-    logger.info("Using Nominatim geocoder (OpenStreetMap)")
-    logger.info("No rate limiting - concurrent processing with 8 workers")
+    # initialize geocoder (using Nominatim as free option)
+    logger.info("using nominatim geocoder (openstreetmap)")
+    logger.info("no rate limiting - concurrent processing with 8 workers")
     geocoder = NominatimGeocoder()
     
     # For Google Geocoder (if you have an API key):

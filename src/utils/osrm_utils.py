@@ -167,7 +167,7 @@ def generate_fallback_od_matrix(
     # Estimate duration from distance (assume 30 km/h average speed = 8.33 m/s)
     duration_matrix = distance_matrix / 8.33
     
-    logger.info(f"Generated fallback OD matrix for zone {zone_id}")
+    logger.info(f"generated fallback OD matrix for zone {zone_id}")
     
     return ODMatrixResult(
         zone_id=zone_id,
@@ -177,6 +177,78 @@ def generate_fallback_od_matrix(
         osrm_response_code="Fallback",
         api_call_timestamp=api_call_time
     )
+
+
+# ------------------------------------------------------------------------------
+# main function
+# ------------------------------------------------------------------------------
+
+def generate_od_matrix(
+    pos_zone: pl.DataFrame
+) -> pl.DataFrame:
+    """
+    Generate origin-destination matrix for a single zone using OSRM.
+    
+    Args:
+        pos_zone: Polars DataFrame containing location data for a single zone
+                 Expected columns: pos_id, latitude, longitude, name, address, zone_id
+        
+    Returns:
+        Polars DataFrame with OD matrix in long format containing:
+        - zone_id, origin_id, destination_id
+        - distance_meters, duration_seconds, duration_minutes
+        - osrm_response_code, api_call_timestamp
+    """
+    # Validate input
+    if pos_zone.is_empty():
+        logger.warning("Empty DataFrame provided to generate_od_matrix")
+        return pl.DataFrame()
+    
+    # Extract zone_id
+    zone_ids = pos_zone['zone_id'].unique().to_list()
+    if len(zone_ids) != 1:
+        logger.error(f"Expected single zone, got {len(zone_ids)} zones: {zone_ids}")
+        raise ValueError(f"generate_od_matrix requires data from a single zone")
+    zone_id = zone_ids[0]
+    
+    # Filter out rows with null coordinates
+    pos_valid = pos_zone.filter(
+        pl.col('latitude').is_not_null() & 
+        pl.col('longitude').is_not_null()
+    )
+    
+    if pos_valid.is_empty():
+        logger.warning(f"No valid coordinates for zone {zone_id}")
+        return pl.DataFrame()
+    
+    logger.info(f"Generating OD matrix for zone {zone_id} with {len(pos_valid)} valid locations")
+    
+    # Convert to Location objects
+    locations = []
+    for row in pos_valid.iter_rows(named=True):
+        location = Location(
+            location_id=row['pos_id'],
+            latitude=row['latitude'], 
+            longitude=row['longitude'],
+            name=row.get('name'),
+            address=row.get('address')
+        )
+        locations.append(location)
+    
+    # Fetch OD matrix from OSRM
+    try:
+        od_result = fetch_od_matrix(zone_id, locations)
+        
+        # Convert to Polars DataFrame format
+        od_df = od_matrix_to_polars(od_result)
+        
+        logger.success(f"Generated OD matrix for zone {zone_id}: {len(od_df)} pairs")
+        return od_df
+        
+    except Exception as e:
+        logger.error(f"Failed to generate OD matrix for zone {zone_id}: {e}")
+        # Return empty DataFrame on failure
+        return pl.DataFrame()
 
 
 def fetch_od_matrix(
@@ -570,4 +642,9 @@ if __name__ == "__main__":
         logger.info(f"Turn-by-turn steps: {len(route_result.turn_by_turn_instructions)}")
         
     except Exception as e:
-        logger.warning(f"Example failed (expected if OSRM server not running): {e}")
+        logger.warning(f"example failed (expected if OSRM server not running): {e}")
+
+
+# ------------------------------------------------------------------------------
+# end of osrm_utils.py
+# ------------------------------------------------------------------------------

@@ -1,0 +1,257 @@
+{"pos_id":1,"name":"Subway - Acampo","address":"24323 North Highway 99, Acampo, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":2,"name":"Subway - Adelanto","address":"14148 Hwy 395, Adelanto, CA","latitude":34.507376,"longitude":-117.4000095,"zone_id":"zone_011","class":"secondary"}
+{"pos_id":3,"name":"Subway - Agoura Hills","address":"5801 Kanan Road, Agoura Hills, CA","latitude":34.1550942,"longitude":-118.7563696,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":4,"name":"Subway - Alamo","address":"3160 Danville Blvd, Alamo, CA","latitude":37.8513866,"longitude":-122.0328169,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":5,"name":"Subway - Alpine","address":"2963 Alpine Blvd, Alpine, CA","latitude":32.83405,"longitude":-116.749,"zone_id":"zone_012","class":"secondary"}
+{"pos_id":6,"name":"Subway - Altadena","address":"2200 Lincoln Ave, Altadena, CA","latitude":34.1835377,"longitude":-118.1594519,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":7,"name":"Subway - Alturas","address":"100 W 12Th Street, Alturas, CA","latitude":41.494913,"longitude":-120.5428579,"zone_id":"zone_019","class":"primary"}
+{"pos_id":8,"name":"Subway - American Canyon","address":"3417 Broadway, American Canyon, CA","latitude":38.1687599,"longitude":-122.253445,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":9,"name":"Subway - Angels Camp","address":"51 North Main St, Angels Camp, CA","latitude":38.0834491,"longitude":-120.5602845,"zone_id":"zone_021","class":"primary"}
+{"pos_id":10,"name":"Subway - Antelope","address":"4320 Elverta Rd, Antelope, CA","latitude":38.712422,"longitude":-121.3635701,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":11,"name":"Subway - Aptos","address":"7887 Soquel Drive, Aptos, CA","latitude":36.9842675,"longitude":-121.9148618,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":12,"name":"Subway - Arcata","address":"5000 Valley West Blvd, Arcata, CA","latitude":40.902608,"longitude":-124.0816851,"zone_id":"zone_005","class":"primary"}
+{"pos_id":13,"name":"Subway - Arnold","address":"2182 Hwy 4, Arnold, CA","latitude":38.2398279,"longitude":-120.3635597,"zone_id":"zone_021","class":"primary"}
+{"pos_id":14,"name":"Subway - Artesia","address":"11809 A Artesia Blvd, Artesia, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":15,"name":"Subway - Banning","address":"933 W Ramsey Street, Banning, CA","latitude":33.9255142,"longitude":-116.8868917,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":16,"name":"Subway - Bay Point","address":"201 Port Chicago Hwy, Bay Point, CA","latitude":38.0286732,"longitude":-121.960043,"zone_id":"zone_027","class":"primary"}
+{"pos_id":17,"name":"Subway - Bell","address":"7116 Atlantic Avenue, Bell, CA","latitude":33.9712184,"longitude":-118.1877989,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":18,"name":"Subway - Belmont","address":"1073 Alameda De Las Pulgas, Belmont, CA","latitude":37.5110301,"longitude":-122.2930202,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":19,"name":"Subway - Berkeley","address":"2048 Kala Bagai Way, Berkeley, CA","latitude":37.8709074,"longitude":-122.2677266,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":20,"name":"Subway - Bermuda Dunes","address":"40100 Washington St, Bermuda Dunes, CA","latitude":33.7535038,"longitude":-116.3037129,"zone_id":"zone_008","class":"secondary"}
+{"pos_id":21,"name":"Subway - Big Bear Lake","address":"42124 Big Bear Blvd, Big Bear Lake, CA","latitude":34.2473042,"longitude":-116.8838757,"zone_id":"zone_011","class":"secondary"}
+{"pos_id":22,"name":"Subway - Bishop","address":"1341 Rocking W Dr, Bishop, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":23,"name":"Subway - Blythe","address":"650 W Donlon Street, Blythe, CA","latitude":33.6063619,"longitude":-114.6043293,"zone_id":"zone_026","class":"secondary"}
+{"pos_id":24,"name":"Subway - Bonita","address":"4378 Bonita Rd, Bonita, CA","latitude":32.6598956,"longitude":-117.0327466,"zone_id":"zone_012","class":"secondary"}
+{"pos_id":25,"name":"Subway - Bonsall","address":"5523 Mission Rd, Bonsall, CA","latitude":33.2906827,"longitude":-117.225985,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":26,"name":"Subway - Boron","address":"5725 Hwy 58, Boron, CA","latitude":35.0103236,"longitude":-117.6530506,"zone_id":"zone_020","class":"secondary"}
+{"pos_id":27,"name":"Subway - Boyle Heights","address":"2800 E First St, Boyle Heights, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":28,"name":"Subway - Brisbane","address":"150 Old County Rd, Brisbane, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":29,"name":"Subway - Buellton","address":"270 East Highway 246, Buellton, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":30,"name":"Subway - Burney","address":"37449 Main St, Burney, CA","latitude":40.8894782,"longitude":-121.653547,"zone_id":"zone_019","class":"primary"}
+{"pos_id":31,"name":"Subway - Buttonwillow","address":"20673 Tracy Ave, Buttonwillow, CA","latitude":35.40011,"longitude":-119.3978,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":32,"name":"Subway - Calabasas","address":"26500 Agoura Rd, Calabasas, CA","latitude":34.1434757,"longitude":-118.6996233,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":33,"name":"Subway - California City","address":"8116 California City Blvd, California City, CA","latitude":35.1251902,"longitude":-117.983422,"zone_id":"zone_020","class":"primary"}
+{"pos_id":34,"name":"Subway - Calimesa","address":"1168 Calimesa Blvd, Calimesa, CA","latitude":33.9955517,"longitude":-117.0593939,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":35,"name":"Subway - Cameron Park","address":"3490 Palmer Drive, Cameron Park, CA","latitude":38.662374,"longitude":-120.9675766,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":36,"name":"Subway - Camp Pendelton","address":"Building 21 0619, Camp Pendelton, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":37,"name":"Subway - Canyon Country","address":"18725 Via Princessa Pkwy, Canyon Country, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":38,"name":"Subway - Carmel","address":"26135 Carmel Rancho Blvd, Carmel, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":39,"name":"Subway - Carpinteria","address":"1009 Casitas Pass Road, Carpinteria, CA","latitude":34.3957632,"longitude":-119.5139933,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":40,"name":"Subway - Caruthers","address":"2459 W Tahoe, Caruthers, CA","latitude":36.5398521,"longitude":-119.8361582,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":41,"name":"Subway - Castroville","address":"11256 Merritt St, Castroville, CA","latitude":36.7621652,"longitude":-121.7539908,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":42,"name":"Subway - Ceres","address":"1515 Mitchell Road, Ceres, CA","latitude":37.6085834,"longitude":-120.9388453,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":43,"name":"Subway - Cerritos","address":"13311 South St, Cerritos, CA","latitude":33.8599237,"longitude":-118.0480693,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":44,"name":"Subway - Chester","address":"433 Main St, Chester, CA","latitude":40.3024865,"longitude":-121.2346722,"zone_id":"zone_019","class":"primary"}
+{"pos_id":45,"name":"Subway - China Lake","address":"1822 N Richmond Road, China Lake, CA","latitude":35.6537008,"longitude":-117.644486,"zone_id":"zone_020","class":"secondary"}
+{"pos_id":46,"name":"Subway - Cisco Grove","address":"100 Cisco Road, Cisco Grove, CA","latitude":39.3088225,"longitude":-120.5457615,"zone_id":"zone_010","class":"secondary"}
+{"pos_id":47,"name":"Subway - Clayton","address":"1536 Kirker Pass Rd, Clayton, CA","latitude":37.9535772,"longitude":-121.954836,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":48,"name":"Subway - Cloverdale","address":"1117 B S Cloverdale Blvd, Cloverdale, CA","latitude":38.8039796,"longitude":-123.0162465,"zone_id":"zone_015","class":"secondary"}
+{"pos_id":49,"name":"Subway - Coarsegold","address":"35335 Highway 41, Coarsegold, CA","latitude":37.2621736,"longitude":-119.699711,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":50,"name":"Subway - Colfax","address":"350 South Canyon Way, Colfax, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":51,"name":"Subway - Colma","address":"7800 El Camino Real, Colma, CA","latitude":37.6838234,"longitude":-122.4638616,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":52,"name":"Subway - Colusa","address":"1031 Bridge St, Colusa, CA","latitude":39.2041533,"longitude":-122.0042837,"zone_id":"zone_018","class":"primary"}
+{"pos_id":53,"name":"Subway - Corcoran","address":"1108 Whitley Ave, Corcoran, CA","latitude":36.0981212,"longitude":-119.561239,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":54,"name":"Subway - Corning","address":"951 Hwy 99 West, Corning, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":55,"name":"Subway - Corona Del Mar","address":"2937 East Coast Highway, Corona Del Mar, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":56,"name":"Subway - Cotati","address":"8500 Gravenstein Highway, Cotati, CA","latitude":38.3313713,"longitude":-122.7156567,"zone_id":"zone_015","class":"primary"}
+{"pos_id":57,"name":"Subway - Crestline","address":"23991 Lake Drive, Crestline, CA","latitude":34.2432587,"longitude":-117.2805483,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":58,"name":"Subway - Danville","address":"9000 Crow Canyon Rd, Danville, CA","latitude":37.7981586,"longitude":-121.9234993,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":59,"name":"Subway - Desert Hot Springs","address":"14212 Palm Drive, Desert Hot Springs, CA","latitude":33.9453479,"longitude":-116.5004713,"zone_id":"zone_011","class":"secondary"}
+{"pos_id":60,"name":"Subway - Diamond Springs","address":"4181 Highway 49, Diamond Springs, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":61,"name":"Subway - Dinuba","address":"450 West El Monte Way, Dinuba, CA","latitude":36.5456696,"longitude":-119.4003642,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":62,"name":"Subway - 14870 Hwy 4","address":"Bixler Rd, 14870 Hwy 4, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":63,"name":"Subway - Dos Palos","address":"1502 Center Ave, Dos Palos, CA","latitude":36.9858901,"longitude":-120.626713,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":64,"name":"Subway - Earlimart","address":"1164 N Front Street, Earlimart, CA","latitude":35.8879373,"longitude":-119.274612,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":65,"name":"Subway - Eastvale","address":"12515 Riverside Drive, Eastvale, CA","latitude":34.0181357,"longitude":-117.5577505,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":66,"name":"Subway - Escalon","address":"1205 Plaza Avenue, Escalon, CA","latitude":37.7995409,"longitude":-120.9980954,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":67,"name":"Subway - Fair Oaks","address":"5480 Dewey Drive, Fair Oaks, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":68,"name":"Subway - Fallbrook","address":"1105 S Mission Rd, Fallbrook, CA","latitude":33.3723753,"longitude":-117.2532013,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":69,"name":"Subway - Farmersville","address":"438 W Noble Ave, Farmersville, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":70,"name":"Subway - Fillmore","address":"612 West Ventura St, Fillmore, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":71,"name":"Subway - Fort Bragg","address":"141 Boatyard Dr, Fort Bragg, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":72,"name":"Subway - Fort Hunter Liggett","address":"238 California Avenue, Fort Hunter Liggett, CA","latitude":36.0042662,"longitude":-121.2296488,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":73,"name":"Subway - Fort Irwin","address":"82 Goldstone Road, Fort Irwin, CA","latitude":35.2616362,"longitude":-116.6901401,"zone_id":"zone_011","class":"secondary"}
+{"pos_id":74,"name":"Subway - Fortuna","address":"741 S Fortuna Blvd, Fortuna, CA","latitude":40.5833107,"longitude":-124.1462937,"zone_id":"zone_005","class":"secondary"}
+{"pos_id":75,"name":"Subway - Fowler","address":"124 N Sumner Ave, Fowler, CA","latitude":36.6264606,"longitude":-119.685399,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":76,"name":"Subway - Freedom","address":"1964 Freedom Blvd, Freedom, CA","latitude":36.9377938,"longitude":-121.7762493,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":77,"name":"Subway - Friant","address":"17120 North Friant Road, Friant, CA","latitude":36.9834352,"longitude":-119.7156658,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":78,"name":"Subway - Galt","address":"1067 C St, Galt, CA","latitude":38.2538248,"longitude":-121.2952032,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":79,"name":"Subway - Gonzales","address":"851 Z Fifth Street, Gonzales, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":80,"name":"Subway - Granada Hills","address":"11878 Balboa Blvd, Granada Hills, CA","latitude":34.2776949,"longitude":-118.502159,"zone_id":"zone_000","class":"primary"}
+{"pos_id":81,"name":"Subway - Grand Terrace","address":"12081 Mt Vernon Ave, Grand Terrace, CA","latitude":34.0341817,"longitude":-117.31284,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":82,"name":"Subway - Greenbrae","address":"332 Bon Air Center, Greenbrae, CA","latitude":37.946102,"longitude":-122.5239501,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":83,"name":"Subway - Greenfield","address":"100 S El Camino Real, Greenfield, CA","latitude":36.3278945,"longitude":-121.2422947,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":84,"name":"Subway - Gridley","address":"1487 Hwy 99, Gridley, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":85,"name":"Subway - Guadalupe","address":"253 Guadalupe Street, Guadalupe, CA","latitude":34.9603255,"longitude":-120.573984,"zone_id":"zone_009","class":"primary"}
+{"pos_id":86,"name":"Subway - 2110 1","address":"2 S Hacienda Heights Blvd, 2110 1, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":87,"name":"Subway - Half Moon Bay","address":"Subway, Half Moon Bay, CA","latitude":37.4700543,"longitude":-122.4350407,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":88,"name":"Subway - Hamilton City","address":"601 6Th St, Hamilton City, CA","latitude":39.7453948,"longitude":-122.0148086,"zone_id":"zone_018","class":"secondary"}
+{"pos_id":89,"name":"Subway - Hawaiian Gardens","address":"12129 E Carson Street, Hawaiian Gardens, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":90,"name":"Subway - Healdsburg","address":"1101 Vine Street, Healdsburg, CA","latitude":38.6105241,"longitude":-122.8727578,"zone_id":"zone_015","class":"secondary"}
+{"pos_id":91,"name":"Subway - Hercules","address":"1572 Sycamore Ave, Hercules, CA","latitude":38.0088229,"longitude":-122.2702687,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":92,"name":"Subway - Highland Park","address":"5526 York Blvd, Highland Park, CA","latitude":34.1194322,"longitude":-118.19736,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":93,"name":"Subway - Hilmar","address":"7940 N Lander Ave, Hilmar, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":94,"name":"Subway - Hollywood","address":"6051 Hollywood Blvd, Hollywood, CA","latitude":34.1021488,"longitude":-118.3221825,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":95,"name":"Subway - Hughson","address":"6724 Whitmore Avenue, Hughson, CA","latitude":37.594696,"longitude":-120.8695354,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":96,"name":"Subway - Imperial","address":"218 N Imperial Avenue, Imperial, CA","latitude":32.7941674,"longitude":-115.5700871,"zone_id":"zone_008","class":"secondary"}
+{"pos_id":97,"name":"Subway - Imperial Beach","address":"876 Seacoast Dr, Imperial Beach, CA","latitude":32.5803951,"longitude":-117.1319363,"zone_id":"zone_012","class":"secondary"}
+{"pos_id":98,"name":"Subway - Ione","address":"321 Preston Avenue, Ione, CA","latitude":38.3529668,"longitude":-120.9363075,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":99,"name":"Subway - Jacumba","address":"1494 Carrizo Gorge Rd, Jacumba, CA","latitude":32.6352764,"longitude":-116.1668237,"zone_id":"zone_008","class":"secondary"}
+{"pos_id":100,"name":"Subway - Jamestown","address":"18141 Highway 108, Jamestown, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":101,"name":"Subway - Jamul","address":"13881 Campo Rd, Jamul, CA","latitude":32.7171776,"longitude":-116.8777114,"zone_id":"zone_012","class":"secondary"}
+{"pos_id":102,"name":"Subway - Joshua Tree","address":"61794 29 Palms Hwy, Joshua Tree, CA","latitude":34.1355678,"longitude":-116.3154714,"zone_id":"zone_011","class":"secondary"}
+{"pos_id":103,"name":"Subway - Jurupa Valley","address":"6253 Pat'S Ranch Rd, Jurupa Valley, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":104,"name":"Subway - Kerman","address":"15051 W Whitesbridge, Kerman, CA","latitude":36.7348427,"longitude":-120.0608706,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":105,"name":"Subway - Kettleman City","address":"33300 Bernard Dr, Kettleman City, CA","latitude":35.9884782,"longitude":-119.9602793,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":106,"name":"Subway - King City","address":"560 Canal St, King City, CA","latitude":36.2037696,"longitude":-121.1299055,"zone_id":"zone_016","class":"primary"}
+{"pos_id":107,"name":"Subway - Kings Beach","address":"8700 North Lake Blvd, Kings Beach, CA","latitude":39.2348957,"longitude":-120.0196718,"zone_id":"zone_010","class":"secondary"}
+{"pos_id":108,"name":"Subway - Kingsburg","address":"986 Sierra Street, Kingsburg, CA","latitude":36.5179272,"longitude":-119.5608194,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":109,"name":"Subway - La Canada","address":"518 Foothill Blvd, La Canada, CA","latitude":34.1995811,"longitude":-118.1898865,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":110,"name":"Subway - La Crescenta","address":"3446 Foothill Blvd, La Crescenta, CA","latitude":34.2219021,"longitude":-118.2363393,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":111,"name":"Subway - La Mirada","address":"15076 Rosecrans Avenue, La Mirada, CA","latitude":33.8974532,"longitude":-118.0088156,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":112,"name":"Subway - La Palma","address":"5462 La Palma Avenue, La Palma, CA","latitude":33.8461687,"longitude":-118.0424905,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":113,"name":"Subway - La Verne","address":"2145 Foothill Blvd, La Verne, CA","latitude":34.1134429,"longitude":-117.764077,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":114,"name":"Subway - Lafayette","address":"3322 Mt Diablo Blvd, Lafayette, CA","latitude":37.895749,"longitude":-122.1040894,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":115,"name":"Subway - Laguna Woods","address":"24338 El Toro Road, Laguna Woods, CA","latitude":33.608299,"longitude":-117.7317033,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":116,"name":"Subway - Lake Isabella","address":"6321 Lake Isabella Blvd, Lake Isabella, CA","latitude":35.6282533,"longitude":-118.4737546,"zone_id":"zone_020","class":"secondary"}
+{"pos_id":117,"name":"Subway - Lakehead","address":"20884 Antler Rd, Lakehead, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":118,"name":"Subway - Lakeport","address":"979 11Th St, Lakeport, CA","latitude":39.0481486,"longitude":-122.9242252,"zone_id":"zone_015","class":"secondary"}
+{"pos_id":119,"name":"Subway - Lakeside","address":"9562 Winter Gardens Blvd, Lakeside, CA","latitude":32.8519314,"longitude":-116.9324064,"zone_id":"zone_012","class":"secondary"}
+{"pos_id":120,"name":"Subway - Lamont","address":"10318 Main Street, Lamont, CA","latitude":35.2542436,"longitude":-118.9145031,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":121,"name":"Subway - Lathrop","address":"15328 S Harlan Road, Lathrop, CA","latitude":37.8241877,"longitude":-121.289756,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":122,"name":"Subway - Lawndale","address":"15209 Hawthorne Blvd, Lawndale, CA","latitude":33.8930692,"longitude":-118.353071,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":123,"name":"Subway - Lebec","address":"161 Frazier Mountain Park Blvd, Lebec, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":124,"name":"Subway - Linda","address":"1608 N Beale Rd, Linda, CA","latitude":39.1276327,"longitude":-121.5580561,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":125,"name":"Subway - Lindsay","address":"246 Hwy 65, Lindsay, CA","latitude":36.2106871,"longitude":-119.1125664,"zone_id":"zone_007","class":"primary"}
+{"pos_id":126,"name":"Subway - Live Oak","address":"10404 Live Oak Boulevard, Live Oak, CA","latitude":39.2826793,"longitude":-121.6616428,"zone_id":"zone_018","class":"secondary"}
+{"pos_id":127,"name":"Subway - Livingston","address":"483 Joseph Gallo Court, Livingston, CA","latitude":37.3881389,"longitude":-120.7349388,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":128,"name":"Subway - Lockeford","address":"14035 Highway 88, Lockeford, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":129,"name":"Subway - Lomita","address":"1941 Pacific Coast Hwy, Lomita, CA","latitude":33.7901755,"longitude":-118.3136167,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":130,"name":"Subway - Lone Pine","address":"101 North Main Street, Lone Pine, CA","latitude":36.6056926,"longitude":-118.063577,"zone_id":"zone_020","class":"secondary"}
+{"pos_id":131,"name":"Subway - Loomis","address":"6099 Horseshoe Bar Rd, Loomis, CA","latitude":38.8177072,"longitude":-121.1899066,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":132,"name":"Subway - Los Alamos","address":"615 Bell St, Los Alamos, CA","latitude":34.7439169,"longitude":-120.2755464,"zone_id":"zone_009","class":"secondary"}
+{"pos_id":133,"name":"Subway - Los Osos","address":"1195 Los Osos Valley Rd, Los Osos, CA","latitude":35.3102978,"longitude":-120.8287987,"zone_id":"zone_009","class":"secondary"}
+{"pos_id":134,"name":"Subway - Lost Hills","address":"21959 Highway 46, Lost Hills, CA","latitude":35.6161529,"longitude":-119.6916017,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":135,"name":"Subway - Malibu","address":"23705 W Malibu Rd, Malibu, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":136,"name":"Subway - Mammoth Lakes","address":"26 Old Mammoth Road, Mammoth Lakes, CA","latitude":37.6462689,"longitude":-118.9674377,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":137,"name":"Subway - Manhattan Beach","address":"1145 W Artesia Blvd, Manhattan Beach, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":138,"name":"Subway - Marin City","address":"160 Donahue Street, Marin City, CA","latitude":37.87307,"longitude":-122.5112899,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":139,"name":"Subway - Marina","address":"266 Reservation Rd, Marina, CA","latitude":36.6846739,"longitude":-121.7949761,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":140,"name":"Subway - Mariposa","address":"4998 7Th Street, Mariposa, CA","latitude":37.4857971,"longitude":-119.9659457,"zone_id":"zone_021","class":"primary"}
+{"pos_id":141,"name":"Subway - Maywood","address":"4455 E Slauson Ave, Maywood, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":142,"name":"Subway - Mcfarland","address":"102 W Sherwood Ave, Mcfarland, CA","latitude":35.6747168,"longitude":-119.2283807,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":143,"name":"Subway - Mckinleyville","address":"1565 City Center Rd, Mckinleyville, CA","latitude":40.9438711,"longitude":-124.1014516,"zone_id":"zone_005","class":"primary"}
+{"pos_id":144,"name":"Subway - Mecca","address":"90480 66Th Ave, Mecca, CA","latitude":33.5698783,"longitude":-116.0900968,"zone_id":"zone_008","class":"secondary"}
+{"pos_id":145,"name":"Subway - Mendota","address":"747 Derrick Ave, Mendota, CA","latitude":36.7485451,"longitude":-120.3867336,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":146,"name":"Subway - Menifee","address":"30123 Antelope Rd, Menifee, CA","latitude":33.6844696,"longitude":-117.1684741,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":147,"name":"Subway - Millbrae","address":"979 Broadway Ave, Millbrae, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":148,"name":"Subway - Mojave","address":"16048 Sierra Highway, Mojave, CA","latitude":35.0546211,"longitude":-118.173845,"zone_id":"zone_020","class":"secondary"}
+{"pos_id":149,"name":"Subway - Montclair","address":"4545 Mission Blvd, Montclair, CA","latitude":34.0552966,"longitude":-117.7058546,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":150,"name":"Subway - Montrose","address":"2035 N Verdugo Blvd, Montrose, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":151,"name":"Subway - Moraga","address":"396 Park Street, Moraga, CA","latitude":37.8600297,"longitude":-122.1253236,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":152,"name":"Subway - Morro Bay","address":"660 Quintana Rd, Morro Bay, CA","latitude":35.368678,"longitude":-120.8447302,"zone_id":"zone_009","class":"secondary"}
+{"pos_id":153,"name":"Subway - Mount Shasta","address":"150 Morgan Way, Mount Shasta, CA","latitude":41.3101651,"longitude":-122.3168266,"zone_id":"zone_024","class":"primary"}
+{"pos_id":154,"name":"Subway - Needles","address":"2451 Needles Hwy, Needles, CA","latitude":34.85083,"longitude":-114.62433,"zone_id":"zone_026","class":"secondary"}
+{"pos_id":155,"name":"Subway - Newberry Springs","address":"44230 National Trails Hwy, Newberry Springs, CA","latitude":34.8288114,"longitude":-116.692539,"zone_id":"zone_011","class":"secondary"}
+{"pos_id":156,"name":"Subway - Newbury Park","address":"1025 Broadbeck Dr, Newbury Park, CA","latitude":34.1923707,"longitude":-118.9371231,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":157,"name":"Subway - Newman","address":"1459 N St, Newman, CA","latitude":37.3137956,"longitude":-121.0209544,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":158,"name":"Subway - Nipomo","address":"536 West Tefft Street, Nipomo, CA","latitude":35.0364305,"longitude":-120.4856885,"zone_id":"zone_009","class":"secondary"}
+{"pos_id":159,"name":"Subway - Norco","address":"2748 Hamner Avenue, Norco, CA","latitude":33.9221137,"longitude":-117.5603815,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":160,"name":"Subway - North Tustin","address":"1506 E Lincoln Ave, North Tustin, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":161,"name":"Subway - Oak Hills","address":"13330 Ranchero Road, Oak Hills, CA","latitude":34.383064,"longitude":-117.4038461,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":162,"name":"Subway - Oak Park","address":"702 Lindero Canyon Rd, Oak Park, CA","latitude":34.19225,"longitude":-118.7811391,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":163,"name":"Subway - Oakhurst","address":"40278 Stagecoach Rd, Oakhurst, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":164,"name":"Subway - Ojai","address":"11420 Ventura Ave, Ojai, CA","latitude":34.4227441,"longitude":-119.2890033,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":165,"name":"Subway - Olancha","address":"395 And Gill Station Coso Road, Olancha, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":166,"name":"Subway - Olivehurst","address":"1957 Mcgowan Pkwy, Olivehurst, CA","latitude":39.0774614,"longitude":-121.5444228,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":167,"name":"Subway - Orange Cove","address":"523 Park Blvd, Orange Cove, CA","latitude":36.6244156,"longitude":-119.3114106,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":168,"name":"Subway - Orangevale","address":"8855 Greenback Lane, Orangevale, CA","latitude":38.6785426,"longitude":-121.2277405,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":169,"name":"Subway - Orinda","address":"2 Theatre Square, Orinda, CA","latitude":37.8785298,"longitude":-122.18233,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":170,"name":"Subway - Orland","address":"839 Newville Road, Orland, CA","latitude":39.748487,"longitude":-122.2007294,"zone_id":"zone_018","class":"primary"}
+{"pos_id":171,"name":"Subway - Orosi","address":"41529 Road 128, Orosi, CA","latitude":36.543291,"longitude":-119.2869758,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":172,"name":"Subway - Pacheco","address":"5850 Pacheco Blvd, Pacheco, CA","latitude":37.982973,"longitude":-122.0681218,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":173,"name":"Subway - Pacific Grove","address":"190 Country Club Gate, Pacific Grove, CA","latitude":36.6080904,"longitude":-121.9258009,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":174,"name":"Subway - Pacific Palisades","address":"17334 Sunset Blvd, Pacific Palisades, CA","latitude":34.0404549,"longitude":-118.5533565,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":175,"name":"Subway - Pacifica","address":"330 Palmetto Ave, Pacifica, CA","latitude":37.6516769,"longitude":-122.4910127,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":176,"name":"Subway - Paradise","address":"6616 Clark Rd, Paradise, CA","latitude":39.7765108,"longitude":-121.5915878,"zone_id":"zone_018","class":"primary"}
+{"pos_id":177,"name":"Subway - Parlier","address":"885 E Manning Ave, Parlier, CA","latitude":36.6047049,"longitude":-119.5235433,"zone_id":"zone_003","class":"primary"}
+{"pos_id":178,"name":"Subway - Pearsonville","address":"102 North Pearson Road, Pearsonville, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":179,"name":"Subway - Penn Valley","address":"10128 Commercial Avenue, Penn Valley, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":180,"name":"Subway - Penryn","address":"3141 Penryn Road, Penryn, CA","latitude":38.8484792,"longitude":-121.1676892,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":181,"name":"Subway - Pinole","address":"2768 Pinole Valley Rd, Pinole, CA","latitude":37.9946557,"longitude":-122.2864553,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":182,"name":"Subway - Pismo Beach","address":"575 Five Cities Drive, Pismo Beach, CA","latitude":35.1361979,"longitude":-120.6247285,"zone_id":"zone_009","class":"primary"}
+{"pos_id":183,"name":"Subway - Playa Del Rey","address":"8133 West Manchester Avenue, Playa Del Rey, CA","latitude":33.9586803,"longitude":-118.4386611,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":184,"name":"Subway - Point Mugu Nawc","address":"Navy Exchange Building 16, Point Mugu Nawc, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":185,"name":"Subway - Pollock Pines","address":"6529 Pony Express Trail, Pollock Pines, CA","latitude":38.7636018,"longitude":-120.5755193,"zone_id":"zone_010","class":"secondary"}
+{"pos_id":186,"name":"Subway - Portola","address":"24 W Sierra Ave, Portola, CA","latitude":39.8127543,"longitude":-120.462698,"zone_id":"zone_010","class":"secondary"}
+{"pos_id":187,"name":"Subway - Prather","address":"29424 Auberry Rd, Prather, CA","latitude":37.0373471,"longitude":-119.5173856,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":188,"name":"Subway - Prunedale","address":"8051 San Miguel Canyon Rd, Prunedale, CA","latitude":36.8013917,"longitude":-121.6647354,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":189,"name":"Subway - Quartz Hill","address":"5037 W Ave N, Quartz Hill, CA","latitude":34.6317454,"longitude":-118.2202767,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":190,"name":"Subway - Quincy","address":"23 Crescent Street Highway 70, Quincy, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":191,"name":"Subway - Ramona","address":"649 Main Street, Ramona, CA","latitude":33.045186,"longitude":-116.863639,"zone_id":"zone_012","class":"primary"}
+{"pos_id":192,"name":"Subway - Rancho Murieta","address":"7225 Murieta Drive, Rancho Murieta, CA","latitude":38.4959199,"longitude":-121.0988634,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":193,"name":"Subway - Rancho Palos Verdes","address":"31204 Palos Verdes Dr, Rancho Palos Verdes, CA","latitude":33.7346914,"longitude":-118.3533608,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":194,"name":"Subway - Rancho Santa Margarita","address":"30486 Avenida De Las Banderas, Rancho Santa Margarita, CA","latitude":33.6366456,"longitude":-117.5993532,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":195,"name":"Subway - Rio Linda","address":"440 Elkhorn Blvd, Rio Linda, CA","latitude":38.6834914,"longitude":-121.4547965,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":196,"name":"Subway - Rio Vista","address":"660 State Highway 12, Rio Vista, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":197,"name":"Subway - Riverdale","address":"3428 W Mt Whitney Ave, Riverdale, CA","latitude":36.4308767,"longitude":-119.85992,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":198,"name":"Subway - Rodeo","address":"685 Parker Ave, Rodeo, CA","latitude":38.0285388,"longitude":-122.2660058,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":199,"name":"Subway - Rolling Hills Estates","address":"16 Peninsula Center, Rolling Hills Estates, CA","latitude":33.7745314,"longitude":-118.3763054,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":200,"name":"Subway - Rosamond","address":"2559 Rosamond Blvd, Rosamond, CA","latitude":34.8654348,"longitude":-118.1772636,"zone_id":"zone_020","class":"secondary"}
+{"pos_id":201,"name":"Subway - Salida","address":"4925 Sisk Rd, Salida, CA","latitude":37.7086149,"longitude":-121.0776571,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":202,"name":"Subway - Salton City","address":"2084 S Marina Drive, Salton City, CA","latitude":33.2788883,"longitude":-115.965705,"zone_id":"zone_008","class":"secondary"}
+{"pos_id":203,"name":"Subway - San Andreas","address":"314 E Saint Charles St, San Andreas, CA","latitude":38.1924435,"longitude":-120.6766661,"zone_id":"zone_021","class":"secondary"}
+{"pos_id":204,"name":"Subway - San Anselmo","address":"844 Sir Francis Drake Blvd, San Anselmo, CA","latitude":37.9810083,"longitude":-122.5644187,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":205,"name":"Subway - San Bruno","address":"1310 El Camino Real, San Bruno, CA","latitude":37.6392707,"longitude":-122.4225561,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":206,"name":"Subway - San Carlos","address":"744 El Camino Real, San Carlos, CA","latitude":37.4954295,"longitude":-122.2463211,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":207,"name":"Subway - San Gabriel","address":"120 N San Gabriel Blvd, San Gabriel, CA","latitude":34.1144487,"longitude":-118.0911844,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":208,"name":"Subway - Santa Nella","address":"29060 W Plaza Dr, Santa Nella, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":209,"name":"Subway - Santa Paula","address":"550 D W Main St, Santa Paula, CA","latitude":34.346005,"longitude":-119.0827002,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":210,"name":"Subway - Saugus","address":"27637 Bouquet Canyon Rd, Saugus, CA","latitude":34.4440519,"longitude":-118.5113938,"zone_id":"zone_000","class":"secondary"}
+{"pos_id":211,"name":"Subway - Scotts Valley","address":"231 Mt Hermon Rd, Scotts Valley, CA","latitude":37.0451426,"longitude":-122.0282727,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":212,"name":"Subway - Seaside","address":"1534 Fremont Blvd, Seaside, CA","latitude":36.6081107,"longitude":-121.845999,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":213,"name":"Subway - Sebastopol","address":"780 Gravenstein Highway North, Sebastopol, CA","latitude":38.4079867,"longitude":-122.8392256,"zone_id":"zone_015","class":"secondary"}
+{"pos_id":214,"name":"Subway - Shingle Springs","address":"4017 Mother Lode Drive, Shingle Springs, CA","latitude":38.661782,"longitude":-120.9367191,"zone_id":"zone_004","class":"secondary"}
+{"pos_id":215,"name":"Subway - Solana Beach","address":"124 Lomas Santa Fe Dr, Solana Beach, CA","latitude":32.9927643,"longitude":-117.2700384,"zone_id":"zone_012","class":"secondary"}
+{"pos_id":216,"name":"Subway - Soledad","address":"3016 H Dela Rosa St, Soledad, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":217,"name":"Subway - Solvang","address":"1641 Mission Dr, Solvang, CA","latitude":34.5961898,"longitude":-120.140255,"zone_id":"zone_009","class":"primary"}
+{"pos_id":218,"name":"Subway - Soquel","address":"2740 41St Avenue, Soquel, CA","latitude":36.9868902,"longitude":-121.9645238,"zone_id":"zone_016","class":"secondary"}
+{"pos_id":219,"name":"Subway - South El Monte","address":"11335 Thienes Avenue, South El Monte, CA","latitude":34.0425882,"longitude":-118.0318512,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":220,"name":"Subway - South Pasadena","address":"711 S Fair Oaks, South Pasadena, CA","latitude":34.0999799,"longitude":-118.1503213,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":221,"name":"Subway - Stanford","address":"459 Lagunita Drive, Stanford, CA","latitude":37.4241855,"longitude":-122.1708331,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":222,"name":"Subway - Sun City","address":"26926 Cherry Hills Blvd, Sun City, CA","latitude":33.7104347,"longitude":-117.1928791,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":223,"name":"Subway - Sunland","address":"8343 Foothill Blvd, Sunland, CA","latitude":34.2601694,"longitude":-118.31505,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":224,"name":"Subway - Taft","address":"1060 W Kern Street, Taft, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":225,"name":"Subway - Tahoe City","address":"950 N Lake Blvd, Tahoe City, CA","latitude":39.1740584,"longitude":-120.1366247,"zone_id":"zone_010","class":"secondary"}
+{"pos_id":226,"name":"Subway - Tarzana","address":"5579 Reseda Blvd, Tarzana, CA","latitude":34.1718001,"longitude":-118.5360993,"zone_id":"zone_000","class":"primary"}
+{"pos_id":227,"name":"Subway - Temple City","address":"9441 Las Tunas Drive, Temple City, CA","latitude":34.106145,"longitude":-118.065324,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":228,"name":"Subway - Thornton","address":"9015 W Walnut Grove Rd, Thornton, CA","latitude":38.2268068,"longitude":-121.4285719,"zone_id":"zone_004","class":"primary"}
+{"pos_id":229,"name":"Subway - Tipton","address":"683 N Thompson Road, Tipton, CA","latitude":36.0650526,"longitude":-119.312848,"zone_id":"zone_007","class":"secondary"}
+{"pos_id":230,"name":"Subway - Trabuco Canyon","address":"21612 Plano Trabuco Rd, Trabuco Canyon, CA","latitude":33.6484933,"longitude":-117.5762785,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":231,"name":"Subway - Travis Afb","address":"461 Skymaster Circle Bld 648, Travis Afb, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":232,"name":"Subway - Truckee","address":"11375A Deerfield Drive, Truckee, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":233,"name":"Subway - Turlock Ca","address":"2343 W Main Street, Turlock Ca, CA","latitude":37.4939874,"longitude":-120.8754886,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":234,"name":"Subway - Twin Peaks","address":"26745 Hwy 189 B, Twin Peaks, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":235,"name":"Subway - Union City","address":"34367 Alvarado Niles Rd, Union City, CA","latitude":37.5871495,"longitude":-122.0229169,"zone_id":"zone_023","class":"secondary"}
+{"pos_id":236,"name":"Subway - Valley Springs","address":"200 Hwy 12, Valley Springs, CA","latitude":38.1918724,"longitude":-120.8262002,"zone_id":"zone_021","class":"secondary"}
+{"pos_id":237,"name":"Subway - Vandenberg Afb","address":"Building 10400 Community Loop, Vandenberg Afb, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":238,"name":"Subway - Villa Park","address":"17833 Santiago Blvd, Villa Park, CA","latitude":33.8154134,"longitude":-117.8211057,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":239,"name":"Subway - Walnut","address":"1219 N Grand Ave, Walnut, CA","latitude":34.0447143,"longitude":-117.8485808,"zone_id":"zone_028","class":"secondary"}
+{"pos_id":240,"name":"Subway - Wasco","address":"2649 Highway 46, Wasco, CA","latitude":35.6014578,"longitude":-119.3569058,"zone_id":"zone_007","class":"primary"}
+{"pos_id":241,"name":"Subway - Waterford","address":"12173 Yosemite Blvd, Waterford, CA","latitude":37.6382986,"longitude":-120.7688624,"zone_id":"zone_006","class":"secondary"}
+{"pos_id":242,"name":"Subway - Weaverville","address":"1615 Main Street, Weaverville, CA","latitude":40.728887,"longitude":-122.9384485,"zone_id":"zone_005","class":"secondary"}
+{"pos_id":243,"name":"Subway - West Hollywood","address":"8859 Sunset Blvd, West Hollywood, CA","latitude":34.0908071,"longitude":-118.384883,"zone_id":"zone_022","class":"secondary"}
+{"pos_id":244,"name":"Subway - Westley","address":"7154 Mccracken Rd, Westley, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":245,"name":"Subway - Westmorland","address":"551 West Main Street, Westmorland, CA","latitude":33.0373459,"longitude":-115.6255594,"zone_id":"zone_008","class":"secondary"}
+{"pos_id":246,"name":"Subway - Wheatland","address":"1912 Hwy 65, Wheatland, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":247,"name":"Subway - Wildomar","address":"33950 Angels Lane, Wildomar, CA","latitude":33.6273144,"longitude":-117.2767933,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":248,"name":"Subway - Williams","address":"295 East St, Williams, CA","latitude":null,"longitude":null,"zone_id":null,"class":"secondary"}
+{"pos_id":249,"name":"Subway - Willits","address":"1704 S Main St, Willits, CA","latitude":39.3913852,"longitude":-123.347748,"zone_id":"zone_015","class":"secondary"}
+{"pos_id":250,"name":"Subway - Willow Creek","address":"39123 Hwy 299, Willow Creek, CA","latitude":40.939058,"longitude":-123.6289712,"zone_id":"zone_005","class":"primary"}
+{"pos_id":251,"name":"Subway - Willows","address":"505 N Humboldt, Willows, CA","latitude":39.5263184,"longitude":-122.2125399,"zone_id":"zone_018","class":"secondary"}
+{"pos_id":252,"name":"Subway - Winchester","address":"30628 Benton Rd, Winchester, CA","latitude":33.5924859,"longitude":-117.123663,"zone_id":"zone_025","class":"secondary"}
+{"pos_id":253,"name":"Subway - Winters","address":"180 E Grant Ave, Winters, CA","latitude":38.52655,"longitude":-121.9663685,"zone_id":"zone_027","class":"secondary"}
+{"pos_id":254,"name":"Subway - Wofford Heights","address":"6618 Wofford Blvd, Wofford Heights, CA","latitude":35.7084064,"longitude":-118.4511409,"zone_id":"zone_020","class":"secondary"}
+{"pos_id":255,"name":"Subway - Woodlake","address":"159 E Antelope Avenue, Woodlake, CA","latitude":36.4154913,"longitude":-119.0980538,"zone_id":"zone_003","class":"secondary"}
+{"pos_id":256,"name":"Subway - Yermo","address":"35858 Ghost Town Rd, Yermo, CA","latitude":34.90404,"longitude":-116.8873022,"zone_id":"zone_011","class":"secondary"}
+{"pos_id":257,"name":"Subway - Yreka","address":"113 E Miner Street, Yreka, CA","latitude":41.7310241,"longitude":-122.6350551,"zone_id":"zone_024","class":"primary"}
