@@ -188,3 +188,6 @@ figures/
 # custom ignores
 .dev
 .bak
+*.html
+CLAUDE.md
+.claude

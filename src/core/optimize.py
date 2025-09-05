@@ -397,7 +397,8 @@ def _cluster_locations_kmeans(
 
 def gen_secondary_routes(
     itinerary: pl.DataFrame,
-    od_matrix: pl.DataFrame
+    od_matrix: pl.DataFrame,
+    centroid: tuple = None
 ) -> pl.DataFrame:
     """
     Generate optimized routes for days with secondary locations using TSP algorithms.
@@ -405,6 +406,7 @@ def gen_secondary_routes(
     Args:
         itinerary: DataFrame with zone_id, day, pos_id, pos_locations, pos_duration columns
         od_matrix: DataFrame with OD matrix data (origin_id, destination_id, duration_minutes, etc.)
+        centroid: Tuple of (longitude, latitude) for zone centroid starting point
         
     Returns:
         Updated itinerary DataFrame with optimized route order for secondary location days
@@ -421,7 +423,7 @@ def gen_secondary_routes(
     
     updated_itinerary = itinerary.clone()
     
-    # Process each day that has multiple locations
+    # Process each day that has locations
     for day_row in itinerary.iter_rows(named=True):
         day = day_row['day']
         pos_ids = day_row['pos_id']
@@ -429,31 +431,63 @@ def gen_secondary_routes(
         pos_durations = day_row['pos_duration']
         pos_classes = day_row['pos_class']
         
-        # Skip days with 0 or 1 locations (no routing needed)
-        if len(pos_ids) <= 1:
+        # Skip days with 0 locations (no routing needed)
+        if len(pos_ids) == 0:
             continue
             
-        logger.info(f"Optimizing route for day {day} with {len(pos_ids)} locations")
+        # Prepare locations for routing with centroid as starting point
+        route_pos_ids = pos_ids.copy()
+        route_locations = pos_locations.copy()
+        route_durations = pos_durations.copy()
+        route_classes = pos_classes.copy()
         
-        # Optimize route using appropriate algorithm
+        # Add centroid as starting point if provided and day has secondary locations
+        centroid_pos_id = None
+        if centroid is not None and len(pos_ids) > 0:
+            # Use negative ID for centroid to avoid conflicts with actual pos_ids
+            centroid_pos_id = -1
+            route_pos_ids.insert(0, centroid_pos_id)
+            route_locations.insert(0, [centroid[0], centroid[1]])  # [lon, lat]
+            route_durations.insert(0, 0)  # 0 duration at centroid
+            route_classes.insert(0, 'centroid')
+            
+        logger.info(f"Optimizing route for day {day} with {len(route_pos_ids)} locations (including centroid)")
+        
+        # Skip optimization if only centroid (no secondary locations)
+        if len(route_pos_ids) <= 1:
+            continue
+            
+        # Optimize route using appropriate algorithm with centroid as fixed start
         optimized_route, total_drive_time, metadata = _optimize_daily_route(
-            location_ids=pos_ids,
-            drive_time_lookup=drive_time_lookup
+            location_ids=route_pos_ids,
+            drive_time_lookup=drive_time_lookup,
+            start_location_id=centroid_pos_id
         )
         
         logger.info(f"Day {day}: {metadata['algorithm']}, {total_drive_time:.1f} min drive time")
         
-        # Reorder pos_locations, pos_durations, and pos_classes to match optimized route
+        # Reorder locations, durations, and classes to match optimized route
         optimized_locations = []
         optimized_durations = []
         optimized_classes = []
         
+        # Keep optimized route including centroid as first point
+        final_pos_ids = []
+        
         for optimized_id in optimized_route:
-            # Find the index of this ID in original order
-            original_idx = pos_ids.index(optimized_id)
-            optimized_locations.append(pos_locations[original_idx])
-            optimized_durations.append(pos_durations[original_idx])
-            optimized_classes.append(pos_classes[original_idx])
+            if optimized_id == centroid_pos_id:
+                # Keep centroid as first point in final output
+                final_pos_ids.append(optimized_id)
+                optimized_locations.append([centroid[0], centroid[1]])
+                optimized_durations.append(0)  # 0 duration at centroid
+                optimized_classes.append('centroid')
+            else:
+                # Find the index of this ID in original order (before centroid was added)
+                original_idx = pos_ids.index(optimized_id)
+                final_pos_ids.append(optimized_id)
+                optimized_locations.append(pos_locations[original_idx])
+                optimized_durations.append(pos_durations[original_idx])
+                optimized_classes.append(pos_classes[original_idx])
         
         # Update the itinerary for this day using direct row updates
         for i, row in enumerate(updated_itinerary.rows()):
@@ -462,7 +496,7 @@ def gen_secondary_routes(
                 new_row = {
                     'zone_id': row[0],
                     'day': row[1],
-                    'pos_id': optimized_route,
+                    'pos_id': final_pos_ids,
                     'pos_locations': optimized_locations,
                     'pos_duration': optimized_durations,
                     'pos_class': optimized_classes
@@ -533,6 +567,12 @@ def _get_drive_time(origin_id: int, dest_id: int, drive_time_lookup: Dict) -> fl
     """Get drive time between two locations."""
     if origin_id == dest_id:
         return 0.0
+    
+    # Handle centroid (ID = -1) by using a reasonable default drive time
+    if origin_id == -1 or dest_id == -1:
+        # Assume 5 minutes average drive time from/to centroid
+        return 5.0
+    
     return drive_time_lookup.get((origin_id, dest_id), float('inf'))
 
 
@@ -734,7 +774,7 @@ def get_detailed_routes(
             schedule = []
             total_duration = 0.0
             
-            # Start at time 0
+            # Start at time 0 (at centroid)
             schedule.append(0.0)
             
             # Add drive times between locations and service times at each location
@@ -748,16 +788,24 @@ def get_detailed_routes(
                 origin_id = pos_ids[i]
                 dest_id = pos_ids[i + 1]
                 
-                # Look up drive time from OD matrix
-                drive_time_row = od_matrix.filter(
-                    (pl.col('origin_id') == origin_id) & 
-                    (pl.col('destination_id') == dest_id)
-                )
+                # Handle drive time lookup (centroid uses default 5 min)
+                if origin_id == -1 or dest_id == -1:
+                    # Use default 5 minutes for centroid connections
+                    drive_time = 5.0
+                else:
+                    # Look up drive time from OD matrix
+                    drive_time_row = od_matrix.filter(
+                        (pl.col('origin_id') == origin_id) & 
+                        (pl.col('destination_id') == dest_id)
+                    )
+                    
+                    if not drive_time_row.is_empty():
+                        drive_time = float(drive_time_row['duration_minutes'].item())
+                    else:
+                        drive_time = 5.0  # fallback
                 
-                if not drive_time_row.is_empty():
-                    drive_time = float(drive_time_row['duration_minutes'].item())
-                    total_duration += drive_time
-                    schedule.append(total_duration)
+                total_duration += drive_time
+                schedule.append(total_duration)
             
             # Add final service time at last location
             final_service_time = float(pos_durations[-1])

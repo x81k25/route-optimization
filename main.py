@@ -14,7 +14,7 @@ import polars as pl
 
 # local imports
 import src.core as core
-from src.utils import io_utils, osrm_utils
+from src.utils import io_utils, osrm_utils, geo_utils
 
 # ------------------------------------------------------------------------------
 # extract
@@ -114,6 +114,11 @@ def optimize(
     else:
         zone_id = zone_id[0]
 
+    # get centroid
+    centroid = geo_utils.get_centroid(
+        pos_zone
+    )
+
     # get od matrix
     od_matrix = osrm_utils.generate_od_matrix(
         pos_zone=pos_zone
@@ -134,10 +139,11 @@ def optimize(
     # optimize individual days
     itinerary = core.optimize.gen_secondary_routes(
         itinerary=itinerary,
-        od_matrix=od_matrix
+        od_matrix=od_matrix,
+        centroid = centroid
     )
 
-    # get detailed routes, and timesii
+    # get detailed routes, and times
     itinerary = core.optimize.get_detailed_routes(
         itinerary=itinerary,
         od_matrix=od_matrix
@@ -178,37 +184,33 @@ def report(
     logger.info("aggregate report generated")
     logger.info(aggregate_report)
 
-    # additional local report components to build
-    if local:       
-        # create local reports
-        core.report.zone(
-            itinerary=itinerary_reporting            
-        )
+    # save aggregate report to JSONL
+    aggregate_records = aggregate_report.to_pandas().to_dict(orient='records')
+    with open('./output/aggregate-report.jsonl', 'w') as f:
+        for record in aggregate_records:
+            f.write(json.dumps(record) + '\n')
+    
+    # generate aggregate summary for all zones
+    aggregate_report_summary = aggregate_report.select([
+        pl.col('weekly_duration').mean().alias("average_weekly_duration"),
+        pl.col('utilization').mean().alias("average_utilization"),
+        pl.col('overutilized_days').mean().alias("average_overutilized_days"),
+        pl.col('underutilized_days').mean().alias("average_underutilized_days"),
+        pl.col('total_pos_time').mean().alias("average_daily_pos_time"),
+        pl.col('total_drive_time').mean().alias("average_daily_drive_time"),  
+        pl.col('sec_std').mean().alias("average_secondary_duration_standard_deviation"),  
+    ])
 
-        aggregate_report_summary = aggregate_report.select([
-            pl.col('weekly_duration').mean().alias("average_weekly_duration"),
-            pl.col('utilization').mean().alias("average_utilization"),
-            pl.col('overutilized_days').mean().alias("average_overutilized_days"),
-            pl.col('underutilized_days').mean().alias("average_underutilized_days"),
-            pl.col('total_pos_time').mean().alias("average_daily_pos_time"),
-            pl.col('total_drive_time').mean().alias("average_daily_drive_time"),
-        ])
+    logger.info("aggregate_report_summary:")
+    print(aggregate_report_summary)
 
-        logger.info("aggregate_report_summary:")
-        print(aggregate_report_summary)
-        
-        # save aggregate summary to JSONL
-        summary_records = aggregate_report_summary.to_pandas().to_dict(orient='records')
-        with open('./output/aggregate_summary.jsonl', 'w') as f:
-            for record in summary_records:
-                f.write(json.dumps(record) + '\n')
+    # save aggregate summary to JSONL
+    summary_records = aggregate_report_summary.to_pandas().to_dict(orient='records')
+    with open('./output/aggregate-summary.jsonl', 'w') as f:
+        for record in summary_records:
+            f.write(json.dumps(record) + '\n')
 
     return
-
-# ------------------------------------------------------------------------------
-# generate ad-hoc outputs
-# ------------------------------------------------------------------------------
-
 
 
 # ------------------------------------------------------------------------------
@@ -248,19 +250,19 @@ def main(
     )
 
     # save itinerary to JSONL when local is True
-    if local:
-        itinerary_pandas = itinerary.to_pandas()
-        # Convert any numpy arrays to lists for JSON serialization
-        for col in itinerary_pandas.columns:
-            if itinerary_pandas[col].dtype == 'object':
-                itinerary_pandas[col] = itinerary_pandas[col].apply(
-                    lambda x: x.tolist() if hasattr(x, 'tolist') else x
-                )
-        
-        itinerary_records = itinerary_pandas.to_dict(orient='records')
-        with open('./output/itinerary.jsonl', 'w') as f:
-            for record in itinerary_records:
-                f.write(json.dumps(record, default=str) + '\n')
+    itinerary_pandas = itinerary.to_pandas()
+    # Convert any numpy arrays to lists for JSON serialization
+    for col in itinerary_pandas.columns:
+        if itinerary_pandas[col].dtype == 'object':
+            itinerary_pandas[col] = itinerary_pandas[col].apply(
+                lambda x: x.tolist() if hasattr(x, 'tolist') else x
+            )
+    
+    itinerary_records = itinerary_pandas.to_dict(orient='records')
+    with open('./output/itinerary.jsonl', 'w') as f:
+        for record in itinerary_records:
+            f.write(json.dumps(record, default=str) + '\n')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Example script with command line arguments')

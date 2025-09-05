@@ -36,6 +36,7 @@ def aggregate(itinerary: pl.DataFrame, local: bool = False) -> pl.DataFrame:
         - underutilized_days: Count of days where duration < hours_per_day
         - total_pos_time: Total time spent at locations (service time, hours)
         - total_drive_time: Total time spent driving between locations (hours)
+        - sec_std: Standard deviation of duration for all days with secondary class stores
     """
     logger.info("Generating zone-level aggregate metrics")
     
@@ -97,14 +98,21 @@ def aggregate(itinerary: pl.DataFrame, local: bool = False) -> pl.DataFrame:
         weekly_duration = zone_data['duration'].sum() / 60.0
         utilization = (weekly_duration / target_weekly_hours) * 100 if target_weekly_hours > 0 else 0
         
-        # Count over/under-utilized days
+        # Count over/under-utilized days and collect secondary days durations
         overutilized_days = 0
         underutilized_days = 0
+        secondary_day_durations = []
         
         for row in zone_data.iter_rows(named=True):
             day_duration_minutes = row['duration'] or 0.0
             day_duration_hours = day_duration_minutes / 60.0
             pos_ids = row['pos_id'] or []
+            pos_classes = row['pos_class'] or []
+            
+            # Check if this day has any secondary class stores
+            has_secondary = 'secondary' in pos_classes
+            if has_secondary:
+                secondary_day_durations.append(day_duration_hours)
             
             # Over-utilized: duration exceeds daily capacity
             if day_duration_hours > daily_capacity_hours:
@@ -113,6 +121,14 @@ def aggregate(itinerary: pl.DataFrame, local: bool = False) -> pl.DataFrame:
             # Under-utilized: duration is less than hours_per_day (if has any locations)
             if len(pos_ids) > 0 and day_duration_hours < daily_capacity_hours:
                 underutilized_days += 1
+        
+        # Calculate standard deviation for secondary days
+        sec_std = 0.0
+        if len(secondary_day_durations) > 1:
+            # Calculate standard deviation manually
+            mean_duration = sum(secondary_day_durations) / len(secondary_day_durations)
+            variance = sum((x - mean_duration) ** 2 for x in secondary_day_durations) / len(secondary_day_durations)
+            sec_std = variance ** 0.5
         
         zone_metrics.append({
             'zone_id': zone_id,
@@ -123,7 +139,8 @@ def aggregate(itinerary: pl.DataFrame, local: bool = False) -> pl.DataFrame:
             'overutilized_days': overutilized_days,
             'underutilized_days': underutilized_days,
             'total_pos_time': round(total_pos_time, 2),
-            'total_drive_time': round(total_drive_time, 2)
+            'total_drive_time': round(total_drive_time, 2),
+            'sec_std': round(sec_std, 2)
         })
     
     # Create DataFrame from metrics
@@ -133,47 +150,8 @@ def aggregate(itinerary: pl.DataFrame, local: bool = False) -> pl.DataFrame:
     aggregate_df = aggregate_df.sort('zone_id')
     
     logger.success(f"Generated aggregate metrics for {len(aggregate_df)} zones")
-    
-    # Export HTML table if local is True
-    if local:
-        from ..utils import html_utils
-        html_utils.create_aggregate_report_html(aggregate_df, itinerary, "output/aggregate_report.html")
-    
+        
     return aggregate_df
-
-
-def zone(itinerary: pl.DataFrame, local: bool = True) -> None:
-    """
-    Generate individual zone reports as HTML files.
-    
-    Args:
-        itinerary: DataFrame containing detailed daily routes for all zones
-        local: If True, export HTML files to output/zone/ directory
-    """
-    if not local:
-        logger.info("Local flag is False, skipping zone report generation")
-        return
-        
-    logger.info("Generating individual zone reports")
-    
-    # Get unique zones
-    zones = itinerary['zone_id'].unique().sort()
-    logger.info(f"Found {len(zones)} zones to process: {list(zones)}")
-    
-    for zone_id in zones:
-        logger.info(f"Generating report for {zone_id}")
-        
-        # Filter itinerary for this zone
-        zone_itinerary = itinerary.filter(pl.col('zone_id') == zone_id)
-        
-        # Generate individual zone report HTML
-        from ..utils import html_utils
-        output_path = f"output/zone/{zone_id}_report.html"
-        html_utils.create_individual_zone_report(zone_itinerary, zone_id, output_path)
-        
-        logger.success(f"Generated report for {zone_id} at {output_path}")
-    
-    logger.success(f"Generated individual zone reports for {len(zones)} zones")
 
 
 if __name__ == "__main__":
