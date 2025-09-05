@@ -1,24 +1,63 @@
-# Route Optimization with OSRM Integration
+# route optimization with OSRM integration
 
 A comprehensive Python-based route optimization system for solving vehicle routing problems (VRP) with real-world driving data. The system integrates with a local OSRM (Open Source Routing Machine) server for accurate distance matrices and turn-by-turn routing, supporting multi-threaded concurrent zone optimization with advanced TSP algorithms.
 
-## Features
+## Project structure
 
-- **Real-world routing**: OSRM integration for accurate drive times and distances
-- **Multi-zone concurrent processing**: Handles thousands of locations across hundreds of zones
-- **Interactive visualizations**: HTML maps with route geometry and detailed itineraries
-- **Flexible optimization algorithms**: From exhaustive search to fast heuristics
-- **Comprehensive reporting**: JSON exports with metrics, timelines, and analytics
-- **Location clustering**: Automatic zone assignment with geographic and drive-time clustering
+```
+route-optimization/
+├── main.py                           # Main entry point and CLI interface
+├── CLAUDE.md                         # Project instructions for Claude Code  
+├── README.md                         # Project documentation (this file)
+├── methodology.md                    # Detailed algorithmic methodology and variations
+├── pyproject.toml                    # Python project configuration (uv)
+├── .gitignore                        # Git ignore patterns
+├── config/
+│   └── model-params.yaml             # Optimization parameters and settings
+├── data/
+│   └── locations.jsonl               # Location data with zone assignments (257 locations)
+├── output/                           # Generated results (created at runtime)
+│   ├── aggregate-report.jsonl        # Cross-zone detailed analytics
+│   ├── aggregate-summary.jsonl       # Cross-zone summary statistics  
+│   └── itinerary.jsonl               # Daily route itineraries
+├── src/
+│   ├── core/                         # Core optimization algorithms
+│   │   ├── optimize.py               # Main optimization engine with K-means clustering
+│   │   └── report.py                 # Comprehensive reporting and analytics
+│   └── utils/                        # Utility and support modules
+│       ├── clustering_utils.py       # K-means clustering with noise detection
+│       ├── geo_utils.py              # Geographic utilities and distance calculations
+│       ├── osrm_utils.py             # OSRM API integration (Table/Route APIs)
+│       └── io_utils.py               # Data input/output utilities
+├── streamlit/                        # Interactive web application
+│   ├── app.py                        # Main Streamlit dashboard
+│   ├── aggregate_report.py           # Aggregate reporting interface
+│   ├── zone_details.py               # Individual zone analysis
+│   └── utils.py                      # Streamlit utilities
+├── tests/                            # Test suite
+│   ├── test_main_optimizer.py        # Core optimization tests
+│   ├── test_osrm.py                  # OSRM integration tests
+│   ├── test_timeout.py               # Timeout handling tests
+│   └── test_*.py                     # Additional test modules
+├── .bak/                             # Backup of legacy pipeline stages
+└── .dev/                             # Development utilities and format tests
+```
+
+### Key Files
+
+**`main.py`**: Entry point supporting single-zone, multi-zone, clustering, and geocoding operations
+**`src/core/optimize.py`**: Main optimization engine with K-means clustering and organic rebalancing
+**`src/core/report.py`**: Comprehensive reporting, analytics, and visualization generation
+**`src/utils/osrm_utils.py`**: OSRM integration for distance matrices and route geometry
+**`src/utils/clustering_utils.py`**: K-means clustering with noise detection and duration rebalancing
+**`streamlit/app.py`**: Interactive web dashboard for visualization and analysis
+**`methodology.md`**: Complete algorithmic documentation with 8 variation analyses
 
 ## Installation
 
 ```bash
 # Install dependencies using uv (recommended)
 uv sync
-
-# Alternative: Install with requirements
-uv add polars loguru plotly requests scikit-learn pyarrow pandas
 ```
 
 ## Quick Start
@@ -98,6 +137,7 @@ The system integrates with a local OSRM (Open Source Routing Machine) server for
 - **Threading**: 12 worker threads (CPU count / 2)
 - **Performance Gain**: 3.58x faster than sequential (72% reduction)
 - **Locations**: 206 total (51 filtered for null zone_ids)
+- **Optimization Quality**: 67% improvement in workload balance (std dev: 1.16)
 
 ### Sequential Baseline
 - **Total Runtime**: ~22.76 seconds
@@ -108,16 +148,66 @@ The system integrates with a local OSRM (Open Source Routing Machine) server for
 
 The route optimization system uses a multi-stage pipeline designed for concurrent multi-zone processing with OSRM integration.
 
-### Current Implementation Architecture
+### Architecture flow
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Input Layer   │    │ Processing Layer│    │  Output Layer   │
-│                 │    │                 │    │                 │
-│ • JSONL Data    │───▶│ • Zone Package  │───▶│ • JSON Reports  │
-│ • Zone IDs      │    │ • OSRM Matrix   │    │ • HTML Maps     │
-│ • Coordinates   │    │ • TSP Solving   │    │ • Visualizations│
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+```mermaid
+flowchart TD
+    A[main.py Entry Point]
+    A --> B[extract]
+    B --> |locations.jsonl| C[optimization_orchestrator]
+    
+    C --> D{Multi-zone Processing<br/>ThreadPoolExecutor}
+    D --> E1[Zone 1]
+    D --> E2[Zone 2]
+    D --> E3[Zone N...]
+    
+    E1 --> F1[get_centroid]
+    E2 --> F2[get_centroid]
+    E3 --> F3[get_centroid]
+    
+    F1 --> G1[generate_od_matrix]
+    F2 --> G2[generate_od_matrix]
+    F3 --> G3[generate_od_matrix]
+    
+    G1 --> H1[assign_anchor_days]
+    G2 --> H2[assign_anchor_days]
+    G3 --> H3[assign_anchor_days]
+    
+    H1 --> I1[cluster_secondary_pos]
+    H2 --> I2[cluster_secondary_pos]
+    H3 --> I3[cluster_secondary_pos]
+    
+    I1 --> J1[gen_secondary_routes]
+    I2 --> J2[gen_secondary_routes]
+    I3 --> J3[gen_secondary_routes]
+    
+    J1 --> K1[get_detailed_routes]
+    J2 --> K2[get_detailed_routes]
+    J3 --> K3[get_detailed_routes]
+    
+    K1 --> L[Combine Results]
+    K2 --> L
+    K3 --> L
+    
+    L --> |itinerary DataFrame| M[report]
+    
+    M --> N1[aggregate-report.jsonl]
+    M --> N2[aggregate-summary.jsonl]
+    M --> N3[itinerary.jsonl]
+    
+    subgraph "Core Algorithms Used"
+        O1[K-means Clustering]
+        O2[Noise Detection]
+        O3[Organic Rebalancing]
+        O4[TSP Optimization]
+        O5[OSRM Integration]
+    end
+    
+    I1 -.-> O1
+    I1 -.-> O2
+    I1 -.-> O3
+    J1 -.-> O4
+    G1 -.-> O5
 ```
 
 ### Processing Pipeline (6 Stages)
@@ -130,13 +220,13 @@ The route optimization system uses a multi-stage pipeline designed for concurren
 
 **Stage 1: Day Assignment** 
 - Assign primary locations to dedicated days (8 hours each)
-- Use hierarchical clustering for secondary locations
-- Optimize day assignment based on drive time matrices
-- Balance workload across available days
+- Use K-means clustering with noise detection for secondary locations
+- Apply organic duration rebalancing to balance workloads
+- Exclude isolated locations (>150km from neighbors)
 
 **Stage 2: Route Optimization**
-- Run TSP algorithms for each day's assigned locations
-- Use exhaustive search for ≤7 locations, greedy+2-opt for larger sets
+- Run adaptive TSP algorithms for each day's assigned locations
+- Use exhaustive search for ≤5 locations, greedy+2-opt for larger sets
 - Optimize for minimum total drive time per day
 
 **Stage 4: Route Geometry**
@@ -181,15 +271,16 @@ def optimize_multiple_zones(zone_ids: List[str], max_workers: int = None):
 
 ### Performance Characteristics
 
-Current system performance on the development dataset:
+Current system performance with K-means clustering and organic rebalancing:
 
 | Metric | Single Zone | Multi-Zone (24 zones) |
 |--------|-------------|----------------------|
-| **Locations** | ~11 locations | ~250 locations |
-| **Processing Time** | ~0.1 seconds | ~30 seconds |
-| **OSRM API Calls** | 2-3 calls | ~50-75 calls |
+| **Locations** | ~8-12 locations | ~206 locations |
+| **Processing Time** | ~0.1 seconds | ~6.4 seconds |
+| **OSRM API Calls** | 2-3 calls | ~48-72 calls |
 | **Memory Usage** | ~10MB | ~100MB |
-| **Output Files** | 2 files | ~50 files |
+| **Output Files** | 2 files | ~48 files |
+| **Workload Balance** | N/A | 67% improved (std dev: 1.16) |
 
 ## Data Structures
 
@@ -270,50 +361,13 @@ class ZoneOptimizationPackage:
 - Detailed itineraries with time schedules
 - Store classification badges (primary/secondary)
 
-## Project Structure
+## Algorithm Evolution
 
-```
-route-optimization/
-├── main.py                           # Main entry point and CLI interface
-├── CLAUDE.md                         # Project instructions for Claude Code  
-├── README.md                         # Project documentation (this file)
-├── pyproject.toml                    # Python project configuration (uv)
-├── config/
-│   └── model-params.yaml             # Optimization parameters and settings
-├── data/
-│   └── subway_locations.jsonl        # Location data with zone assignments (257 locations)
-├── output/                           # Generated results (created at runtime)
-│   ├── multi_zone_summary.jsonl      # Cross-zone summary statistics
-│   ├── zones/                        # Individual zone JSON reports
-│   │   ├── zone_000_complete_report.json
-│   │   └── zone_NNN_complete_report.json
-│   ├── visualizations/               # Interactive HTML maps  
-│   │   ├── route_map_zone_000.html
-│   │   └── route_map_zone_NNN.html
-│   ├── zone_visualization_map.html   # Clustering overview map
-│   └── geocoding_results_map.html    # Geocoding results map
-├── src/
-│   ├── core/                         # Core optimization pipeline (6 stages)
-│   │   ├── stage0_data_ingestion.py  # Data loading and zone package creation
-│   │   ├── stage1_assignment.py      # Primary/secondary day assignment
-│   │   ├── stage2_routing.py         # Daily route optimization (TSP)
-│   │   ├── stage4_route_optimization.py # Route geometry and optimization
-│   │   ├── stage5_reporting.py       # Metrics, analytics, and JSON export
-│   │   └── stage6_orchestrator.py    # End-to-end pipeline orchestration
-│   └── utils/                        # Utility and support modules
-│       ├── clustering_utils.py       # K-means clustering for zone assignment
-│       ├── geocoding_utils.py        # Address geocoding with Nominatim
-│       ├── osrm_utils.py            # OSRM API integration (Table/Route APIs)
-│       └── visualization.py          # Interactive Plotly maps and HTML generation
-└── tests/                           # Test suite
-    ├── test_timeout.py               # Timeout handling tests
-    └── test_timeout_simulation.py   # OSRM timeout simulation tests
-```
+This project has undergone systematic optimization through 8 major variations, achieving a **67% improvement in workload balance** through:
 
-### Key Files
+1. **K-means clustering**: Superior spatial optimization for geographic data
+2. **Noise point detection**: Excludes isolated locations (>150km from neighbors)  
+3. **Organic duration rebalancing**: Balances workloads using real business metrics
+4. **Real drive time integration**: Accurate OSRM-based distance calculations
 
-**`main.py`**: Entry point supporting single-zone, multi-zone, clustering, and geocoding operations
-**`src/core/stage6_orchestrator.py`**: Main pipeline orchestration with concurrent processing
-**`src/utils/osrm_utils.py`**: OSRM integration for distance matrices and route geometry
-**`src/utils/visualization.py`**: Generates interactive HTML maps with route visualization  
-**`data/subway_locations.jsonl`**: 257 locations across 24 zones in California
+See `methodology.md` for detailed algorithmic analysis and variation performance comparisons.
