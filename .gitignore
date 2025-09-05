@@ -191,3 +191,4 @@ figures/
 *.html
 CLAUDE.md
 .claude
+*.jsonl

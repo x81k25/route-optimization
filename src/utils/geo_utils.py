@@ -84,7 +84,7 @@ class NominatimGeocoder(GeocodeProvider):
                 'q': address,
                 'format': 'json',
                 'limit': 1,
-                'countrycodes': 'us',  # Restrict to US since all addresses are California
+                'countrycodes': 'us',  # restrict to US since all addresses are California
                 'addressdetails': 1
             }
             
@@ -120,7 +120,7 @@ class GoogleGeocoder(GeocodeProvider):
             params = {
                 'address': address,
                 'key': self.api_key,
-                'region': 'us'  # Bias towards US results
+                'region': 'us'  # bias towards US results
             }
             
             response = self.session.get(self.base_url, params=params, timeout=10)
@@ -220,44 +220,42 @@ def geocode_single_location(location: Location, geocoder: GeocodeProvider, index
     logger.info(f"  Address: {location.address}")
     logger.info(f"  Current: {location.latitude:.6f}, {location.longitude:.6f}")
     
-    # Geocode the address
+    # geocode the address
     result = geocoder.geocode(location.address)
     
     if result:
         new_lat, new_lon = result
         old_lat, old_lon = location.latitude, location.longitude
         
-        # Calculate distance moved (rough approximation in degrees)
+        # calculate distance moved (rough approximation in degrees)
         distance = ((new_lat - old_lat)**2 + (new_lon - old_lon)**2)**0.5
         
         logger.info(f"  Updated: {new_lat:.6f}, {new_lon:.6f}")
         logger.info(f"  Moved: {distance:.4f} degrees (~{distance*69:.1f} miles)")
         
-        # Update the location
+        # update the location
         location.latitude = new_lat
         location.longitude = new_lon
-        logger.info("")  # Empty line for readability
+        logger.info("")  # empty line for readability
         return location, True
     else:
         logger.warning(f"  Failed to geocode: {location.address} - setting coordinates to null")
-        # Set coordinates to None for failed geocoding
+        # set coordinates to None for failed geocoding
         location.latitude = None
         location.longitude = None
-        logger.info("")  # Empty line for readability
+        logger.info("")  # empty line for readability
         return location, False
 
 
 def geocode_locations(locations: List[Location], geocoder: GeocodeProvider, max_workers: int = 8) -> int:
     """Geocode all locations concurrently and update their coordinates"""
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    import threading
     
     updated_count = 0
     failed_count = 0
     
     logger.info(f"Starting concurrent geocoding of {len(locations)} locations with {max_workers} workers")
     
-    # Create thread-local geocoder instances to avoid session conflicts
+    # create thread-local geocoder instances to avoid session conflicts
     thread_local = threading.local()
     
     def get_thread_geocoder():
@@ -270,16 +268,16 @@ def geocode_locations(locations: List[Location], geocoder: GeocodeProvider, max_
         thread_geocoder = get_thread_geocoder()
         return geocode_single_location(location, thread_geocoder, index + 1, len(locations))
     
-    # Prepare locations with their indices
+    # prepare locations with their indices
     locations_with_indices = [(location, i) for i, location in enumerate(locations)]
     
-    # Process locations concurrently
+    # process locations concurrently
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
+        # submit all tasks
         future_to_location = {executor.submit(geocode_worker, loc_idx): loc_idx[0] 
                              for loc_idx in locations_with_indices}
         
-        # Process completed tasks
+        # process completed tasks
         for future in as_completed(future_to_location):
             try:
                 updated_location, success = future.result()
@@ -341,32 +339,32 @@ def main():
     logger.info("no rate limiting - concurrent processing with 8 workers")
     geocoder = NominatimGeocoder()
     
-    # For Google Geocoder (if you have an API key):
+    # for Google Geocoder (if you have an API key):
     # google_api_key = "YOUR_GOOGLE_API_KEY_HERE"
     # geocoder = GoogleGeocoder(google_api_key)
     
-    # Geocode all locations concurrently
+    # geocode all locations concurrently
     try:
         updated_count = geocode_locations(locations, geocoder, max_workers=8)
     except KeyboardInterrupt:
-        logger.info("Geocoding interrupted by user")
+        logger.info("geocoding interrupted by user")
         return 1
     except Exception as e:
-        logger.error(f"Geocoding failed: {e}")
+        logger.error(f"geocoding failed: {e}")
         return 1
     
-    # Always save results (including null coordinates for failed geocoding)
+    # always save results (including null coordinates for failed geocoding)
     try:
         save_locations(locations, data_file)
         logger.info(f"Successfully processed {len(locations)} locations ({updated_count} updated, {len(locations)-updated_count} failed)")
         
-        # Generate visualization map of all geocoded locations (including nulls)
+        # generate visualization map of all geocoded locations (including nulls)
         logger.info("Generating geocoding results visualization...")
         try:
             from .visualization import create_geocoding_results_map
             
-            # Convert Location objects to dictionaries for visualization
-            # Filter out locations with null coordinates for visualization
+            # convert Location objects to dictionaries for visualization
+            # filter out locations with null coordinates for visualization
             locations_data = []
             for location in locations:
                 if location.latitude is not None and location.longitude is not None:
@@ -381,7 +379,7 @@ def main():
                     })
             
             if locations_data:
-                # Generate the map
+                # generate the map
                 output_dir = project_root / "output"
                 map_path = create_geocoding_results_map(
                     locations_data=locations_data,
@@ -405,7 +403,7 @@ def main():
         logger.error(f"Failed to save locations: {e}")
         return 1
     
-    # Final summary
+    # final summary
     failed_count = len(locations) - updated_count
     logger.info("=" * 60)
     logger.info("GEOCODING SUMMARY")

@@ -1,6 +1,6 @@
 # Route Optimization with OSRM Integration
 
-An advanced Python-based route optimization system for solving vehicle routing problems (VRP) with real-world driving data. The system integrates with OSRM (Open Source Routing Machine) for accurate distance matrices and turn-by-turn routing, supporting both single-zone analysis and large-scale concurrent multi-zone optimization.
+A comprehensive Python-based route optimization system for solving vehicle routing problems (VRP) with real-world driving data. The system integrates with a local OSRM (Open Source Routing Machine) server for accurate distance matrices and turn-by-turn routing, supporting multi-threaded concurrent zone optimization with advanced TSP algorithms.
 
 ## Features
 
@@ -79,33 +79,30 @@ The system integrates with a local OSRM (Open Source Routing Machine) server for
 - **Profile**: Driving profile with California road network
 - **Coverage**: Optimized for California locations
 
-### API Usage in Optimization Pipeline
+### OSRM API Endpoints
 
-The system uses two primary OSRM endpoints:
+**Table API** - Generate origin-destination matrices including zone centroid:
+- Calculates all pairwise distances and durations
+- Includes centroid (-1 ID) as potential starting point
+- Returns symmetric matrix for TSP optimization
 
-#### Table API - Distance/Duration Matrix
-Used to generate N×N origin-destination matrices for each zone:
-```python
-# Fetch OD matrix for a zone's locations
-coords = ";".join([f"{lon},{lat}" for lon, lat in zone_coordinates])
-url = f"http://192.168.50.2:32050/table/v1/driving/{coords}?annotations=distance,duration"
-```
+**Route API** - Fetch detailed route geometry:
+- Provides encoded polyline for visualization
+- Includes turn-by-turn instructions
+- Used for final route presentation
 
-#### Route API - Turn-by-Turn Geometry  
-Used to fetch detailed route geometry for visualization:
-```python
-# Get turn-by-turn route with polyline geometry
-coords = ";".join([f"{lon},{lat}" for lon, lat in optimized_route])
-url = f"http://192.168.50.2:32050/route/v1/driving/{coords}?steps=true&overview=full"
-```
+## Performance Characteristics
 
-### Integration Architecture
+### Multi-threaded Performance (Current Implementation)
+- **Total Runtime**: ~6.36 seconds for 24 zones
+- **Threading**: 12 worker threads (CPU count / 2)
+- **Performance Gain**: 3.58x faster than sequential (72% reduction)
+- **Locations**: 206 total (51 filtered for null zone_ids)
 
-```
-Zone Locations → OSRM Table API → OD Matrix → TSP Solver → Optimized Route
-      ↓
-Optimized Route → OSRM Route API → Turn-by-Turn → Visualization → HTML Map
-```
+### Sequential Baseline
+- **Total Runtime**: ~22.76 seconds
+- **Same optimization algorithms and API calls
+- **Bottleneck**: Sequential OSRM API calls and optimization
 
 ## System Architecture
 

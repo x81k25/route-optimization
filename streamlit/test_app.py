@@ -3,31 +3,38 @@
 Test script to verify the Streamlit app works correctly
 """
 
+# standard library imports
+import json
 import sys
 from pathlib import Path
-import json
+
+# 3rd-party imports
 import pandas as pd
 import polars as pl
 
-# Add src to path
+# add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 def test_data_loading():
-    """Test that required data files can be loaded."""
+    """
+    Test that required data files can be loaded.
+    
+    :return: True if data loading succeeds, False otherwise
+    """
     print("Testing data loading...")
     
     try:
-        # Test itinerary loading
+        # test itinerary loading
         itinerary_path = Path(__file__).parent.parent / "output" / "itinerary.jsonl"
         if not itinerary_path.exists():
             print(f"✗ Itinerary file not found: {itinerary_path}")
             return False
         
-        # Load a sample of data
+        # load a sample of data
         itinerary_data = []
         with open(itinerary_path, 'r') as f:
             for i, line in enumerate(f):
-                if i >= 100:  # Test first 100 lines
+                if i >= 100:  # test first 100 lines
                     break
                 line = line.strip()
                 if line:
@@ -42,7 +49,7 @@ def test_data_loading():
         print(f"✓ Loaded {len(itinerary_data)} itinerary records")
         print(f"  Found {len(zones)} zones: {sorted(zones)[:5]}{'...' if len(zones) > 5 else ''}")
         
-        # Test locations loading
+        # test locations loading
         locations_path = Path(__file__).parent.parent / "data" / "locations.jsonl"
         locations = {}
         if locations_path.exists():
@@ -63,7 +70,11 @@ def test_data_loading():
         return False
 
 def test_imports():
-    """Test that all required packages can be imported."""
+    """
+    Test that all required packages can be imported.
+    
+    :return: True if all imports succeed, False otherwise
+    """
     print("Testing package imports...")
     
     required_packages = [
@@ -93,7 +104,11 @@ def test_imports():
     return len(failed_imports) == 0
 
 def test_config():
-    """Test configuration loading."""
+    """
+    Test configuration loading.
+    
+    :return: True if configuration loading succeeds, False otherwise
+    """
     print("Testing configuration...")
     
     try:
@@ -120,7 +135,11 @@ def test_config():
         return False
 
 def main():
-    """Run all tests."""
+    """
+    Run all tests.
+    
+    :return: True if all tests pass, False otherwise
+    """
     print("🧪 Testing Streamlit Route Optimization Dashboard")
     print("=" * 50)
     

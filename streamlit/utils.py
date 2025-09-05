@@ -4,22 +4,29 @@ Shared utilities for the Streamlit Route Optimization Dashboard.
 Contains data loading functions and map generation utilities used by multiple pages.
 """
 
-import streamlit as st
-import pandas as pd
-import polars as pl
-import plotly.graph_objects as go
+# standard library imports
 import json
-import yaml
-from pathlib import Path
 import sys
+from pathlib import Path
 
-# Add the src directory to Python path
+# 3rd-party imports
+import pandas as pd
+import plotly.graph_objects as go
+import polars as pl
+import streamlit as st
+import yaml
+
+# add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 def load_data():
-    """Load itinerary and aggregate data."""
+    """
+    Load itinerary and aggregate data.
+    
+    :return: Tuple of (itinerary_df, locations) or (None, None) if failed
+    """
     try:
-        # Load itinerary data
+        # load itinerary data
         itinerary_path = Path(__file__).parent.parent / "output" / "itinerary.jsonl"
         if not itinerary_path.exists():
             st.error(f"Itinerary file not found: {itinerary_path}")
@@ -34,7 +41,7 @@ def load_data():
         
         itinerary_df = pl.DataFrame(itinerary_data)
         
-        # Load locations data
+        # load locations data
         locations_path = Path(__file__).parent.parent / "data" / "locations.jsonl"
         locations = {}
         if locations_path.exists():

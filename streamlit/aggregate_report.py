@@ -4,25 +4,35 @@ Aggregate Report Page for Route Optimization Dashboard.
 Displays zone aggregate metrics, summary statistics, and all-zones map.
 """
 
-import streamlit as st
+# standard library imports
 import sys
 from pathlib import Path
 
-# Add current directory to path to import local modules  
+# 3rd-party imports
+import streamlit as st
+
+# add current directory to path to import local modules  
 sys.path.insert(0, str(Path(__file__).parent))
 
+# local imports
 from utils import (
-    load_aggregate_metrics,
     calculate_zone_metrics,
-    create_zones_map
+    create_zones_map,
+    load_aggregate_metrics
 )
 
 
 def show_aggregate_report(itinerary_df, locations):
-    """Display the aggregate report page."""
+    """
+    Display the aggregate report page.
+    
+    :param itinerary_df: DataFrame with route optimization results
+    :param locations: Dictionary of location data
+    :return: None
+    """
     st.header("zone aggregate report")
     
-    # Load pre-calculated aggregate summary
+    # load pre-calculated aggregate summary
     with st.spinner("loading aggregate metrics..."):
         summary_stats = load_aggregate_metrics()
         zone_metrics_df = calculate_zone_metrics(itinerary_df)

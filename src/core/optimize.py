@@ -1,15 +1,21 @@
 # standard library imports
-import yaml
+import itertools
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 # 3rd-party imports
 import numpy as np
 import polars as pl
 import polyline
+import yaml
 from loguru import logger
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
+from sklearn.cluster import KMeans
+
+# local imports
+from ..utils.clustering_utils import haversine_distance
+from ..utils.osrm_utils import fetch_route_geometry, Location
 
 # ------------------------------------------------------------------------------
 # supporting functions  
@@ -31,18 +37,13 @@ def load_config() -> Dict[str, Any]:
     
     return config.get("model_params", {"days_per_week": 5})
 
-# ------------------------------------------------------------------------------
-# main function
-# ------------------------------------------------------------------------------
 
-def assign_anchor_days(
-    pos: pl.DataFrame
-) -> pl.DataFrame:
+def assign_anchor_days(pos: pl.DataFrame) -> pl.DataFrame:
     """
     Assign locations to anchor days with primary locations taking full days.
     
     :param pos: DataFrame containing all position/location data for a single zone
-    :return: itinerary DataFrame with zone_id, day, and pos_id columns
+    :return: Itinerary DataFrame with zone_id, day, and pos_id columns
     """
     # load config
     config = load_config()
@@ -136,37 +137,33 @@ def cluster_secondary_pos(
     """
     Cluster secondary locations and assign them to available days in the itinerary.
     
-    Args:
-        pos: DataFrame containing all position/location data for a single zone
-        itinerary: DataFrame with zone_id, day, pos_id, pos_locations, pos_duration columns
-        od_matrix: DataFrame with OD matrix data (origin_id, destination_id, duration_seconds, etc.)
-        
-    Returns:
-        Updated itinerary DataFrame with secondary locations assigned to available days
+    :param pos: DataFrame containing all position/location data for a single zone
+    :param itinerary: DataFrame with zone_id, day, pos_id, pos_locations, pos_duration columns
+    :param od_matrix: DataFrame with OD matrix data (origin_id, destination_id, duration_seconds, etc.)
+    :return: Updated itinerary DataFrame with secondary locations assigned to available days
     """
-    from ..utils.clustering_utils import haversine_distance
     
-    # Load config
+    # load config
     config = load_config()
     hours_per_non_primary = config.get("hours_per_non_primary", 1)
     locations_per_day_max = config.get("locations_per_day_max", 7)
     
-    # Get zone information
+    # get zone information
     zone_ids = pos['zone_id'].unique().to_list()
     if len(zone_ids) != 1:
         raise ValueError(f"expected single zone, got {len(zone_ids)} zones: {zone_ids}")
     zone_id = zone_ids[0]
     
-    # Separate secondary locations
+    # separate secondary locations
     secondary_df = pos.filter(pl.col('class') == 'secondary')
     
     if secondary_df.is_empty():
-        logger.info(f"No secondary locations found for zone {zone_id}")
+        logger.info(f"no secondary locations found for zone {zone_id}")
         return itinerary
     
-    logger.info(f"Clustering {len(secondary_df)} secondary locations for zone {zone_id}")
+    logger.info(f"clustering {len(secondary_df)} secondary locations for zone {zone_id}")
     
-    # Find available days (days with empty pos_id lists)
+    # find available days (days with empty pos_id lists)
     available_days = []
     for row in itinerary.iter_rows(named=True):
         if not row['pos_id']:  # empty list
@@ -174,41 +171,44 @@ def cluster_secondary_pos(
     
     n_available_days = len(available_days)
     if n_available_days == 0:
-        logger.warning(f"No available days for secondary locations in zone {zone_id}")
+        logger.warning(f"no available days for secondary locations in zone {zone_id}")
         return itinerary
     
-    logger.info(f"Found {n_available_days} available days for secondary clustering")
+    logger.info(f"found {n_available_days} available days for secondary clustering")
     
-    # Extract secondary location IDs and coordinates
+    # extract secondary location IDs and coordinates
     secondary_ids = secondary_df['pos_id'].to_list()
     secondary_coords = secondary_df.select(['latitude', 'longitude']).to_numpy()
     
-    # Build distance matrix using haversine distance (in kilometers)
+    # build distance matrix using haversine distance (in kilometers)
     distance_matrix = np.zeros((len(secondary_ids), len(secondary_ids)))
     
     for i in range(len(secondary_ids)):
         for j in range(len(secondary_ids)):
             if i != j:
-                # Calculate haversine distance between locations
+                # calculate haversine distance between locations
                 distance_km = haversine_distance(
                     secondary_coords[i, 0], secondary_coords[i, 1],  # lat1, lon1
                     secondary_coords[j, 0], secondary_coords[j, 1]   # lat2, lon2
                 )
                 distance_matrix[i, j] = distance_km
     
-    # Perform K-means clustering
+    # perform K-means clustering with no size constraints
     clusters = _cluster_locations_kmeans(
-        secondary_coords, secondary_ids, n_available_days, locations_per_day_max
+        secondary_coords, secondary_ids, n_available_days
     )
     
-    # Assign clusters to available days and update itinerary
+    # apply organic duration rebalancing
+    clusters = _organic_duration_rebalancing(clusters, secondary_df, od_matrix)
+    
+    # assign clusters to available days and update itinerary
     updated_itinerary = itinerary.clone()
     
     for cluster_id, (day, location_ids) in enumerate(zip(available_days, clusters.values())):
         if not location_ids:
             continue
             
-        # Get location coordinates for these pos_ids
+        # get location coordinates for these pos_ids
         cluster_locations = secondary_df.filter(pl.col('pos_id').is_in(location_ids))
         
         pos_locations = []
@@ -220,10 +220,10 @@ def cluster_secondary_pos(
             durations.append(int(hours_per_non_primary * 60))  # convert hours to minutes
             pos_classes.append('secondary')
         
-        # Update the itinerary for this day using direct row updates
+        # update the itinerary for this day using direct row updates
         for i, row in enumerate(updated_itinerary.rows()):
             if row[1] == day:  # day column is at index 1
-                # Create new row data
+                # create new row data
                 new_row = {
                     'zone_id': row[0],
                     'day': row[1], 
@@ -233,7 +233,7 @@ def cluster_secondary_pos(
                     'pos_class': pos_classes
                 }
                 
-                # Replace this row in the DataFrame
+                # replace this row in the DataFrame
                 rows_before = updated_itinerary[:i]
                 rows_after = updated_itinerary[i+1:]
                 new_row_df = pl.DataFrame([new_row])
@@ -246,60 +246,57 @@ def cluster_secondary_pos(
                     updated_itinerary = pl.concat([rows_before, new_row_df, rows_after])
                 break
     
-    logger.success(f"Assigned {len(secondary_df)} secondary locations to {len(clusters)} days")
+    logger.success(f"assigned {len(secondary_df)} secondary locations to {len(clusters)} days")
     return updated_itinerary
 
 
 
 def _cluster_locations_hierarchical(
-    distance_matrix: np.ndarray, 
-    location_ids: List[int], 
-    n_clusters: int, 
+    distance_matrix: np.ndarray,
+    location_ids: List[int],
+    n_clusters: int,
     max_locations_per_cluster: int = 7
 ) -> Dict[int, List[int]]:
     """
     Cluster locations into days using hierarchical clustering.
     
-    Args:
-        distance_matrix: square distance matrix between locations
-        location_ids: list of location IDs
-        n_clusters: number of clusters (available secondary days)
-        max_locations_per_cluster: maximum locations per cluster
-        
-    Returns:
-        dictionary mapping cluster_id to list of location_ids
+    :param distance_matrix: Square distance matrix between locations
+    :param location_ids: List of location IDs
+    :param n_clusters: Number of clusters (available secondary days)
+    :param max_locations_per_cluster: Maximum locations per cluster
+    :return: Dictionary mapping cluster_id to list of location_ids
     """
     n_locations = len(location_ids)
     
-    # Handle empty case
+    # handle empty case
     if n_locations == 0:
         return {}
     
-    # Handle single location case
+    # handle single location case
     if n_locations == 1:
         return {1: location_ids.copy()}
     
-    # Handle case where we have more clusters than locations
+    # handle case where we have more clusters than locations
     if n_locations <= n_clusters:
         return {i+1: [location_ids[i]] for i in range(n_locations)}
     
-    # Convert distance matrix to condensed form for scipy
+    # convert distance matrix to condensed form for scipy
     condensed_distances = squareform(distance_matrix)
     
-    # Perform hierarchical clustering with average linkage
+    # perform hierarchical clustering with average linkage
     linkage_matrix = linkage(condensed_distances, method='average')
     
-    # Get cluster assignments
+    # get cluster assignments
     clusters = fcluster(linkage_matrix, n_clusters, criterion='maxclust')
     
-    # Group locations by cluster
+    # group locations by cluster
     cluster_assignments = {}
     for idx, cluster_id in enumerate(clusters):
         if cluster_id not in cluster_assignments:
             cluster_assignments[cluster_id] = []
         cluster_assignments[cluster_id].append(location_ids[idx])
     
-    # Handle constraint violations (clusters too large)
+    # handle constraint violations (clusters too large)
     cluster_assignments = _enforce_cluster_size_constraints(
         cluster_assignments, max_locations_per_cluster
     )
@@ -314,12 +311,9 @@ def _enforce_cluster_size_constraints(
     """
     Split clusters that exceed size limit.
     
-    Args:
-        clusters: dictionary of cluster assignments
-        max_size: maximum allowed cluster size
-        
-    Returns:
-        adjusted clusters dictionary
+    :param clusters: dictionary of cluster assignments
+    :param max_size: maximum allowed cluster size
+    :returns: adjusted clusters dictionary
     """
     adjusted_clusters = {}
     cluster_counter = 1
@@ -345,75 +339,251 @@ def _enforce_cluster_size_constraints(
 def _cluster_locations_kmeans(
     coordinates: np.ndarray,
     location_ids: List[int], 
-    n_clusters: int, 
-    max_locations_per_cluster: int = 7
+    n_clusters: int
 ) -> Dict[int, List[int]]:
     """
-    Cluster locations into days using K-means clustering.
+    Cluster locations into days using K-means clustering with no size constraints.
     
-    Args:
-        coordinates: array of [lat, lon] coordinates for locations
-        location_ids: list of location IDs
-        n_clusters: number of clusters (available secondary days)
-        max_locations_per_cluster: maximum locations per cluster
-        
-    Returns:
-        dictionary mapping cluster_id to list of location_ids
+    :param coordinates: array of [lat, lon] coordinates for locations
+    :param location_ids: list of location IDs
+    :param n_clusters: number of clusters (available secondary days)
+    : return: dictionary mapping cluster_id to list of location_ids
     """
-    from sklearn.cluster import KMeans
     
     n_locations = len(location_ids)
     
-    # Handle empty case
+    # handle empty case
     if n_locations == 0:
         return {}
     
-    # Handle single location case
+    # handle single location case
     if n_locations == 1:
         return {1: location_ids.copy()}
     
-    # Handle case where we have more clusters than locations
+    # handle case where we have more clusters than locations
     if n_locations <= n_clusters:
         return {i+1: [location_ids[i]] for i in range(n_locations)}
     
-    # Perform K-means clustering
+    # perform K-means clustering
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
     cluster_labels = kmeans.fit_predict(coordinates)
     
-    # Group locations by cluster
+    # group locations by cluster - no size constraints applied
     cluster_assignments = {}
     for idx, cluster_id in enumerate(cluster_labels):
         if cluster_id not in cluster_assignments:
             cluster_assignments[cluster_id] = []
         cluster_assignments[cluster_id].append(location_ids[idx])
     
-    # Handle constraint violations (clusters too large)
-    cluster_assignments = _enforce_cluster_size_constraints(
-        cluster_assignments, max_locations_per_cluster
-    )
-    
     return cluster_assignments
+
+
+def _organic_duration_rebalancing(clusters: Dict, secondary_df: pl.DataFrame, od_matrix: pl.DataFrame, 
+                                 max_iterations: int = 5, threshold_minutes: float = 60.0) -> Dict:
+    """
+    Apply organic duration rebalancing to clusters.
+    
+    :param clusters: Dictionary mapping cluster_id to list of location_ids
+    :param secondary_df: DataFrame with secondary location data
+    :param od_matrix: Origin-destination matrix with drive times
+    :param max_iterations: Maximum number of rebalancing iterations
+    :param threshold_minutes: Duration difference threshold for rebalancing
+        
+    Returns:
+        Rebalanced clusters dictionary
+    """
+    logger.info(f"Starting organic duration rebalancing (threshold: {threshold_minutes} min)")
+    
+    for iteration in range(max_iterations):
+        # calculate total duration for each cluster
+        cluster_durations = {}
+        for cluster_id, location_ids in clusters.items():
+            total_duration = _calculate_cluster_duration(location_ids, od_matrix)
+            cluster_durations[cluster_id] = total_duration
+        
+        if len(cluster_durations) < 2:
+            break
+        
+        # find most imbalanced pair
+        max_cluster = max(cluster_durations, key=cluster_durations.get)
+        min_cluster = min(cluster_durations, key=cluster_durations.get)
+        
+        duration_gap = cluster_durations[max_cluster] - cluster_durations[min_cluster]
+        
+        logger.info(f"Iteration {iteration + 1}: Duration gap = {duration_gap:.1f} min "
+                   f"(max: {cluster_durations[max_cluster]:.1f}, min: {cluster_durations[min_cluster]:.1f})")
+        
+        if duration_gap <= threshold_minutes:
+            logger.info(f"Converged! Duration gap {duration_gap:.1f} <= {threshold_minutes} threshold")
+            break
+        
+        if len(clusters[max_cluster]) <= 1:
+            logger.info("Cannot rebalance: max cluster has only 1 location")
+            break
+        
+        # find location in max_cluster closest to its centroid
+        moveable_location = _find_closest_to_centroid(max_cluster, clusters[max_cluster], secondary_df)
+        
+        if moveable_location is None:
+            logger.info("No moveable location found")
+            break
+        
+        # calculate impact of moving this location
+        move_impact = _calculate_move_impact(moveable_location, max_cluster, min_cluster, clusters, od_matrix)
+        
+        # only move if it improves balance (prevents oscillation)
+        if move_impact > 0:
+            clusters[max_cluster].remove(moveable_location)
+            clusters[min_cluster].append(moveable_location)
+            logger.info(f"Moved location {moveable_location} from cluster {max_cluster} to {min_cluster} "
+                       f"(impact: {move_impact:.1f} min improvement)")
+        else:
+            logger.info(f"No beneficial move available (impact: {move_impact:.1f})")
+            break
+    
+    logger.success("Organic duration rebalancing completed")
+    return clusters
+
+
+def _calculate_cluster_duration(location_ids: List[int], od_matrix: pl.DataFrame) -> float:
+    """Calculate total duration for a cluster including service time and drive time."""
+    if not location_ids:
+        return 0.0
+    
+    # service time: 1 hour per location
+    service_time = len(location_ids) * 60.0  # 60 minutes per location
+    
+    # drive time: sum of shortest TSP tour
+    if len(location_ids) == 1:
+        # single location: only drive from centroid (-1) to location
+        drive_time_row = od_matrix.filter(
+            (pl.col('origin_id') == -1) & 
+            (pl.col('destination_id') == location_ids[0])
+        )
+        drive_time = float(drive_time_row['duration_minutes'].item()) if not drive_time_row.is_empty() else 5.0
+        return service_time + drive_time
+    
+    # multiple locations: approximate with centroid + nearest neighbor tour
+    # start from centroid to first location
+    centroid_drive = 0.0
+    for loc_id in location_ids:
+        drive_time_row = od_matrix.filter(
+            (pl.col('origin_id') == -1) & 
+            (pl.col('destination_id') == loc_id)
+        )
+        if not drive_time_row.is_empty():
+            centroid_drive = max(centroid_drive, float(drive_time_row['duration_minutes'].item()))
+    
+    # approximate inter-location drive time
+    inter_location_drive = 0.0
+    if len(location_ids) > 1:
+        total_pairs = 0
+        total_drive_time = 0.0
+        for i in range(len(location_ids)):
+            for j in range(i + 1, len(location_ids)):
+                drive_time_row = od_matrix.filter(
+                    (pl.col('origin_id') == location_ids[i]) & 
+                    (pl.col('destination_id') == location_ids[j])
+                )
+                if not drive_time_row.is_empty():
+                    total_drive_time += float(drive_time_row['duration_minutes'].item())
+                    total_pairs += 1
+        
+        if total_pairs > 0:
+            avg_drive_time = total_drive_time / total_pairs
+            inter_location_drive = avg_drive_time * (len(location_ids) - 1)  # approximate TSP
+    
+    total_duration = service_time + centroid_drive + inter_location_drive
+    return total_duration
+
+
+def _find_closest_to_centroid(
+    cluster_id: int,
+    location_ids: List[int],
+    secondary_df: pl.DataFrame
+) -> int:
+    """
+    Find the location in cluster closest to the cluster centroid.
+    
+    :param cluster_id: ID of the cluster
+    :param location_ids: List of location IDs in the cluster
+    :param secondary_df: DataFrame with secondary location data
+    :return: ID of location closest to centroid
+    """
+    
+    if len(location_ids) <= 1:
+        return None
+    
+    # calculate cluster centroid
+    cluster_locations = secondary_df.filter(pl.col('pos_id').is_in(location_ids))
+    centroid_lat = cluster_locations['latitude'].mean()
+    centroid_lon = cluster_locations['longitude'].mean()
+    
+    # find closest location to centroid
+    min_distance = float('inf')
+    closest_location = None
+    
+    for row in cluster_locations.iter_rows(named=True):
+        distance = haversine_distance(row['latitude'], row['longitude'], centroid_lat, centroid_lon)
+        if distance < min_distance:
+            min_distance = distance
+            closest_location = row['pos_id']
+    
+    return closest_location
+
+
+def _calculate_move_impact(
+    location_id: int,
+    from_cluster: int,
+    to_cluster: int,
+    clusters: Dict,
+    od_matrix: pl.DataFrame
+) -> float:
+    """
+    Calculate the impact of moving a location between clusters (positive = improvement).
+    
+    :param location_id: ID of location to move
+    :param from_cluster: Source cluster ID
+    :param to_cluster: Destination cluster ID
+    :param clusters: Dictionary of cluster assignments
+    :param od_matrix: Origin-destination matrix with drive times
+    :return: Impact value (positive means improvement)
+    """
+    # calculate current durations
+    from_duration_before = _calculate_cluster_duration(clusters[from_cluster], od_matrix)
+    to_duration_before = _calculate_cluster_duration(clusters[to_cluster], od_matrix)
+    
+    # calculate durations after move
+    from_locations_after = [loc for loc in clusters[from_cluster] if loc != location_id]
+    to_locations_after = clusters[to_cluster] + [location_id]
+    
+    from_duration_after = _calculate_cluster_duration(from_locations_after, od_matrix)
+    to_duration_after = _calculate_cluster_duration(to_locations_after, od_matrix)
+    
+    # calculate balance improvement
+    imbalance_before = abs(from_duration_before - to_duration_before)
+    imbalance_after = abs(from_duration_after - to_duration_after)
+    
+    impact = imbalance_before - imbalance_after  # positive if imbalance reduces
+    return impact
 
 
 def gen_secondary_routes(
     itinerary: pl.DataFrame,
     od_matrix: pl.DataFrame,
-    centroid: tuple = None
+    centroid: Tuple = None
 ) -> pl.DataFrame:
     """
     Generate optimized routes for days with secondary locations using TSP algorithms.
     
-    Args:
-        itinerary: DataFrame with zone_id, day, pos_id, pos_locations, pos_duration columns
-        od_matrix: DataFrame with OD matrix data (origin_id, destination_id, duration_minutes, etc.)
-        centroid: Tuple of (longitude, latitude) for zone centroid starting point
-        
-    Returns:
-        Updated itinerary DataFrame with optimized route order for secondary location days
+    :param itinerary: DataFrame with zone_id, day, pos_id, pos_locations, pos_duration columns
+    :param od_matrix: DataFrame with OD matrix data (origin_id, destination_id, duration_minutes, etc.)
+    :param centroid: Tuple of (longitude, latitude) for zone centroid starting point
+    :return: Updated itinerary DataFrame with optimized route order for secondary location days
     """
-    logger.info("Generating optimized routes for secondary locations")
+    logger.info("generating optimized routes for secondary locations")
     
-    # Create drive time lookup from OD matrix
+    # create drive time lookup from OD matrix
     drive_time_lookup = {}
     for row in od_matrix.iter_rows(named=True):
         origin_id = row['origin_id']
@@ -423,7 +593,7 @@ def gen_secondary_routes(
     
     updated_itinerary = itinerary.clone()
     
-    # Process each day that has locations
+    # process each day that has locations
     for day_row in itinerary.iter_rows(named=True):
         day = day_row['day']
         pos_ids = day_row['pos_id']
@@ -431,68 +601,68 @@ def gen_secondary_routes(
         pos_durations = day_row['pos_duration']
         pos_classes = day_row['pos_class']
         
-        # Skip days with 0 locations (no routing needed)
+        # skip days with 0 locations (no routing needed)
         if len(pos_ids) == 0:
             continue
             
-        # Prepare locations for routing with centroid as starting point
+        # prepare locations for routing with centroid as starting point
         route_pos_ids = pos_ids.copy()
         route_locations = pos_locations.copy()
         route_durations = pos_durations.copy()
         route_classes = pos_classes.copy()
         
-        # Add centroid as starting point if provided and day has secondary locations
+        # add centroid as starting point if provided and day has secondary locations
         centroid_pos_id = None
         if centroid is not None and len(pos_ids) > 0:
-            # Use negative ID for centroid to avoid conflicts with actual pos_ids
+            # use negative ID for centroid to avoid conflicts with actual pos_ids
             centroid_pos_id = -1
             route_pos_ids.insert(0, centroid_pos_id)
-            route_locations.insert(0, [centroid[0], centroid[1]])  # [lon, lat]
-            route_durations.insert(0, 0)  # 0 duration at centroid
+            route_locations.insert(0, [centroid[0], centroid[1]])
+            route_durations.insert(0, 0)
             route_classes.insert(0, 'centroid')
             
-        logger.info(f"Optimizing route for day {day} with {len(route_pos_ids)} locations (including centroid)")
+        logger.info(f"optimizing route for day {day} with {len(route_pos_ids)} locations (including centroid)")
         
-        # Skip optimization if only centroid (no secondary locations)
+        # skip optimization if only centroid (no secondary locations)
         if len(route_pos_ids) <= 1:
             continue
             
-        # Optimize route using appropriate algorithm with centroid as fixed start
+        # optimize route using appropriate algorithm with centroid as fixed start
         optimized_route, total_drive_time, metadata = _optimize_daily_route(
             location_ids=route_pos_ids,
             drive_time_lookup=drive_time_lookup,
             start_location_id=centroid_pos_id
         )
         
-        logger.info(f"Day {day}: {metadata['algorithm']}, {total_drive_time:.1f} min drive time")
+        logger.info(f"day {day}: {metadata['algorithm']}, {total_drive_time:.1f} min drive time")
         
-        # Reorder locations, durations, and classes to match optimized route
+        # reorder locations, durations, and classes to match optimized route
         optimized_locations = []
         optimized_durations = []
         optimized_classes = []
         
-        # Keep optimized route including centroid as first point
+        # keep optimized route including centroid as first point
         final_pos_ids = []
         
         for optimized_id in optimized_route:
             if optimized_id == centroid_pos_id:
-                # Keep centroid as first point in final output
+                # keep centroid as first point in final output
                 final_pos_ids.append(optimized_id)
                 optimized_locations.append([centroid[0], centroid[1]])
-                optimized_durations.append(0)  # 0 duration at centroid
+                optimized_durations.append(0)
                 optimized_classes.append('centroid')
             else:
-                # Find the index of this ID in original order (before centroid was added)
+                # find the index of this ID in original order (before centroid was added)
                 original_idx = pos_ids.index(optimized_id)
                 final_pos_ids.append(optimized_id)
                 optimized_locations.append(pos_locations[original_idx])
                 optimized_durations.append(pos_durations[original_idx])
                 optimized_classes.append(pos_classes[original_idx])
         
-        # Update the itinerary for this day using direct row updates
+        # update the itinerary for this day using direct row updates
         for i, row in enumerate(updated_itinerary.rows()):
             if row[1] == day:  # day column is at index 1
-                # Create new row data
+                # create new row data
                 new_row = {
                     'zone_id': row[0],
                     'day': row[1],
@@ -502,7 +672,7 @@ def gen_secondary_routes(
                     'pos_class': optimized_classes
                 }
                 
-                # Replace this row in the DataFrame
+                # replace this row in the DataFrame
                 rows_before = updated_itinerary[:i]
                 rows_after = updated_itinerary[i+1:]
                 new_row_df = pl.DataFrame([new_row])
@@ -515,7 +685,7 @@ def gen_secondary_routes(
                     updated_itinerary = pl.concat([rows_before, new_row_df, rows_after])
                 break
     
-    logger.success("Route optimization completed for all secondary location days")
+    logger.success("route optimization completed for all secondary location days")
     return updated_itinerary
 
 
@@ -524,18 +694,15 @@ def _optimize_daily_route(
     drive_time_lookup: Dict,
     start_location_id: int = None,
     use_exhaustive_if_small: bool = True
-) -> tuple:
+) -> Tuple:
     """
     Main function to optimize a route for given locations on a single day.
     
-    Args:
-        location_ids: List of location IDs to visit
-        drive_time_lookup: Dictionary for drive time lookups
-        start_location_id: Starting location (if None, uses first location)
-        use_exhaustive_if_small: Use exhaustive search for ≤ 5 locations
-        
-    Returns:
-        Tuple of (route, total_time, metadata)
+    :param location_ids: List of location IDs to visit
+    :param drive_time_lookup: Dictionary for drive time lookups
+    :param start_location_id: Starting location (if None, uses first location)
+    :param use_exhaustive_if_small: Use exhaustive search for ≤ 5 locations
+    :return: Tuple of (route, total_time, metadata)
     """
     if not location_ids:
         return [], 0.0, {'algorithm': 'empty'}
@@ -545,14 +712,14 @@ def _optimize_daily_route(
         'start_location': start_location_id or location_ids[0]
     }
     
-    # Choose algorithm based on problem size
+    # choose algorithm based on problem size
     if use_exhaustive_if_small and len(location_ids) <= 5:
-        # Use exhaustive search for small problems
+        # use exhaustive search for small problems
         route, total_time = _exhaustive_search(location_ids, drive_time_lookup)
         metadata['algorithm'] = 'exhaustive_search'
         metadata['optimal'] = True
     else:
-        # Use greedy + 2-opt for larger problems
+        # use greedy + 2-opt for larger problems
         route, _ = _greedy_nearest_neighbor(location_ids, drive_time_lookup, start_location_id)
         route, total_time = _two_opt_improvement(route, drive_time_lookup)
         metadata['algorithm'] = 'greedy_plus_2opt'
@@ -568,11 +735,7 @@ def _get_drive_time(origin_id: int, dest_id: int, drive_time_lookup: Dict) -> fl
     if origin_id == dest_id:
         return 0.0
     
-    # Handle centroid (ID = -1) by using a reasonable default drive time
-    if origin_id == -1 or dest_id == -1:
-        # Assume 5 minutes average drive time from/to centroid
-        return 5.0
-    
+    # look up drive time from OD matrix (including centroid connections)
     return drive_time_lookup.get((origin_id, dest_id), float('inf'))
 
 
@@ -599,13 +762,13 @@ def _greedy_nearest_neighbor(
     if len(location_ids) <= 1:
         return location_ids, 0.0
     
-    # Choose starting location
+    # choose starting location
     current_location = start_location_id if start_location_id is not None else location_ids[0]
     unvisited = set(location_ids) - {current_location}
     route = [current_location]
     total_time = 0.0
     
-    # Greedy selection: always visit nearest unvisited location
+    # greedy selection: always visit nearest unvisited location
     while unvisited:
         nearest_location = min(
             unvisited,
@@ -639,13 +802,13 @@ def _two_opt_improvement(
     for iteration in range(max_iterations):
         improved = False
         
-        # Try all possible 2-opt swaps
+        # try all possible 2-opt swaps
         for i in range(1, len(route) - 2):
             for j in range(i + 1, len(route)):
-                if j - i == 1:  # Skip adjacent edges
+                if j - i == 1:  # skip adjacent edges
                     continue
                 
-                # Create new route by reversing segment between i and j
+                # create new route by reversing segment between i and j
                 new_route = route[:i] + route[i:j+1][::-1] + route[j+1:]
                 new_time = _calculate_route_time(new_route, drive_time_lookup)
                 
@@ -657,7 +820,7 @@ def _two_opt_improvement(
         if improved:
             route = best_route.copy()
         else:
-            break  # No more improvements found
+            break  # no more improvements found
     
     return best_route, best_time
 
@@ -670,7 +833,6 @@ def _exhaustive_search(
     Solve TSP using exhaustive search (brute force).
     Only use for small problems (≤ 5 locations).
     """
-    import itertools
     
     if len(location_ids) > 8:
         raise ValueError("Exhaustive search only supported for ≤ 8 locations")
@@ -681,7 +843,7 @@ def _exhaustive_search(
     best_route = None
     best_time = float('inf')
     
-    # Fix first location, permute the rest
+    # fix first location, permute the rest
     first_location = location_ids[0]
     remaining_locations = location_ids[1:]
     
@@ -703,17 +865,13 @@ def get_detailed_routes(
     """
     Get detailed route geometry and timing for each day using OSRM Route API.
     
-    Args:
-        itinerary: DataFrame with optimized routes for each day
-        od_matrix: DataFrame with OD matrix data for drive time lookups
-        
-    Returns:
-        Updated itinerary DataFrame with new columns:
+    :param itinerary: DataFrame with optimized routes for each day
+    :param od_matrix: DataFrame with OD matrix data for drive time lookups
+    :return: Updated itinerary DataFrame with new columns:
         - route: Array of [lon, lat] points along the route
         - schedule: Array of cumulative times at each point (float minutes)
         - duration: Total route duration for the day (float minutes)
     """
-    from ..utils.osrm_utils import fetch_route_geometry, Location
     
     logger.info("Getting detailed routes and timing for all days")
     
@@ -731,15 +889,15 @@ def get_detailed_routes(
         pos_locations = day_row['pos_locations']
         pos_durations = day_row['pos_duration']
         
-        # Skip days with 0 or 1 locations (no routing needed)
+        # skip days with 0 or 1 locations (no routing needed)
         if len(pos_ids) <= 1:
             if len(pos_ids) == 1:
-                # Single location - just the point and duration
+                # single location - just the point and duration
                 route_data.append([pos_locations[0]])
                 schedule_data.append([0.0, float(pos_durations[0])])
                 duration_data.append(float(pos_durations[0]))
             else:
-                # No locations
+                # no locations
                 route_data.append([])
                 schedule_data.append([])
                 duration_data.append(0.0)
@@ -748,7 +906,7 @@ def get_detailed_routes(
         logger.info(f"Fetching detailed route for zone {zone_id}, day {day} with {len(pos_ids)} locations")
         
         try:
-            # Convert pos_locations to Location objects for OSRM API
+            # convert pos_locations to Location objects for OSRM API
             locations = []
             for i, coords in enumerate(pos_locations):
                 location = Location(
@@ -759,7 +917,7 @@ def get_detailed_routes(
                 )
                 locations.append(location)
             
-            # Fetch route geometry from OSRM
+            # fetch route geometry from OSRM
             route_geometry = fetch_route_geometry(
                 zone_id=zone_id,
                 day_number=day,
@@ -767,47 +925,44 @@ def get_detailed_routes(
                 include_steps=True
             )
             
-            # Extract route points from polyline geometry
+            # extract route points from polyline geometry
             route_points = _decode_polyline_to_points(route_geometry.geometry_polyline)
             
-            # Build schedule with cumulative timing
+            # build schedule with cumulative timing
             schedule = []
             total_duration = 0.0
             
-            # Start at time 0 (at centroid)
+            # start at time 0 (at centroid)
             schedule.append(0.0)
             
-            # Add drive times between locations and service times at each location
+            # add drive times between locations and service times at each location
             for i in range(len(pos_ids) - 1):
-                # Add service time at current location
+                # add service time at current location
                 service_time = float(pos_durations[i])
                 total_duration += service_time
                 schedule.append(total_duration)
                 
-                # Add drive time to next location
+                # add drive time to next location
                 origin_id = pos_ids[i]
                 dest_id = pos_ids[i + 1]
                 
-                # Handle drive time lookup (centroid uses default 5 min)
-                if origin_id == -1 or dest_id == -1:
-                    # Use default 5 minutes for centroid connections
-                    drive_time = 5.0
+                # look up drive time from OD matrix (including centroid connections)
+                drive_time_row = od_matrix.filter(
+                    (pl.col('origin_id') == origin_id) & 
+                    (pl.col('destination_id') == dest_id)
+                )
+                
+                if not drive_time_row.is_empty():
+                    drive_time = float(drive_time_row['duration_minutes'].item())
                 else:
-                    # Look up drive time from OD matrix
-                    drive_time_row = od_matrix.filter(
-                        (pl.col('origin_id') == origin_id) & 
-                        (pl.col('destination_id') == dest_id)
-                    )
-                    
-                    if not drive_time_row.is_empty():
-                        drive_time = float(drive_time_row['duration_minutes'].item())
-                    else:
-                        drive_time = 5.0  # fallback
+                    # fallback only if no OD matrix entry exists
+                    drive_time = 5.0
+                    logger.warning(f"No OD matrix entry for {origin_id} -> {dest_id}, using 5.0 min fallback")
                 
                 total_duration += drive_time
                 schedule.append(total_duration)
             
-            # Add final service time at last location
+            # add final service time at last location
             final_service_time = float(pos_durations[-1])
             total_duration += final_service_time
             schedule.append(total_duration)
@@ -820,7 +975,7 @@ def get_detailed_routes(
             
         except Exception as e:
             logger.error(f"Failed to get detailed route for zone {zone_id}, day {day}: {e}")
-            # Fallback: use simple point-to-point route
+            # fallback: use simple point-to-point route
             fallback_route = pos_locations.copy()
             fallback_schedule = [0.0] + [float(sum(pos_durations[:i+1])) for i in range(len(pos_durations))]
             fallback_duration = float(sum(pos_durations))
@@ -829,7 +984,7 @@ def get_detailed_routes(
             schedule_data.append(fallback_schedule)
             duration_data.append(fallback_duration)
     
-    # Add new columns to itinerary
+    # add new columns to itinerary
     updated_itinerary = updated_itinerary.with_columns([
         pl.Series("route", route_data),
         pl.Series("schedule", schedule_data), 
@@ -851,10 +1006,10 @@ def _decode_polyline_to_points(polyline_string: str) -> List[List[float]]:
         List of [longitude, latitude] coordinate pairs
     """
     try:
-        # Decode polyline to [(lat, lon), ...] tuples
+        # decode polyline to [(lat, lon), ...] tuples
         decoded_coords = polyline.decode(polyline_string)
         
-        # Convert to [[lon, lat], ...] format
+        # convert to [[lon, lat], ...] format
         route_points = [[float(coord[1]), float(coord[0])] for coord in decoded_coords]
         
         return route_points

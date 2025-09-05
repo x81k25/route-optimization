@@ -119,9 +119,10 @@ def optimize(
         pos_zone
     )
 
-    # get od matrix
+    # get od matrix including centroid
     od_matrix = osrm_utils.generate_od_matrix(
-        pos_zone=pos_zone
+        pos_zone=pos_zone,
+        centroid=centroid
     )
 
     # assign anchor days

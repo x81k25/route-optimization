@@ -4,14 +4,18 @@ Zone Details Page for Route Optimization Dashboard.
 Displays detailed metrics and daily itinerary for individual zones.
 """
 
-import streamlit as st
-import pandas as pd
+# standard library imports
 import sys
 from pathlib import Path
 
-# Add current directory to path to import local modules
+# 3rd-party imports
+import pandas as pd
+import streamlit as st
+
+# add current directory to path to import local modules
 sys.path.insert(0, str(Path(__file__).parent))
 
+# local imports
 from utils import (
     calculate_zone_metrics,
     create_zone_specific_map,
@@ -20,10 +24,16 @@ from utils import (
 
 
 def show_zone_details(itinerary_df, locations):
-    """Display zone details page."""
+    """
+    Display zone details page.
+    
+    :param itinerary_df: DataFrame with route optimization results
+    :param locations: Dictionary of location data
+    :return: None
+    """
     st.header("zone details")
     
-    # Zone selector
+    # zone selector
     zones = sorted(itinerary_df['zone_id'].unique())
     selected_zone = st.selectbox("select a zone:", zones)
     

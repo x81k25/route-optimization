@@ -3,15 +3,20 @@
 Simple runner script for the Streamlit Route Optimization Dashboard
 """
 
+# standard library imports
 import subprocess
 import sys
 from pathlib import Path
 
 def main():
-    """Run the Streamlit app"""
+    """
+    Run the Streamlit app.
+    
+    :return: None
+    """
     app_path = Path(__file__).parent / "app.py"
     
-    # Run streamlit
+    # run streamlit
     cmd = [
         sys.executable, "-m", "streamlit", "run", 
         str(app_path),

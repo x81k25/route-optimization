@@ -368,11 +368,8 @@ def calculate_quality_metrics(clustered_df: pl.DataFrame) -> Dict[str, float]:
     """
     Calculate clustering quality metrics.
     
-    Args:
-        clustered_df: DataFrame with clustered locations
-        
-    Returns:
-        Quality metrics dictionary
+    :param clustered_df: DataFrame with clustered locations
+    :return: Quality metrics dictionary
     """
     if len(clustered_df) == 0:
         return {}
@@ -423,12 +420,9 @@ def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tup
     """
     Main function to cluster locations into geographic zones.
     
-    Args:
-        locations_df: DataFrame with location data including 'latitude', 'longitude'
-        config: Clustering configuration dictionary
-        
-    Returns:
-        Tuple of (clustered_df_with_zone_ids, quality_metrics)
+    :param locations_df: DataFrame with location data including 'latitude', 'longitude'
+    :param config: Clustering configuration dictionary
+    :return: Tuple of (clustered_df_with_zone_ids, quality_metrics)
     """
     logger.info(f"Clustering {len(locations_df)} locations with method: {config['method']}")
     
@@ -500,21 +494,18 @@ def add_zone_ids_to_jsonl_dataset(
     """
     Add zone_id assignments to a JSONL location dataset.
     
-    Args:
-        input_file: Path to input JSONL file
-        output_file: Path to output JSONL file with zone_ids
-        config: Clustering configuration dictionary
-        
-    Returns:
-        Quality metrics dictionary
+    :param input_file: Path to input JSONL file
+    :param output_file: Path to output JSONL file with zone_ids
+    :param config: Clustering configuration dictionary
+    :return: Quality metrics dictionary
     """
     config = config or default_cluster_config()
     logger.info(f"Adding zone_ids to JSONL dataset: {input_file} -> {output_file}")
     
-    # Load dataset as DataFrame
+    # load dataset as DataFrame
     locations_df = pl.read_ndjson(input_file)
     
-    # Perform clustering
+    # perform clustering
     clustered_df, quality_metrics = cluster_locations(locations_df, config)
     
     # Write to JSONL with zone_ids
@@ -532,18 +523,15 @@ def add_zone_ids_to_json_dataset(
     """
     Add zone_id assignments to a JSON location dataset.
     
-    Args:
-        input_file: Path to input JSON file
-        output_file: Path to output JSON file with zone_ids
-        config: Clustering configuration dictionary
-        
-    Returns:
-        Quality metrics dictionary
+    :param input_file: Path to input JSON file
+    :param output_file: Path to output JSON file with zone_ids
+    :param config: Clustering configuration dictionary
+    :return: Quality metrics dictionary
     """
     config = config or default_cluster_config()
     logger.info(f"Adding zone_ids to JSON dataset: {input_file} -> {output_file}")
     
-    # Load dataset
+    # load dataset
     with open(input_file, 'r') as f:
         data = json.load(f)
     
@@ -561,7 +549,7 @@ def add_zone_ids_to_json_dataset(
     # Convert to DataFrame
     locations_df = pl.DataFrame(locations_data)
     
-    # Perform clustering
+    # perform clustering
     clustered_df, quality_metrics = cluster_locations(locations_df, config)
     
     # Calculate cluster centers

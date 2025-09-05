@@ -39,25 +39,28 @@ For each primary location:
 - Day utilization: Fill days to capacity before moving to next day
 
 ### Secondary Location Clustering
-**Algorithm**: Hierarchical Agglomerative Clustering with Drive-Time Distance Matrix
+**Algorithm**: K-means Clustering with Organic Duration Rebalancing
 
-**Distance Metric**: Drive time (minutes) between all location pairs
+**Distance Metric**: Haversine distance (great-circle distance) for spatial clustering
 ```python
-distance_matrix[i,j] = drive_time(location_i, location_j)
+haversine_distance = R * 2 * arcsin(sqrt(
+    sin²(Δlat/2) + cos(lat1) * cos(lat2) * sin²(Δlon/2)
+))
 ```
+where R = 6371 km (Earth's radius)
 
 **Clustering Method**: 
-- Linkage: Average linkage (UPGMA)
-- Criterion: Cut dendrogram at k clusters where k = available secondary days
-- Constraint handling: Split clusters exceeding 7 locations
+- Initial clustering: K-means with K-means++ initialization
+- Noise detection: Exclude isolated points (>150km from nearest neighbors)
+- Rebalancing: Organic duration-based workload balancing
 
 **Mathematical Formulation**:
 ```
-minimize: Σ(intra_cluster_distances)
-subject to: |cluster_i| ≤ 7 ∀i
+minimize: Σᵢ Σₓ∈Cᵢ ||x - μᵢ||²
+subject to: duration_balance across clusters
 ```
 
-**Constraint Enforcement**: `_enforce_cluster_size_constraints()` splits oversized clusters using simple partitioning.
+**Constraint Enforcement**: `organic_duration_rebalancing()` iteratively moves locations between clusters to minimize workload variance while maintaining geographic coherence.
 
 ## Stage 2: Daily Route Optimization (TSP)
 
@@ -114,7 +117,7 @@ route[i:j+1] = route[i:j+1][::-1]
 
 ## Geographic Clustering (Zone Creation)
 
-### K-means Spatial Clustering
+### K-means Spatial Clustering with Noise Detection
 **Objective Function**:
 ```
 minimize: Σᵢ Σₓ∈Cᵢ ||x - μᵢ||²
@@ -131,16 +134,25 @@ where R = 6371 km (Earth's radius)
 
 **Initialization**: K-means++ initialization (10 random initializations, best result selected)
 
-### Cluster Balancing Algorithm
-**Constraint Satisfaction**: Ensure cluster sizes within [min_size, max_size] bounds
+**Noise Point Detection**: Identify and exclude isolated locations
+- **Isolation threshold**: 150km radius
+- **Minimum neighbors**: 2 locations within threshold
+- **Excluded points**: Assigned zone_id: null
+
+### Organic Duration Rebalancing Algorithm
+**Constraint Satisfaction**: Balance workload durations across clusters
 
 **Method**: 
-1. Identify violating clusters (oversized/undersized)
-2. Extract locations from violating clusters  
-3. Re-cluster extracted locations using K-means
-4. Merge with compliant clusters
+1. Calculate total duration (service time + drive time) per cluster
+2. Identify duration imbalances using 60-minute threshold
+3. Move locations closest to cluster centroid from overloaded to underloaded clusters
+4. Apply impact assessment to prevent oscillation
+5. Iterate until convergence (max 5 iterations)
 
-**Rebalancing Strategy**: Target size = (min_size + max_size) / 2
+**Rebalancing Criteria**:
+- **Duration threshold**: 60 minutes between clusters
+- **Location selection**: Closest to receiving cluster centroid
+- **Convergence**: Standard deviation of secondary locations < 2.0
 
 ## Mathematical Constraints & Parameters
 
@@ -177,19 +189,20 @@ No additional penalties or weights applied - pure drive time minimization.
 
 | Component | Algorithm | Time Complexity | Space Complexity |
 |-----------|-----------|----------------|-----------------|
-| Zone Clustering | K-means | O(n·k·d·t) | O(n·d) |
-| Day Assignment | Hierarchical Clustering | O(n³) | O(n²) |
+| Zone Clustering | K-means + Noise Detection | O(n·k·d·t) | O(n·d) |
+| Rebalancing | Organic Duration Balance | O(n²·R) | O(n) |
 | Small TSP | Exhaustive Search | O(n!) | O(n) |
 | Large TSP | Greedy + 2-opt | O(n²·I) | O(n) |
 
-Where: n=locations, k=clusters, d=dimensions, t=iterations, I=2-opt iterations
+Where: n=locations, k=clusters, d=dimensions, t=iterations, I=2-opt iterations, R=rebalancing iterations
 
 ## Quality Metrics & Evaluation
 
 ### Clustering Quality
 - **Intra-cluster distance**: Average pairwise distance within clusters
-- **Cluster size balance**: Standard deviation of cluster sizes
-- **Silhouette coefficient**: Not implemented (could be added)
+- **Duration balance**: Standard deviation of daily workload durations
+- **Secondary location balance**: Standard deviation of secondary locations per cluster
+- **Geographic coherence**: Compactness of spatial clusters after rebalancing
 
 ### Route Quality  
 - **Total drive time**: Sum of inter-location drive times
@@ -213,15 +226,15 @@ The system logs optimization metadata:
 
 ### Known Limitations
 1. **Local optima**: 2-opt may converge to suboptimal solutions
-2. **Clustering myopia**: Stage 1 clustering ignores Stage 2 TSP costs
-3. **No dynamic rebalancing**: Day assignments are static once set
-4. **Limited constraint handling**: Complex business rules not modeled
+2. **Static traffic assumptions**: Drive times don't account for traffic variation
+3. **Limited rebalancing iterations**: Maximum 5 iterations may not reach global optimum
+4. **Noise detection threshold**: 150km threshold may not suit all geographic regions
 
 ### Future Enhancements
-- **Integrated optimization**: Joint day-assignment and routing optimization
-- **Metaheuristics**: Genetic algorithms, simulated annealing for larger instances
+- **Adaptive thresholds**: Dynamic noise detection and rebalancing thresholds
+- **Multi-objective optimization**: Balance drive time, workload balance, and geographic coherence
 - **Dynamic updates**: Real-time reoptimization based on traffic/delays
-- **Multi-objective optimization**: Balance drive time vs service quality metrics
+- **Machine learning integration**: Predictive models for optimal clustering parameters
 
 ## Variations
 
@@ -322,3 +335,72 @@ For geographic point clustering with 10-15 locations:
 - **Noise points excluded**: 1 isolated location (Needles, CA) assigned zone_id: null
 
 **Key Enhancement**: Implemented geographic noise detection to identify and exclude isolated locations that would force poor clustering decisions. Points with fewer than 2 neighbors within 150km radius are marked as noise and excluded from zone assignment, achieving more balanced clustering of the remaining locations.
+
+## Variation 6 (Unconstrained K-means)  
+**Clustering Algorithm**: K-means Clustering with NO Size Constraints  
+**Routing Algorithm**: Adaptive (Exhaustive ≤5 locations, Greedy+2-opt >5 locations)  
+**Model Assumptions**: Improved synthetic data, removed all artificial cluster size limits  
+**Results**:
+- Average daily drive time: 5.69 hours
+- Average weekly duration: 42.41 hours  
+- Average utilization: 106.02%
+- Average overutilized days: 3.93
+- Average underutilized days: 1.07
+- **Average secondary standard deviation**: 3.96 ❌ **SEVERE IMBALANCE** (was 1.97)
+
+**Key Findings**: 
+- **Disaster zones**: zone_013 (sec_std=11.57), zone_016 (sec_std=10.35), zone_014 (sec_std=5.83)
+- Removing size constraints created extreme cluster imbalances (some days 20+ locations, others 0-1)
+- Pure spatial optimization without size control leads to massive workload imbalances
+- **Critical insight**: Size constraints are necessary - the issue is implementation quality, not constraint existence
+
+## Variation 7 (Real Centroid Drive Times - Data Quality Correction)  
+**Clustering Algorithm**: K-means Clustering with NO Size Constraints  
+**Routing Algorithm**: Adaptive (Exhaustive ≤5 locations, Greedy+2-opt >5 locations)  
+**Model Assumptions**: Improved synthetic data + **REAL DRIVE TIMES** from centroid (fixed hardcoded 5-minute fallbacks)  
+**Results**:
+- Average daily drive time: 11.92 hours ⭐ **REALISTIC BASELINE**
+- Average weekly duration: 48.64 hours  
+- Average utilization: 121.59% ⭐ **REALISTIC CONSTRAINT PRESSURE**
+- Average overutilized days: 4.0
+- Average underutilized days: 1.0
+- **Average secondary standard deviation**: 3.48 ✅ **IMPROVED BALANCE** (down from 3.96)
+
+**Critical Data Quality Fix**: 
+- **Issue**: Previous variations used hardcoded 5-minute drive times for all centroid connections
+- **Root cause**: Two locations in code defaulted to `return 5.0` for centroid (ID = -1) connections
+- **Solution**: Added centroid to OD matrix generation and removed all hardcoded fallbacks
+- **Impact**: Drive times from centroid now range from 87-167 minutes (realistic) vs. 5 minutes (artificial)
+
+**Key Findings**:
+- **This is NOT a performance regression** - previous results were artificially low due to data quality issues
+- **Establishes new realistic baseline**: 121% utilization provides proper constraint pressure for optimization
+- **Improved clustering balance**: Secondary standard deviation decreased despite more realistic problem scale
+- **Validates methodology**: Real data shows K-means still creates severe imbalances, confirming need for size-constrained clustering
+
+## Variation 8 (Organic Duration Rebalancing - BREAKTHROUGH!)  
+**Clustering Algorithm**: K-means + Organic Duration Rebalancing  
+**Routing Algorithm**: Adaptive (Exhaustive ≤5 locations, Greedy+2-opt >5 locations)  
+**Model Assumptions**: Real drive times + **organic workload balancing**  
+**Results**:
+- Average daily drive time: 12.46 hours
+- Average weekly duration: 49.17 hours  
+- Average utilization: 122.93%
+- Average overutilized days: 4.14
+- Average underutilized days: 0.86
+- **Average secondary standard deviation**: 1.16 ⭐ **67% IMPROVEMENT** (down from 3.48)
+
+**Revolutionary Algorithm**: 
+- **Problem**: K-means created severe workload imbalances (some days 20+ locations, others 0-1)
+- **Solution**: Organic duration rebalancing with 60-minute threshold
+- **Method**: Iteratively move locations closest to cluster centroid from overloaded to underloaded days
+- **Safeguards**: Impact assessment prevents oscillation, max 5 iterations
+
+**Breakthrough Results**:
+- **Outstanding individual improvements**: zone_009 (-95%), zone_011 (-91%), zone_014 (-93%)
+- **Challenging zones improved**: zone_013 (-53%), zone_016 (-62%) 
+- **Fast convergence**: Most zones converge in 1-2 iterations
+- **Maintains geographic coherence**: Only moves "edge" locations between clusters
+- **Organic approach**: Uses real business metrics (duration) vs artificial size constraints
+
+**Key Innovation**: This represents the first successful organic constraint method that balances workloads while respecting spatial clustering principles.
