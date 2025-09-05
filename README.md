@@ -289,7 +289,7 @@ Location data is stored in JSONL format with the following schema:
 
 ```json
 {
-  "id": 1,
+  "pos_id": 1,
   "name": "Subway - Granada Hills", 
   "address": "11878 Balboa Blvd, Granada Hills, CA",
   "latitude": 34.2776949,
