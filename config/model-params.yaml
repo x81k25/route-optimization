@@ -1,5 +1,6 @@
 model_params:
   days_per_week: 5
+  hours_per_day: 8
   utilization: 100
   primary_hours_per_week: 24
   hours_per_non_primary: 1
