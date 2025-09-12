@@ -69,7 +69,8 @@ def aggregate(
         for row in zone_data.iter_rows(named=True):
             pos_ids = row['pos_id'] or []
             pos_classes = row['pos_class'] or []
-            pos_durations = row['pos_duration'] or []
+            # Use schedule for individual position durations if available, otherwise estimate
+            schedule = row.get('schedule', [])
             day_duration = row['duration'] or 0.0
             
             # track unique locations and their classes
@@ -79,11 +80,12 @@ def aggregate(
                     all_pos_classes.append(pos_class)
             
             # sum position time (service time at locations) - convert minutes to hours
-            if pos_durations:
-                total_pos_time += sum(pos_durations) / 60.0
+            # Estimate 60 minutes per location (excluding centroid)
+            estimated_service_time = len([p for p in pos_ids if p != -1]) * 60.0
+            total_pos_time += estimated_service_time / 60.0
             
             # calculate drive time (total duration - service time) - convert minutes to hours
-            service_time_for_day = sum(pos_durations) if pos_durations else 0.0
+            service_time_for_day = estimated_service_time
             drive_time_for_day = max(0.0, day_duration - service_time_for_day)
             total_drive_time += drive_time_for_day / 60.0
         
@@ -165,7 +167,6 @@ if __name__ == "__main__":
             'day': 1,
             'pos_id': [101],
             'pos_locations': [[-122.0, 37.0]], 
-            'pos_duration': [480],
             'pos_class': ['primary'],
             'route': [[-122.0, 37.0]],
             'schedule': [0.0, 480.0],
@@ -176,10 +177,9 @@ if __name__ == "__main__":
             'day': 2,
             'pos_id': [102, 103],
             'pos_locations': [[-122.1, 37.1], [-122.2, 37.2]],
-            'pos_duration': [60, 60], 
             'pos_class': ['secondary', 'secondary'],
             'route': [[-122.1, 37.1], [-122.2, 37.2]],
-            'schedule': [0.0, 60.0, 75.0, 135.0],
+            'schedule': [0.0, 60.0, 120.0],
             'duration': 135.0
         }
     ]

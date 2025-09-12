@@ -2,197 +2,191 @@
 
 # standard library imports
 import argparse
-import json
 import os
-import sys
-from typing import List, Optional, Set
+from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 3rd-party imports
 from loguru import logger
 import polars as pl
 
-# local imports
-import src.core as core
-from src.utils import io_utils, osrm_utils, geo_utils
+# local imports - new pipeline structure
+from src.core._1_extraction import extract_locations, validate_locations
+from src.core._2_preprocessing import preprocess_zone_data, group_by_zones
+from src.core._3_0_optimization import optimize_zone
+from src.core._4_reporting import aggregate as generate_reports
+from src.core._5_loading import load_results_to_files
+
 
 # ------------------------------------------------------------------------------
-# extract
+# Stage 1: Extraction
 # ------------------------------------------------------------------------------
 
-def extract(
-    zone_ids: Optional[List[str]],
-    local: bool = True,
+def extraction_stage(
+    zone_ids: Optional[List[str]] = None,
     pos_path: str = "./data/locations.jsonl"
 ) -> pl.DataFrame:
     """
-    extract pos data to be optimized
-
-    :param zone_ids: list of zone_ids to be optimized
-    :local: whether the data will be returned via local files
+    Stage 1: Extract and validate location data.
+    
+    Args:
+        zone_ids: List of zone_ids to extract
+        pos_path: Path to locations file
+        
+    Returns:
+        Validated location DataFrame
     """
-    logger.info("extracting pos data")
-
-    if local:
-        logger.info(f"extracting pos data from {pos_path}")
-        pos = io_utils.extract(
-            zone_ids=zone_ids,
-            locations_path=pos_path
-        ).sort("zone_id", descending=True)
-
-    if pos.height == 0:
-        logger.error("no valid zones given for processing")
+    logger.info("=" * 60)
+    logger.info("STAGE 1: EXTRACTION")
+    logger.info("=" * 60)
+    
+    # Extract locations
+    pos_df = extract_locations(pos_path, zone_ids)
+    
+    if pos_df.height == 0:
+        logger.error("No valid zones given for processing")
         return None
-    else:
-        logger.success("pos data extracted")
-        logger.info(pos.head())
-        return pos
+    
+    # Validate data
+    validated_df = validate_locations(pos_df)
+    
+    logger.success(f"Stage 1 complete: {len(validated_df)} locations extracted and validated")
+    logger.info(f"Sample data:\n{validated_df.head()}")
+    
+    return validated_df
 
 
 # ------------------------------------------------------------------------------
-# optimizization 
+# Stage 2: Preprocessing  
 # ------------------------------------------------------------------------------
 
-def optimization_orchstrator(
-    pos: pl.DataFrame
+def preprocessing_stage(
+    pos_df: pl.DataFrame
+) -> dict:
+    """
+    Stage 2: Preprocess data for optimization.
+    
+    Args:
+        pos_df: Location DataFrame
+        
+    Returns:
+        Dictionary with preprocessed zone data
+    """
+    logger.info("=" * 60)
+    logger.info("STAGE 2: PREPROCESSING")
+    logger.info("=" * 60)
+    
+    # Group by zones
+    zone_groups = group_by_zones(pos_df)
+    
+    # Preprocess each zone
+    zone_data = {}
+    for zone_id, zone_df in zone_groups.items():
+        zone_df, centroid, od_matrix = preprocess_zone_data(zone_df, zone_id)
+        zone_data[zone_id] = {
+            'df': zone_df,
+            'centroid': centroid, 
+            'od_matrix': od_matrix
+        }
+    
+    logger.success(f"Stage 2 complete: {len(zone_data)} zones preprocessed")
+    
+    return zone_data
+
+
+# ------------------------------------------------------------------------------
+# Stage 3: Optimization
+# ------------------------------------------------------------------------------
+
+def optimization_stage(
+    zone_data: dict
 ) -> pl.DataFrame:
     """
-    runs all zone level optimization for routes using parallel processing
-
-    :param pos: DataFrame containing all pos information
-    :return: DataFrame containing a detailed route itinerary for all zones
+    Stage 3: Optimize routes for all zones.
+    
+    Args:
+        zone_data: Preprocessed zone data
+        
+    Returns:
+        Complete itinerary DataFrame
     """
-    pos_optimize = pos.clone()
-
-    # get zone count and determine worker threads
-    zone_count = pos['zone_id'].n_unique()
-    zones_ids = pos['zone_id'].unique()
+    logger.info("=" * 60)
+    logger.info("STAGE 3: OPTIMIZATION")
+    logger.info("=" * 60)
+    
+    zone_count = len(zone_data)
     max_workers = max(1, os.cpu_count() // 2)
-    logger.info(f"optimizing {zone_count} zone(s) using {max_workers} threads")
-
-    # prepare zone data for parallel processing
-    zone_data_list = []
-    for zone_id in zones_ids:
-        pos_zone = pos_optimize.filter(pl.col("zone_id") == zone_id)
-        zone_data_list.append(pos_zone)
-
-    # optimize zones in parallel
+    logger.info(f"Optimizing {zone_count} zone(s) using {max_workers} threads")
+    
+    # Optimize zones in parallel
     itinerary_list = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # submit all optimization tasks
-        future_to_zone = {executor.submit(optimize, pos_zone): pos_zone['zone_id'].unique()[0] 
-                         for pos_zone in zone_data_list}
+        # Submit optimization tasks
+        future_to_zone = {}
+        for zone_id, data in zone_data.items():
+            future = executor.submit(
+                optimize_zone, 
+                data['df'], 
+                zone_id, 
+                data['od_matrix']
+            )
+            future_to_zone[future] = zone_id
         
-        # collect results as they complete
+        # Collect results
         for future in as_completed(future_to_zone):
             zone_id = future_to_zone[future]
             try:
                 itinerary_zone = future.result()
-                itinerary_list.append(itinerary_zone)
-                logger.info(f"completed optimization for zone {zone_id}")
+                if len(itinerary_zone) > 0:
+                    itinerary_list.append(itinerary_zone)
+                logger.info(f"Completed optimization for zone {zone_id}")
             except Exception as exc:
-                logger.error(f"zone {zone_id} generated an exception: {exc}")
+                logger.error(f"Zone {zone_id} generated an exception: {exc}")
                 raise
-
-    # combine all results
-    itinerary = pl.concat(itinerary_list, how='vertical')        
-    return itinerary
-
-
-def optimize(
-    pos_zone: pl.DataFrame
-) -> pl.DataFrame:
-    """
-    runs all zone level optimization for routes
-
-    :param pos: DataFrame containing pos information for 1 zone
-    :return: DataFrame containing a detailed itinerary for 1 zone
-    """       
-    zone_id = pos_zone['zone_id'].unique()
-    if len(zone_id) > 1: 
-        logger.error(f"multiple zone_ids: {zone_id} ingested")
+    
+    # Combine results
+    if itinerary_list:
+        itinerary = pl.concat(itinerary_list, how='vertical')
+        logger.success(f"Stage 3 complete: {len(itinerary)} route days optimized")
+        logger.info(f"Sample results:\n{itinerary.head()}")
+        return itinerary
     else:
-        zone_id = zone_id[0]
-
-    # get centroid
-    centroid = geo_utils.get_centroid(
-        pos_zone
-    )
-
-    # get od matrix including centroid
-    od_matrix = osrm_utils.generate_od_matrix(
-        pos_zone=pos_zone,
-        centroid=centroid
-    )
-
-    # assign anchor days
-    itinerary = core.optimize.assign_anchor_days(
-        pos=pos_zone
-    )
-
-    # create clusters for secondary locations
-    itinerary = core.optimize.cluster_secondary_pos(
-        pos=pos_zone,
-        itinerary=itinerary,
-        od_matrix=od_matrix
-    )
-
-    # optimize individual days
-    itinerary = core.optimize.gen_secondary_routes(
-        itinerary=itinerary,
-        od_matrix=od_matrix,
-        centroid = centroid
-    )
-
-    # get detailed routes, and times
-    itinerary = core.optimize.get_detailed_routes(
-        itinerary=itinerary,
-        od_matrix=od_matrix
-    )
-
-    # assign remaining days to 
-    logger.success(f"{zone_id} optimized")
-    logger.info(itinerary)
-
-    return itinerary
+        logger.warning("No itinerary data generated")
+        return pl.DataFrame()
 
 
 # ------------------------------------------------------------------------------
-# generate metrics
+# Stage 4: Reporting
 # ------------------------------------------------------------------------------
 
-def report(
-    itinerary: pl.DataFrame,
-    local: bool
-):
+def reporting_stage(
+    itinerary_df: pl.DataFrame
+) -> tuple:
     """
-    generates all zone level and aggregates metrics for testing and reporting
-
-    :param itenerary: itenerary object containing daily routes for all zones
-    :param local: indciates whether file operations will be performed locally
+    Stage 4: Generate analytics and reports.
+    
+    Args:
+        itinerary_df: Complete itinerary DataFrame
+        
+    Returns:
+        Tuple of (aggregate_df, summary_df)
     """
-    itinerary_reporting = itinerary.clone()
-
-    zone_count = itinerary_reporting['zone_id'].n_unique()
-    logger.info(f"generating reports for {zone_count} zone(s)")
+    logger.info("=" * 60)
+    logger.info("STAGE 4: REPORTING")
+    logger.info("=" * 60)
     
-    # generate aggregate report
-    aggregate_report = core.report.aggregate(
-        itinerary=itinerary_reporting,
-        local=local
-    )
-
-    logger.info("aggregate report generated")
-    logger.info(aggregate_report)
-
-    # save aggregate report to JSONL
-    aggregate_records = aggregate_report.to_pandas().to_dict(orient='records')
-    with open('./output/aggregate-report.jsonl', 'w') as f:
-        for record in aggregate_records:
-            f.write(json.dumps(record) + '\n')
+    if len(itinerary_df) == 0:
+        logger.warning("No data to report on")
+        return None, None
     
-    # generate aggregate summary for all zones
-    aggregate_report_summary = aggregate_report.select([
+    zone_count = itinerary_df['zone_id'].n_unique()
+    logger.info(f"Generating reports for {zone_count} zone(s)")
+    
+    # Generate aggregate metrics
+    aggregate_df = generate_reports(itinerary_df, local=True)
+    
+    # Generate summary statistics
+    summary_df = aggregate_df.select([
         pl.col('weekly_duration').mean().alias("average_weekly_duration"),
         pl.col('utilization').mean().alias("average_utilization"),
         pl.col('overutilized_days').mean().alias("average_overutilized_days"),
@@ -201,21 +195,50 @@ def report(
         pl.col('total_drive_time').mean().alias("average_daily_drive_time"),  
         pl.col('sec_std').mean().alias("average_secondary_duration_standard_deviation"),  
     ])
-
-    logger.info("aggregate_report_summary:")
-    print(aggregate_report_summary)
-
-    # save aggregate summary to JSONL
-    summary_records = aggregate_report_summary.to_pandas().to_dict(orient='records')
-    with open('./output/aggregate-summary.jsonl', 'w') as f:
-        for record in summary_records:
-            f.write(json.dumps(record) + '\n')
-
-    return
+    
+    logger.success("Stage 4 complete: Reports generated")
+    logger.info(f"Aggregate summary:\n{summary_df}")
+    
+    return aggregate_df, summary_df
 
 
 # ------------------------------------------------------------------------------
-# main function
+# Stage 5: Loading
+# ------------------------------------------------------------------------------
+
+def loading_stage(
+    itinerary_df: pl.DataFrame,
+    aggregate_df: Optional[pl.DataFrame] = None,
+    summary_df: Optional[pl.DataFrame] = None
+) -> None:
+    """
+    Stage 5: Export results to files.
+    
+    Args:
+        itinerary_df: Complete itinerary DataFrame
+        aggregate_df: Aggregate analytics DataFrame
+        summary_df: Summary statistics DataFrame
+    """
+    logger.info("=" * 60)
+    logger.info("STAGE 5: LOADING")
+    logger.info("=" * 60)
+    
+    # Ensure output directory exists
+    os.makedirs("./output", exist_ok=True)
+    
+    # Export all results
+    load_results_to_files(
+        itinerary_df=itinerary_df,
+        aggregate_df=aggregate_df,
+        summary_df=summary_df,
+        output_dir="./output"
+    )
+    
+    logger.success("Stage 5 complete: Results exported to ./output/")
+
+
+# ------------------------------------------------------------------------------
+# Main Pipeline Orchestrator
 # ------------------------------------------------------------------------------
 
 def main(
@@ -223,50 +246,62 @@ def main(
     local: bool = True
 ) -> None:
     """
-    primary orchestration function for the route-optimization
-
-    :param zone_ids: list of zone_ids to be optimized
-    :param local: whether operations will be performed with local files
-    :return: None
-    """
-
-    # extract data
-    pos = extract(
-        zone_ids=zone_ids,
-        local=local
-    )
-
-    if pos is None or pos.is_empty():
-        return
-
-    # perform zone optimization(s)
-    itinerary = optimization_orchstrator(
-        pos=pos
-    )
-
-    # generate all metrics
-    report(
-        itinerary=itinerary,
-        local=local
-    )
-
-    # save itinerary to JSONL when local is True
-    itinerary_pandas = itinerary.to_pandas()
-    # Convert any numpy arrays to lists for JSON serialization
-    for col in itinerary_pandas.columns:
-        if itinerary_pandas[col].dtype == 'object':
-            itinerary_pandas[col] = itinerary_pandas[col].apply(
-                lambda x: x.tolist() if hasattr(x, 'tolist') else x
-            )
+    Main pipeline orchestrator following the 5-stage structure:
     
-    itinerary_records = itinerary_pandas.to_dict(orient='records')
-    with open('./output/itinerary.jsonl', 'w') as f:
-        for record in itinerary_records:
-            f.write(json.dumps(record, default=str) + '\n')
+    1. Extraction - Load and validate location data
+    2. Preprocessing - Clean and prepare data
+    3. Optimization - Execute route optimization
+        3.1. Primary day assignment
+        3.2. Secondary day clustering  
+        3.3. Route optimization
+        3.4. Cluster balancing
+        3.5. Detailed routing
+    4. Reporting - Generate analytics
+    5. Loading - Export results
+    
+    Args:
+        zone_ids: List of zone_ids to optimize
+        local: Whether operations use local files
+    """
+    logger.info("🚀 ROUTE OPTIMIZATION PIPELINE STARTING")
+    logger.info("Pipeline Structure: Extraction → Preprocessing → Optimization → Reporting → Loading")
+    
+    try:
+        # Stage 1: Extraction
+        pos_df = extraction_stage(zone_ids)
+        if pos_df is None or pos_df.is_empty():
+            logger.error("Pipeline terminated: No data extracted")
+            return
+        
+        # Stage 2: Preprocessing  
+        zone_data = preprocessing_stage(pos_df)
+        if not zone_data:
+            logger.error("Pipeline terminated: No zones preprocessed")
+            return
+        
+        # Stage 3: Optimization
+        itinerary_df = optimization_stage(zone_data)
+        if len(itinerary_df) == 0:
+            logger.error("Pipeline terminated: No routes optimized")
+            return
+        
+        # Stage 4: Reporting
+        aggregate_df, summary_df = reporting_stage(itinerary_df)
+        
+        # Stage 5: Loading
+        loading_stage(itinerary_df, aggregate_df, summary_df)
+        
+        logger.success("✅ ROUTE OPTIMIZATION PIPELINE COMPLETED SUCCESSFULLY")
+        
+    except Exception as e:
+        logger.error(f"❌ Pipeline failed: {e}")
+        raise
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Example script with command line arguments')
+    parser = argparse.ArgumentParser(
+        description='Route Optimization Pipeline - 5 Stage Architecture'
+    )
     
     parser.add_argument(
         '-z', 
@@ -274,7 +309,7 @@ if __name__ == "__main__":
         nargs="*",
         default=None,
         type=str, 
-        help='one or more zone_ids to process (default:None)'
+        help='One or more zone_ids to process (default: None - processes all zones)'
     )
     
     parser.add_argument(
@@ -282,7 +317,7 @@ if __name__ == "__main__":
         '--local',
         action='store_true',
         default=True,
-        help="toggle local processing of files (default:True)"
+        help="Enable local file processing (default: True)"
     )
 
     args = parser.parse_args()
@@ -294,5 +329,5 @@ if __name__ == "__main__":
 
 
 # ------------------------------------------------------------------------------
-# end of main.py
+# End of main.py - 5 Stage Pipeline Architecture
 # ------------------------------------------------------------------------------
