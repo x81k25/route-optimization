@@ -69,7 +69,7 @@ def aggregate(
         for row in zone_data.iter_rows(named=True):
             pos_ids = row['pos_id'] or []
             pos_classes = row['pos_class'] or []
-            # Use schedule for individual position durations if available, otherwise estimate
+            # use schedule for individual position durations if available, otherwise estimate
             schedule = row.get('schedule', [])
             day_duration = row['duration'] or 0.0
             
@@ -80,7 +80,7 @@ def aggregate(
                     all_pos_classes.append(pos_class)
             
             # sum position time (service time at locations) - convert minutes to hours
-            # Estimate 60 minutes per location (excluding centroid)
+            # estimate 60 minutes per location (excluding centroid)
             estimated_service_time = len([p for p in pos_ids if p != -1]) * 60.0
             total_pos_time += estimated_service_time / 60.0
             

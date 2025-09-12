@@ -3,11 +3,15 @@ Stage 3.4: Cluster Balancing
 Balance workloads across clusters using organic duration rebalancing
 """
 
-import polars as pl
-import numpy as np
-from typing import Dict, List, Tuple, Optional
-from loguru import logger
+# standard library imports
+from typing import Dict, List, Optional, Tuple
 
+# 3rd-party imports
+from loguru import logger
+import numpy as np
+import polars as pl
+
+# local imports
 from src.utils.clustering_utils import haversine_distance
 
 
@@ -28,16 +32,13 @@ def balance_cluster_workloads(
     3. Move locations to balance workloads
     4. Iterate until convergence
     
-    Args:
-        day_assignments: Initial day assignments
-        df: Location DataFrame
-        od_matrix: Distance matrix
-        zone_id: Zone identifier
-        duration_threshold_min: Threshold for rebalancing
-        max_iterations: Maximum rebalancing iterations
-        
-    Returns:
-        Balanced day assignments
+    :param day_assignments: Initial day assignments
+    :param df: Location DataFrame
+    :param od_matrix: Distance matrix
+    :param zone_id: Zone identifier
+    :param duration_threshold_min: Threshold for rebalancing
+    :param max_iterations: Maximum rebalancing iterations
+    :return: Balanced day assignments
     """
     logger.info(f"Stage 3.4: CLUSTER BALANCING - Zone {zone_id}")
     logger.info(f"Starting organic duration rebalancing (threshold: {duration_threshold_min} min)")
@@ -45,7 +46,7 @@ def balance_cluster_workloads(
     balanced_assignments = day_assignments.copy()
     
     for iteration in range(max_iterations):
-        # Calculate current cluster durations
+        # calculate current cluster durations
         cluster_durations = calculate_cluster_durations(
             balanced_assignments, df, od_matrix
         )
@@ -53,7 +54,7 @@ def balance_cluster_workloads(
         if not cluster_durations:
             break
             
-        # Check if rebalancing is needed
+        # check if rebalancing is needed
         min_duration = min(cluster_durations.values())
         max_duration = max(cluster_durations.values())
         duration_gap = max_duration - min_duration
@@ -65,11 +66,11 @@ def balance_cluster_workloads(
             logger.info(f"Converged! Duration gap {duration_gap:.1f} <= {duration_threshold_min} threshold")
             break
         
-        # Find clusters to balance
+        # find clusters to balance
         overloaded_day = max(cluster_durations, key=cluster_durations.get)
         underloaded_day = min(cluster_durations, key=cluster_durations.get)
         
-        # Move location from overloaded to underloaded
+        # move location from overloaded to underloaded
         moved = move_location_between_clusters(
             balanced_assignments, 
             overloaded_day, 
@@ -98,14 +99,11 @@ def calculate_cluster_durations(
     """
     Calculate total duration (service + drive time) for each cluster.
     
-    Args:
-        day_assignments: Day assignments
-        df: Location DataFrame
-        od_matrix: Distance matrix
-        service_time_min: Service time per location
-        
-    Returns:
-        Dictionary mapping days to total durations
+    :param day_assignments: Day assignments
+    :param df: Location DataFrame
+    :param od_matrix: Distance matrix
+    :param service_time_min: Service time per location
+    :return: Dictionary mapping days to total durations
     """
     cluster_durations = {}
     
@@ -113,17 +111,17 @@ def calculate_cluster_durations(
         if not location_ids:
             continue
             
-        # Service time
+        # service time
         service_duration = len(location_ids) * service_time_min
         
-        # Drive time (approximate using pairwise distances)
+        # drive time (approximate using pairwise distances)
         drive_duration = 0.0
         for i in range(len(location_ids)):
             for j in range(i + 1, len(location_ids)):
                 loc1, loc2 = location_ids[i], location_ids[j]
                 drive_duration += od_matrix.get((loc1, loc2), 0.0)
         
-        # Average drive time for TSP approximation
+        # average drive time for TSP approximation
         if len(location_ids) > 1:
             drive_duration = drive_duration / len(location_ids)
         
@@ -143,15 +141,12 @@ def move_location_between_clusters(
     """
     Move one location from overloaded to underloaded cluster.
     
-    Args:
-        day_assignments: Current assignments
-        from_day: Source day (overloaded)
-        to_day: Target day (underloaded)  
-        df: Location DataFrame
-        od_matrix: Distance matrix
-        
-    Returns:
-        True if a move was made, False otherwise
+    :param day_assignments: Current assignments
+    :param from_day: Source day (overloaded)
+    :param to_day: Target day (underloaded)  
+    :param df: Location DataFrame
+    :param od_matrix: Distance matrix
+    :return: True if a move was made, False otherwise
     """
     from_locations = day_assignments.get(from_day, [])
     to_locations = day_assignments.get(to_day, [])
@@ -159,11 +154,11 @@ def move_location_between_clusters(
     if not from_locations:
         return False
     
-    # Calculate centroids
+    # calculate centroids
     from_centroid = calculate_cluster_centroid(from_locations, df)
     to_centroid = calculate_cluster_centroid(to_locations, df) if to_locations else from_centroid
     
-    # Find location closest to target centroid
+    # find location closest to target centroid
     best_location = None
     best_distance = float('inf')
     
@@ -178,7 +173,7 @@ def move_location_between_clusters(
             best_location = loc_id
     
     if best_location is not None:
-        # Move the location
+        # move the location
         day_assignments[from_day].remove(best_location)
         if to_day not in day_assignments:
             day_assignments[to_day] = []
@@ -195,12 +190,9 @@ def calculate_cluster_centroid(location_ids: List[int], df: pl.DataFrame) -> Tup
     """
     Calculate centroid for a cluster of locations.
     
-    Args:
-        location_ids: List of location IDs
-        df: Location DataFrame
-        
-    Returns:
-        Centroid coordinates (lat, lon)
+    :param location_ids: List of location IDs
+    :param df: Location DataFrame
+    :return: Centroid coordinates (lat, lon)
     """
     if not location_ids:
         return (0.0, 0.0)

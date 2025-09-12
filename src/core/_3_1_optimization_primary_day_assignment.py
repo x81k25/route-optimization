@@ -3,9 +3,12 @@ Stage 3.1: Primary Day Assignment
 Assign primary (high-value) locations to dedicated days
 """
 
-import polars as pl
+# standard library imports
 from typing import Dict, List, Tuple
+
+# 3rd-party imports
 from loguru import logger
+import polars as pl
 import yaml
 
 
@@ -22,17 +25,14 @@ def assign_primary_days(
     2. Calculate hours per primary
     3. Distribute across available days
     
-    Args:
-        df: Location DataFrame for zone
-        zone_id: Zone identifier
-        config_path: Path to configuration file
-        
-    Returns:
-        Tuple of (primary_assignments, available_days, primary_df, secondary_df)
+    :param df: Location DataFrame for zone
+    :param zone_id: Zone identifier
+    :param config_path: Path to configuration file
+    :return: Tuple of (primary_assignments, available_days, primary_df, secondary_df)
     """
     logger.info(f"Stage 3.1: PRIMARY DAY ASSIGNMENT - Zone {zone_id}")
     
-    # Load configuration
+    # load configuration
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
@@ -41,13 +41,13 @@ def assign_primary_days(
     hours_per_day = model_params["hours_per_day"]
     primary_hours_per_week = model_params["primary_hours_per_week"]
     
-    # Separate primary and secondary locations
+    # separate primary and secondary locations
     primary_df = df.filter(pl.col("class") == "primary")
     secondary_df = df.filter(pl.col("class") == "secondary")
     
     logger.info(f"Found {len(primary_df)} primary, {len(secondary_df)} secondary locations")
     
-    # Calculate hours per primary location
+    # calculate hours per primary location
     num_primary = len(primary_df)
     if num_primary > 0:
         hours_per_primary = primary_hours_per_week / num_primary
@@ -55,7 +55,7 @@ def assign_primary_days(
     else:
         hours_per_primary = 0
     
-    # Assign primary locations to days
+    # assign primary locations to days
     primary_assignments = {}
     days_used = []
     
@@ -81,7 +81,7 @@ def assign_primary_days(
                     current_day += 1
                     current_hours = 0
     
-    # Determine available days for secondary locations
+    # determine available days for secondary locations
     all_days = set(range(1, days_per_week + 1))
     primary_days = set(days_used)
     available_days = sorted(list(all_days - primary_days))

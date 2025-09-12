@@ -3,10 +3,13 @@ Stage 3.3: Route Optimization
 Optimize visit sequences within each day using TSP algorithms
 """
 
-import polars as pl
-from typing import Dict, List, Tuple, Optional
-from loguru import logger
+# standard library imports
 import itertools
+from typing import Dict, List, Optional, Tuple
+
+# 3rd-party imports
+from loguru import logger
+import polars as pl
 
 
 def optimize_daily_routes(
@@ -24,15 +27,12 @@ def optimize_daily_routes(
     2. Use exhaustive search for small problems (≤5 locations)
     3. Use greedy + 2-opt for larger problems
     
-    Args:
-        day_assignments: Dictionary mapping days to location lists
-        df: Location DataFrame
-        od_matrix: Distance matrix
-        zone_id: Zone identifier
-        centroid_id: ID for zone centroid
-        
-    Returns:
-        Dictionary mapping days to (route, cost) tuples
+    :param day_assignments: Dictionary mapping days to location lists
+    :param df: Location DataFrame
+    :param od_matrix: Distance matrix
+    :param zone_id: Zone identifier
+    :param centroid_id: ID for zone centroid
+    :return: Dictionary mapping days to (route, cost) tuples
     """
     logger.info(f"Stage 3.3: ROUTE OPTIMIZATION - Zone {zone_id}")
     
@@ -42,13 +42,13 @@ def optimize_daily_routes(
         if not location_ids:
             continue
             
-        # Add centroid as starting point
+        # add centroid as starting point
         route_locations = [centroid_id] + location_ids
         n_locations = len(route_locations)
         
         logger.info(f"Optimizing day {day}: {n_locations} locations (including centroid)")
         
-        # Choose algorithm based on problem size
+        # choose algorithm based on problem size
         if n_locations <= 5:
             route, cost = exhaustive_tsp(route_locations, od_matrix)
             algorithm = "exhaustive"
@@ -68,12 +68,9 @@ def exhaustive_tsp(locations: List[int], od_matrix: Dict[Tuple[int, int], float]
     """
     Solve TSP using exhaustive search (guaranteed optimal).
     
-    Args:
-        locations: List of location IDs
-        od_matrix: Distance matrix
-        
-    Returns:
-        Tuple of (optimal_route, total_cost)
+    :param locations: List of location IDs
+    :param od_matrix: Distance matrix
+    :return: Tuple of (optimal_route, total_cost)
     """
     if len(locations) <= 1:
         return locations, 0.0
@@ -99,17 +96,14 @@ def greedy_plus_2opt_tsp(locations: List[int], od_matrix: Dict[Tuple[int, int], 
     """
     Solve TSP using greedy nearest neighbor + 2-opt improvement.
     
-    Args:
-        locations: List of location IDs
-        od_matrix: Distance matrix
-        
-    Returns:
-        Tuple of (improved_route, total_cost)
+    :param locations: List of location IDs
+    :param od_matrix: Distance matrix
+    :return: Tuple of (improved_route, total_cost)
     """
-    # Phase 1: Greedy construction
+    # phase 1: greedy construction
     route = greedy_nearest_neighbor(locations, od_matrix)
     
-    # Phase 2: 2-opt improvement
+    # phase 2: 2-opt improvement
     improved_route = two_opt_improvement(route, od_matrix)
     cost = calculate_route_cost(improved_route, od_matrix)
     
@@ -120,12 +114,9 @@ def greedy_nearest_neighbor(locations: List[int], od_matrix: Dict[Tuple[int, int
     """
     Build route using greedy nearest neighbor heuristic.
     
-    Args:
-        locations: List of location IDs
-        od_matrix: Distance matrix
-        
-    Returns:
-        Route as list of location IDs
+    :param locations: List of location IDs
+    :param od_matrix: Distance matrix
+    :return: Route as list of location IDs
     """
     if len(locations) <= 1:
         return locations
@@ -146,12 +137,9 @@ def two_opt_improvement(route: List[int], od_matrix: Dict[Tuple[int, int], float
     """
     Improve route using 2-opt local search.
     
-    Args:
-        route: Initial route
-        od_matrix: Distance matrix
-        
-    Returns:
-        Improved route
+    :param route: Initial route
+    :param od_matrix: Distance matrix
+    :return: Improved route
     """
     if len(route) <= 3:
         return route
@@ -164,10 +152,10 @@ def two_opt_improvement(route: List[int], od_matrix: Dict[Tuple[int, int], float
         
         for i in range(1, len(current_route) - 2):
             for j in range(i + 1, len(current_route)):
-                if j - i == 1:  # Skip adjacent edges
+                if j - i == 1:  # skip adjacent edges
                     continue
                     
-                # Try 2-opt swap
+                # try 2-opt swap
                 new_route = current_route[:]
                 new_route[i:j] = new_route[i:j][::-1]
                 
@@ -186,12 +174,9 @@ def calculate_route_cost(route: List[int], od_matrix: Dict[Tuple[int, int], floa
     """
     Calculate total cost of a route.
     
-    Args:
-        route: Route as list of location IDs
-        od_matrix: Distance matrix
-        
-    Returns:
-        Total route cost
+    :param route: Route as list of location IDs
+    :param od_matrix: Distance matrix
+    :return: Total route cost
     """
     if len(route) <= 1:
         return 0.0

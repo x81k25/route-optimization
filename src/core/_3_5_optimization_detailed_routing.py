@@ -3,10 +3,14 @@ Stage 3.5: Detailed Routing
 Fetch detailed route geometry and turn-by-turn directions from OSRM
 """
 
-import polars as pl
-from typing import Dict, List, Tuple, Optional, Any
-from loguru import logger
+# standard library imports
+from typing import Any, Dict, List, Optional, Tuple
 
+# 3rd-party imports
+from loguru import logger
+import polars as pl
+
+# local imports
 from src.utils.osrm_utils import fetch_route_geometry
 
 
@@ -24,13 +28,10 @@ def get_detailed_route_information(
     3. Calculate accurate segment times
     4. Build final itinerary DataFrame
     
-    Args:
-        optimized_routes: Dictionary mapping days to (route, cost) tuples
-        df: Location DataFrame
-        zone_id: Zone identifier
-        
-    Returns:
-        DataFrame with detailed route information
+    :param optimized_routes: Dictionary mapping days to (route, cost) tuples
+    :param df: Location DataFrame
+    :param zone_id: Zone identifier
+    :return: DataFrame with detailed route information
     """
     logger.info(f"Stage 3.5: DETAILED ROUTING - Zone {zone_id}")
     logger.info("Getting detailed routes and timing for all days")
@@ -43,11 +44,11 @@ def get_detailed_route_information(
             
         logger.info(f"Fetching detailed route for zone {zone_id}, day {day} with {len(route)} locations")
         
-        # Get route geometry and timing from OSRM
+        # get route geometry and timing from OSRM
         route_details = fetch_detailed_route_osrm(route, df, zone_id, day)
         
         if route_details:
-            # Build route record
+            # build route record
             route_record = build_route_record(
                 zone_id=zone_id,
                 day=day,
@@ -60,13 +61,13 @@ def get_detailed_route_information(
             logger.info(f"Zone {zone_id}, day {day}: {len(route_details.get('geometry', []))} route points, "
                        f"{route_details.get('total_duration', 0):.1f} min total")
     
-    # Convert to DataFrame
+    # convert to DataFrame
     if detailed_routes:
         result_df = pl.DataFrame(detailed_routes)
         logger.success(f"Detailed routes completed for {len(detailed_routes)} days")
         return result_df
     else:
-        # Return empty DataFrame with expected schema
+        # return empty DataFrame with expected schema
         return create_empty_route_dataframe()
 
 
@@ -79,32 +80,29 @@ def fetch_detailed_route_osrm(
     """
     Fetch detailed route information from OSRM Route API.
     
-    Args:
-        route: List of location IDs in visit order
-        df: Location DataFrame
-        zone_id: Zone identifier
-        day: Day number
-        
-    Returns:
-        Dictionary with route geometry and timing details
+    :param route: List of location IDs in visit order
+    :param df: Location DataFrame
+    :param zone_id: Zone identifier
+    :param day: Day number
+    :return: Dictionary with route geometry and timing details
     """
     try:
-        # Convert location IDs to Location objects for OSRM
+        # convert location IDs to Location objects for OSRM
         from src.utils.osrm_utils import Location
         
         route_locations = []
         for loc_id in route:
-            if loc_id == -1:  # Centroid
-                # Create a dummy location for centroid 
+            if loc_id == -1:  # centroid
+                # create a dummy location for centroid 
                 route_locations.append(Location(
                     location_id=-1,
-                    latitude=0.0,  # Will be set by OSRM
-                    longitude=0.0, # Will be set by OSRM
+                    latitude=0.0,  # will be set by OSRM
+                    longitude=0.0, # will be set by OSRM
                     name="zone_centroid",
                     address="zone_centroid"
                 ))
             else:
-                # Find location in DataFrame
+                # find location in DataFrame
                 loc_row = df.filter(pl.col("pos_id") == loc_id)
                 if len(loc_row) > 0:
                     row_data = loc_row.row(0, named=True)
@@ -116,7 +114,7 @@ def fetch_detailed_route_osrm(
                         address=row_data.get("address", "")
                     ))
         
-        # Call OSRM function with correct signature
+        # call OSRM function with correct signature
         geometry_result = fetch_route_geometry(
             zone_id=zone_id,
             day_number=day,
@@ -125,12 +123,12 @@ def fetch_detailed_route_osrm(
             include_alternatives=False
         )
         
-        # Convert to expected format
+        # convert to expected format
         return {
             'geometry': geometry_result.encoded_polyline if hasattr(geometry_result, 'encoded_polyline') else [],
             'total_duration': geometry_result.total_duration_minutes if hasattr(geometry_result, 'total_duration_minutes') else 0.0,
             'legs': geometry_result.route_legs if hasattr(geometry_result, 'route_legs') else [],
-            'centroid_coords': [0.0, 0.0]  # Placeholder
+            'centroid_coords': [0.0, 0.0]  # placeholder
         }
         
     except Exception as e:
@@ -148,22 +146,19 @@ def build_route_record(
     """
     Build a route record for the final DataFrame.
     
-    Args:
-        zone_id: Zone identifier
-        day: Day number
-        route: List of location IDs
-        route_details: OSRM route details
-        df: Location DataFrame
-        
-    Returns:
-        Dictionary representing a route record
+    :param zone_id: Zone identifier
+    :param day: Day number
+    :param route: List of location IDs
+    :param route_details: OSRM route details
+    :param df: Location DataFrame
+    :return: Dictionary representing a route record
     """
-    # Get location information
+    # get location information
     locations = []
     pos_classes = []
     
     for pos_id in route:
-        if pos_id == -1:  # Centroid
+        if pos_id == -1:  # centroid
             locations.append(route_details.get('centroid_coords', [0.0, 0.0]))
             pos_classes.append("centroid")
         else:
@@ -176,11 +171,11 @@ def build_route_record(
                 locations.append([0.0, 0.0])
                 pos_classes.append("unknown")
     
-    # Extract timing information
+    # extract timing information
     geometry = route_details.get('geometry', [])
     total_duration = route_details.get('total_duration', 0.0)
     
-    # Build schedule (cumulative times)
+    # build schedule (cumulative times)
     schedule = build_schedule(route_details.get('legs', []), len(route))
     
     return {
@@ -199,14 +194,11 @@ def build_schedule(legs: List[Dict], num_locations: int) -> List[float]:
     """
     Build cumulative timing schedule from OSRM leg information.
     
-    Args:
-        legs: OSRM route legs
-        num_locations: Number of locations in route
-        
-    Returns:
-        List of cumulative times in minutes
+    :param legs: OSRM route legs
+    :param num_locations: Number of locations in route
+    :return: List of cumulative times in minutes
     """
-    schedule = [0.0]  # Start at time 0
+    schedule = [0.0]  # start at time 0
     cumulative_time = 0.0
     
     for i, leg in enumerate(legs):
@@ -215,7 +207,7 @@ def build_schedule(legs: List[Dict], num_locations: int) -> List[float]:
         cumulative_time += duration_minutes
         schedule.append(cumulative_time)
     
-    # Ensure we have the right number of entries
+    # ensure we have the right number of entries
     while len(schedule) < num_locations:
         schedule.append(schedule[-1])
     
@@ -226,8 +218,7 @@ def create_empty_route_dataframe() -> pl.DataFrame:
     """
     Create empty DataFrame with expected route schema.
     
-    Returns:
-        Empty DataFrame with route columns
+    :return: Empty DataFrame with route columns
     """
     return pl.DataFrame({
         'zone_id': pl.Series([], dtype=pl.Utf8),

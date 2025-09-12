@@ -29,12 +29,9 @@ def extraction_stage(
     """
     Stage 1: Extract and validate location data.
     
-    Args:
-        zone_ids: List of zone_ids to extract
-        pos_path: Path to locations file
-        
-    Returns:
-        Validated location DataFrame
+    :param zone_ids: List of zone_ids to extract
+    :param pos_path: Path to locations file
+    :return: Validated location DataFrame
     """
     logger.info("=" * 60)
     logger.info("STAGE 1: EXTRACTION")
@@ -60,17 +57,12 @@ def extraction_stage(
 # Stage 2: Preprocessing  
 # ------------------------------------------------------------------------------
 
-def preprocessing_stage(
-    pos_df: pl.DataFrame
-) -> dict:
+def preprocessing_stage(pos_df: pl.DataFrame) -> dict:
     """
     Stage 2: Preprocess data for optimization.
     
-    Args:
-        pos_df: Location DataFrame
-        
-    Returns:
-        Dictionary with preprocessed zone data
+    :param pos_df: Location DataFrame
+    :return: Dictionary with preprocessed zone data
     """
     logger.info("=" * 60)
     logger.info("STAGE 2: PREPROCESSING")
@@ -98,17 +90,12 @@ def preprocessing_stage(
 # Stage 3: Optimization
 # ------------------------------------------------------------------------------
 
-def optimization_stage(
-    zone_data: dict
-) -> pl.DataFrame:
+def optimization_stage(zone_data: dict) -> pl.DataFrame:
     """
     Stage 3: Optimize routes for all zones.
     
-    Args:
-        zone_data: Preprocessed zone data
-        
-    Returns:
-        Complete itinerary DataFrame
+    :param zone_data: Preprocessed zone data
+    :return: Complete itinerary DataFrame
     """
     logger.info("=" * 60)
     logger.info("STAGE 3: OPTIMIZATION")
@@ -159,17 +146,12 @@ def optimization_stage(
 # Stage 4: Reporting
 # ------------------------------------------------------------------------------
 
-def reporting_stage(
-    itinerary_df: pl.DataFrame
-) -> tuple:
+def reporting_stage(itinerary_df: pl.DataFrame) -> tuple:
     """
     Stage 4: Generate analytics and reports.
     
-    Args:
-        itinerary_df: Complete itinerary DataFrame
-        
-    Returns:
-        Tuple of (aggregate_df, summary_df)
+    :param itinerary_df: Complete itinerary DataFrame
+    :return: Tuple of (aggregate_df, summary_df)
     """
     logger.info("=" * 60)
     logger.info("STAGE 4: REPORTING")
@@ -214,10 +196,9 @@ def loading_stage(
     """
     Stage 5: Export results to files.
     
-    Args:
-        itinerary_df: Complete itinerary DataFrame
-        aggregate_df: Aggregate analytics DataFrame
-        summary_df: Summary statistics DataFrame
+    :param itinerary_df: Complete itinerary DataFrame
+    :param aggregate_df: Aggregate analytics DataFrame
+    :param summary_df: Summary statistics DataFrame
     """
     logger.info("=" * 60)
     logger.info("STAGE 5: LOADING")
@@ -259,9 +240,8 @@ def main(
     4. Reporting - Generate analytics
     5. Loading - Export results
     
-    Args:
-        zone_ids: List of zone_ids to optimize
-        local: Whether operations use local files
+    :param zone_ids: List of zone_ids to optimize
+    :param local: Whether operations use local files
     """
     logger.info("🚀 ROUTE OPTIMIZATION PIPELINE STARTING")
     logger.info("Pipeline Structure: Extraction → Preprocessing → Optimization → Reporting → Loading")

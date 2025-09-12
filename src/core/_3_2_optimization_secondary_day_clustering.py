@@ -3,15 +3,19 @@ Stage 3.2: Secondary Day Clustering
 Cluster secondary locations into days using K-means
 """
 
-import polars as pl
-import numpy as np
-from typing import Dict, List, Tuple, Optional
+# standard library imports
+from typing import Dict, List, Optional, Tuple
+
+# 3rd-party imports
 from loguru import logger
+import numpy as np
+import polars as pl
 from sklearn.cluster import KMeans
 
+# local imports
 from src.utils.clustering_utils import (
-    kmeans_cluster_locations,
-    identify_noise_points
+    identify_noise_points,
+    kmeans_cluster_locations
 )
 
 
@@ -30,15 +34,12 @@ def cluster_secondary_locations(
     2. Detect and handle noise points
     3. Create day assignments
     
-    Args:
-        secondary_df: DataFrame of secondary locations
-        available_days: Days available for secondary locations
-        od_matrix: Distance matrix
-        zone_id: Zone identifier
-        noise_threshold_km: Distance threshold for noise detection
-        
-    Returns:
-        Dictionary mapping days to location IDs
+    :param secondary_df: DataFrame of secondary locations
+    :param available_days: Days available for secondary locations
+    :param od_matrix: Distance matrix
+    :param zone_id: Zone identifier
+    :param noise_threshold_km: Distance threshold for noise detection
+    :return: Dictionary mapping days to location IDs
     """
     logger.info(f"Stage 3.2: SECONDARY CLUSTERING - Zone {zone_id}")
     logger.info(f"Clustering {len(secondary_df)} locations into {len(available_days)} days")
@@ -51,9 +52,9 @@ def cluster_secondary_locations(
         logger.warning("No available days for secondary locations")
         return {}
     
-    # Detect noise points  
+    # detect noise points  
     noise_points = identify_noise_points(
-        secondary_df,  # Keep as polars DataFrame  
+        secondary_df,  # keep as polars DataFrame  
         noise_threshold_km=noise_threshold_km
     )
     
@@ -61,10 +62,10 @@ def cluster_secondary_locations(
     if n_noise > 0:
         logger.warning(f"Detected {n_noise} noise points (isolated locations)")
     
-    # Apply K-means clustering
+    # apply K-means clustering
     n_clusters = min(len(available_days), len(secondary_df))
     
-    # Use the existing kmeans function with Polars DataFrame
+    # use the existing kmeans function with Polars DataFrame
     locations_data = secondary_df.select(['pos_id', 'latitude', 'longitude'])
     
     clustered_df = kmeans_cluster_locations(
@@ -73,10 +74,10 @@ def cluster_secondary_locations(
         random_seed=42
     )
     
-    # Extract cluster assignments
+    # extract cluster assignments
     cluster_assignments = clustered_df['cluster_id'].to_list()
     
-    # Map clusters to days
+    # map clusters to days
     day_assignments = {}
     pos_ids = clustered_df['pos_id'].to_list()
     
