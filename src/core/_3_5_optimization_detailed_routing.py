@@ -17,7 +17,8 @@ from src.utils.osrm_utils import fetch_route_geometry
 def get_detailed_route_information(
     optimized_routes: Dict[int, Tuple[List[int], float]],
     df: pl.DataFrame,
-    zone_id: str
+    zone_id: str,
+    centroid: Tuple[float, float]
 ) -> pl.DataFrame:
     """
     Fetch detailed route geometry and timing for all optimized routes.
@@ -31,6 +32,7 @@ def get_detailed_route_information(
     :param optimized_routes: Dictionary mapping days to (route, cost) tuples
     :param df: Location DataFrame
     :param zone_id: Zone identifier
+    :param centroid: Zone centroid coordinates (lat, lon)
     :return: DataFrame with detailed route information
     """
     logger.info(f"Stage 3.5: DETAILED ROUTING - Zone {zone_id}")
@@ -45,7 +47,7 @@ def get_detailed_route_information(
         logger.info(f"Fetching detailed route for zone {zone_id}, day {day} with {len(route)} locations")
         
         # get route geometry and timing from OSRM
-        route_details = fetch_detailed_route_osrm(route, df, zone_id, day)
+        route_details = fetch_detailed_route_osrm(route, df, zone_id, day, centroid)
         
         if route_details:
             # build route record
@@ -54,7 +56,8 @@ def get_detailed_route_information(
                 day=day,
                 route=route,
                 route_details=route_details,
-                df=df
+                df=df,
+                centroid=centroid
             )
             
             detailed_routes.append(route_record)
@@ -75,7 +78,8 @@ def fetch_detailed_route_osrm(
     route: List[int],
     df: pl.DataFrame,
     zone_id: str,
-    day: int
+    day: int,
+    centroid: Tuple[float, float]
 ) -> Optional[Dict[str, Any]]:
     """
     Fetch detailed route information from OSRM Route API.
@@ -93,11 +97,11 @@ def fetch_detailed_route_osrm(
         route_locations = []
         for loc_id in route:
             if loc_id == -1:  # centroid
-                # create a dummy location for centroid 
+                # create a location for centroid using actual coordinates
                 route_locations.append(Location(
                     location_id=-1,
-                    latitude=0.0,  # will be set by OSRM
-                    longitude=0.0, # will be set by OSRM
+                    latitude=centroid[0],  # actual centroid latitude
+                    longitude=centroid[1], # actual centroid longitude
                     name="zone_centroid",
                     address="zone_centroid"
                 ))
@@ -141,7 +145,8 @@ def build_route_record(
     day: int,
     route: List[int],
     route_details: Dict[str, Any],
-    df: pl.DataFrame
+    df: pl.DataFrame,
+    centroid: Tuple[float, float]
 ) -> Dict[str, Any]:
     """
     Build a route record for the final DataFrame.
@@ -159,7 +164,7 @@ def build_route_record(
     
     for pos_id in route:
         if pos_id == -1:  # centroid
-            locations.append(route_details.get('centroid_coords', [0.0, 0.0]))
+            locations.append([centroid[1], centroid[0]])  # OSRM expects [lon, lat]
             pos_classes.append("centroid")
         else:
             loc_row = df.filter(pl.col("pos_id") == pos_id)

@@ -108,6 +108,19 @@ uv run python main.py
 uv run python main.py --workers 4 --zones 10
 ```
 
+### Algorithm Selection
+```bash
+# Choose clustering algorithm for secondary location grouping
+uv run python main.py --clusterer mds_kmeans           # Default: MDS + K-means
+uv run python main.py --clusterer hierarchical         # Hierarchical clustering
+uv run python main.py --clusterer spectral            # Spectral clustering
+
+# Choose balancing approach for workload equalization
+uv run python main.py --balancer greedy               # Default: Enhanced greedy transfer
+uv run python main.py --balancer simulated_annealing  # Simulated annealing
+uv run python main.py --balancer min_max              # Min-max optimization
+```
+
 ### Clustering Operations
 ```bash
 # Re-cluster locations with custom parameters

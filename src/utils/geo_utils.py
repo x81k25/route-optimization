@@ -301,12 +301,12 @@ def get_centroid(pos_zone):
     """
     Calculate the centroid (geometric center) of coordinates in a dataframe.
     
-    :param pos_zone: pandas DataFrame containing latitude and longitude columns
-    :return: list [longitude, latitude] representing the centroid
+    :param pos_zone: Polars DataFrame containing latitude and longitude columns
+    :return: tuple (latitude, longitude) representing the centroid
     """
     centroid_lat = pos_zone['latitude'].mean()
     centroid_lon = pos_zone['longitude'].mean()
-    return [centroid_lon, centroid_lat]
+    return (centroid_lat, centroid_lon)
 
 
 def main():

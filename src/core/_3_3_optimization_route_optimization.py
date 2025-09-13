@@ -23,9 +23,9 @@ def optimize_daily_routes(
     Optimize routes for each day's assigned locations.
     
     This is substage 3.3 where we:
-    1. Apply adaptive TSP algorithms
-    2. Use exhaustive search for small problems (≤5 locations)
-    3. Use greedy + 2-opt for larger problems
+    1. Apply brute force exhaustive search for small problems (≤10 locations)
+    2. Use greedy+2opt fallback for large problems (>10 locations)
+    3. Prevents computational intractability from factorial complexity
     
     :param day_assignments: Dictionary mapping days to location lists
     :param df: Location DataFrame
@@ -48,13 +48,14 @@ def optimize_daily_routes(
         
         logger.info(f"Optimizing day {day}: {n_locations} locations (including centroid)")
         
-        # choose algorithm based on problem size
-        if n_locations <= 5:
+        # use brute force exhaustive search, with fallback for large problems
+        if n_locations <= 10:
             route, cost = exhaustive_tsp(route_locations, od_matrix)
-            algorithm = "exhaustive"
+            algorithm = "exhaustive_brute_force"
         else:
             route, cost = greedy_plus_2opt_tsp(route_locations, od_matrix)
-            algorithm = "greedy+2opt"
+            algorithm = "greedy+2opt_fallback"
+            logger.warning(f"Day {day}: Using greedy+2opt fallback for {n_locations} locations (>10 threshold)")
         
         optimized_routes[day] = (route, cost)
         logger.info(f"Day {day}: {algorithm}, {cost:.1f} min drive time")

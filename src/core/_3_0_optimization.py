@@ -22,6 +22,9 @@ def optimize_zone(
     df: pl.DataFrame,
     zone_id: str,
     od_matrix: Dict[Tuple[int, int], float],
+    clusterer: str = "mds_kmeans",
+    balancer: str = "greedy",
+    centroid: Tuple[float, float] = (0.0, 0.0),
     config_path: str = "./config/model-params.yaml"
 ) -> pl.DataFrame:
     """
@@ -37,6 +40,8 @@ def optimize_zone(
     :param df: Location DataFrame for zone
     :param zone_id: Zone identifier
     :param od_matrix: Distance matrix
+    :param clusterer: Clustering algorithm for secondary locations
+    :param balancer: Balancing approach for workload equalization
     :param config_path: Configuration file path
     :return: DataFrame with detailed route information
     """
@@ -50,7 +55,7 @@ def optimize_zone(
     
     # stage 3.2: Secondary Day Clustering
     secondary_assignments = cluster_secondary_locations(
-        secondary_df, available_days, od_matrix, zone_id
+        secondary_df, available_days, od_matrix, zone_id, clusterer
     )
     
     # combine assignments
@@ -65,7 +70,7 @@ def optimize_zone(
     
     # stage 3.4: Cluster Balancing
     balanced_assignments = balance_cluster_workloads(
-        all_assignments, df, od_matrix, zone_id
+        all_assignments, df, od_matrix, zone_id, balancer
     )
     
     # re-optimize routes after balancing
@@ -75,7 +80,7 @@ def optimize_zone(
     
     # stage 3.5: Detailed Routing
     result_df = get_detailed_route_information(
-        final_routes, df, zone_id
+        final_routes, df, zone_id, centroid
     )
     
     logger.success(f"Optimization complete for zone {zone_id}")

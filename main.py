@@ -3,12 +3,15 @@
 # standard library imports
 import argparse
 import os
+import sys
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 3rd-party imports
 from loguru import logger
 import polars as pl
+from dotenv import load_dotenv
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, MofNCompleteColumn
 
 # local imports - new pipeline structure
 from src.core._1_extraction import extract_locations, validate_locations
@@ -71,15 +74,29 @@ def preprocessing_stage(pos_df: pl.DataFrame) -> dict:
     # Group by zones
     zone_groups = group_by_zones(pos_df)
     
-    # Preprocess each zone
+    # Preprocess each zone with Rich progress bar
     zone_data = {}
-    for zone_id, zone_df in zone_groups.items():
-        zone_df, centroid, od_matrix = preprocess_zone_data(zone_df, zone_id)
-        zone_data[zone_id] = {
-            'df': zone_df,
-            'centroid': centroid, 
-            'od_matrix': od_matrix
-        }
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold green]Preprocessing zones"),
+        BarColumn(bar_width=None),
+        MofNCompleteColumn(),
+        TextColumn("•"),
+        TimeElapsedColumn(),
+        TextColumn("[dim]Current: {task.fields[current_zone]}"),
+        expand=True
+    ) as progress:
+        task = progress.add_task("preprocessing", total=len(zone_groups), current_zone="Starting...")
+        
+        for zone_id, zone_df in zone_groups.items():
+            progress.update(task, current_zone=zone_id)
+            zone_df, centroid, od_matrix = preprocess_zone_data(zone_df, zone_id)
+            zone_data[zone_id] = {
+                'df': zone_df,
+                'centroid': centroid, 
+                'od_matrix': od_matrix
+            }
+            progress.advance(task)
     
     logger.success(f"Stage 2 complete: {len(zone_data)} zones preprocessed")
     
@@ -90,11 +107,13 @@ def preprocessing_stage(pos_df: pl.DataFrame) -> dict:
 # Stage 3: Optimization
 # ------------------------------------------------------------------------------
 
-def optimization_stage(zone_data: dict) -> pl.DataFrame:
+def optimization_stage(zone_data: dict, clusterer: str = "mds_kmeans", balancer: str = "greedy") -> pl.DataFrame:
     """
     Stage 3: Optimize routes for all zones.
     
     :param zone_data: Preprocessed zone data
+    :param clusterer: Clustering algorithm for secondary locations
+    :param balancer: Balancing approach for workload equalization
     :return: Complete itinerary DataFrame
     """
     logger.info("=" * 60)
@@ -115,21 +134,37 @@ def optimization_stage(zone_data: dict) -> pl.DataFrame:
                 optimize_zone, 
                 data['df'], 
                 zone_id, 
-                data['od_matrix']
+                data['od_matrix'],
+                clusterer,
+                balancer,
+                data['centroid']
             )
             future_to_zone[future] = zone_id
         
-        # Collect results
-        for future in as_completed(future_to_zone):
-            zone_id = future_to_zone[future]
-            try:
-                itinerary_zone = future.result()
-                if len(itinerary_zone) > 0:
-                    itinerary_list.append(itinerary_zone)
-                logger.info(f"Completed optimization for zone {zone_id}")
-            except Exception as exc:
-                logger.error(f"Zone {zone_id} generated an exception: {exc}")
-                raise
+        # Collect results with Rich progress bar
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]Optimizing zones"),
+            BarColumn(bar_width=None),
+            MofNCompleteColumn(),
+            TextColumn("•"),
+            TimeElapsedColumn(),
+            TextColumn("[dim]Last: {task.fields[last_zone]}"),
+            expand=True
+        ) as progress:
+            task = progress.add_task("optimization", total=len(future_to_zone), last_zone="None")
+            
+            for future in as_completed(future_to_zone):
+                zone_id = future_to_zone[future]
+                try:
+                    itinerary_zone = future.result()
+                    if len(itinerary_zone) > 0:
+                        itinerary_list.append(itinerary_zone)
+                    logger.info(f"Completed optimization for zone {zone_id}")
+                    progress.update(task, advance=1, last_zone=zone_id)
+                except Exception as exc:
+                    logger.error(f"Zone {zone_id} generated an exception: {exc}")
+                    raise
     
     # Combine results
     if itinerary_list:
@@ -224,7 +259,9 @@ def loading_stage(
 
 def main(
     zone_ids: Optional[List[str]] = None,
-    local: bool = True
+    local: bool = True,
+    clusterer: str = "mds_kmeans",
+    balancer: str = "greedy"
 ) -> None:
     """
     Main pipeline orchestrator following the 5-stage structure:
@@ -242,6 +279,8 @@ def main(
     
     :param zone_ids: List of zone_ids to optimize
     :param local: Whether operations use local files
+    :param clusterer: Clustering algorithm for secondary locations
+    :param balancer: Balancing approach for workload equalization
     """
     logger.info("🚀 ROUTE OPTIMIZATION PIPELINE STARTING")
     logger.info("Pipeline Structure: Extraction → Preprocessing → Optimization → Reporting → Loading")
@@ -260,7 +299,7 @@ def main(
             return
         
         # Stage 3: Optimization
-        itinerary_df = optimization_stage(zone_data)
+        itinerary_df = optimization_stage(zone_data, clusterer, balancer)
         if len(itinerary_df) == 0:
             logger.error("Pipeline terminated: No routes optimized")
             return
@@ -279,6 +318,9 @@ def main(
 
 
 if __name__ == "__main__":
+    # Load environment variables from .env file
+    load_dotenv()
+    
     parser = argparse.ArgumentParser(
         description='Route Optimization Pipeline - 5 Stage Architecture'
     )
@@ -299,12 +341,69 @@ if __name__ == "__main__":
         default=True,
         help="Enable local file processing (default: True)"
     )
+    
+    parser.add_argument(
+        '--clusterer',
+        type=str,
+        default="mds_kmeans",
+        choices=["mds_kmeans", "dbscan", "hierarchical", "spectral", "balanced"],
+        help="Clustering algorithm for secondary locations (default: mds_kmeans)"
+    )
+    
+    parser.add_argument(
+        '--balancer',
+        type=str,
+        default="greedy",
+        choices=["greedy", "local_search", "simulated_annealing", "min_max", "network_flow"],
+        help="Balancing approach for workload equalization (default: greedy)"
+    )
 
     args = parser.parse_args()
 
+    # Configure dual logger setup based on zone argument usage
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    
+    logger.remove()  # Remove default logger
+    
+    # Determine if zones are specified (either specific zones or empty list means "all zones")
+    zones_specified = args.zone_ids is not None and len(args.zone_ids) > 0
+    
+    if zones_specified:
+        # Testing specific zones - use env log level for both main and core
+        logger.add(
+            sink=sys.stderr,
+            level=log_level,
+            filter=lambda record: "main.py" in record["file"].name,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | MAIN | <level>{message}</level>"
+        )
+        logger.add(
+            sink=sys.stderr,
+            level=log_level,
+            filter=lambda record: record["name"].startswith("src."),
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+        )
+        logger.info(f"🔍 Zone-specific run detected: Using {log_level} level for both main and core loggers")
+    else:
+        # Full pipeline run - use env level for main, ERROR only for core
+        logger.add(
+            sink=sys.stderr,
+            level=log_level,
+            filter=lambda record: "main.py" in record["file"].name,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | MAIN | <level>{message}</level>"
+        )
+        logger.add(
+            sink=sys.stderr,
+            level="ERROR",
+            filter=lambda record: record["name"].startswith("src."),
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> - <level>{message}</level>"
+        )
+        logger.info(f"🚀 Full pipeline run: Using {log_level} level for main, ERROR level for core loggers")
+
     main(
         zone_ids=args.zone_ids,
-        local=args.local
+        local=args.local,
+        clusterer=args.clusterer,
+        balancer=args.balancer
     )
 
 
