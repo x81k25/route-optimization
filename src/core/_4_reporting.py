@@ -66,27 +66,59 @@ def aggregate(
         all_pos_ids = set()
         all_pos_classes = []
         
-        for row in zone_data.iter_rows(named=True):
-            pos_ids = row['pos_id'] or []
-            pos_classes = row['pos_class'] or []
-            # use schedule for individual position durations if available, otherwise estimate
-            schedule = row.get('schedule', [])
-            day_duration = row['duration'] or 0.0
-            
-            # track unique locations and their classes
-            for pos_id, pos_class in zip(pos_ids, pos_classes):
+        # Process the new individual position records format
+        # Group by day to calculate day-level metrics
+        days = zone_data.select('day').unique().sort('day').to_series().to_list()
+
+        for day in days:
+            day_data = zone_data.filter(pl.col('day') == day)
+
+            # Get unique positions for this day (excluding centroid/null)
+            day_positions = day_data.filter(
+                (pl.col('pos_id').is_not_null()) & (pl.col('action') == 'arriving')
+            )
+
+            # Track unique locations and their classes
+            for row in day_positions.iter_rows(named=True):
+                pos_id = row['pos_id']
+                pos_class = row['pos_class']
+
                 if pos_id not in all_pos_ids:
                     all_pos_ids.add(pos_id)
                     all_pos_classes.append(pos_class)
-            
-            # sum position time (service time at locations) - convert minutes to hours
-            # estimate 60 minutes per location (excluding centroid)
-            estimated_service_time = len([p for p in pos_ids if p != -1]) * 60.0
-            total_pos_time += estimated_service_time / 60.0
-            
-            # calculate drive time (total duration - service time) - convert minutes to hours
-            service_time_for_day = estimated_service_time
-            drive_time_for_day = max(0.0, day_duration - service_time_for_day)
+
+            # Calculate day duration from schedule (difference between first and last action)
+            day_schedule = day_data.sort('schedule')
+            if len(day_schedule) > 1:
+                first_time = day_schedule.select('schedule').min().item()
+                last_time = day_schedule.select('schedule').max().item()
+                day_duration = last_time - first_time  # in minutes
+            else:
+                day_duration = 0.0
+
+            # Calculate service time based on primary allocation rules
+            primary_positions = day_positions.filter(pl.col('pos_class') == 'primary')
+            secondary_positions = day_positions.filter(pl.col('pos_class') == 'secondary')
+
+            num_primaries = len(primary_positions)
+            num_secondaries = len(secondary_positions)
+
+            # For primaries: days with primaries get full day allocation
+            if num_primaries > 0:
+                # Any day with primary locations gets the full day capacity
+                primary_service_time = 480.0  # hardcode 8 hours = 480 minutes for testing
+                logger.info(f"Day {day}: {num_primaries} primaries, primary_service_time = {primary_service_time} minutes")
+            else:
+                primary_service_time = 0.0
+
+            # For secondaries: standard 60 minutes per location
+            secondary_service_time = num_secondaries * 60.0  # minutes
+
+            estimated_service_time = primary_service_time + secondary_service_time
+            total_pos_time += estimated_service_time / 60.0  # convert to hours
+
+            # Calculate drive time (total duration - service time)
+            drive_time_for_day = max(0.0, day_duration - estimated_service_time)
             total_drive_time += drive_time_for_day / 60.0
         
         # count primary and secondary from unique locations
@@ -140,8 +172,8 @@ def aggregate(
             'utilization': round(utilization, 2),
             'overutilized_days': overutilized_days,
             'underutilized_days': underutilized_days,
-            'total_pos_time': round(total_pos_time, 2),
-            'total_drive_time': round(total_drive_time, 2),
+            'total_pos_time': round(total_pos_time * 60.0, 2),  # convert back to minutes for daily summary
+            'total_drive_time': round(total_drive_time * 60.0, 2),  # convert back to minutes for daily summary
             'sec_std': round(sec_std, 2)
         })
     
@@ -154,6 +186,107 @@ def aggregate(
     logger.success(f"generated aggregate metrics for {len(aggregate_df)} zones")
         
     return aggregate_df
+
+
+def generate_reports_from_daily_summary(daily_summary_df: pl.DataFrame, itinerary_df: pl.DataFrame = None) -> pl.DataFrame:
+    """
+    Generate aggregate zone reports from daily summary data.
+
+    :param daily_summary_df: Daily summary DataFrame
+    :param itinerary_df: Optional itinerary DataFrame for accurate distinct counts
+    :return: DataFrame with zone-level aggregate metrics
+    """
+    if len(daily_summary_df) == 0:
+        logger.warning("No daily summary data to generate reports from")
+        return pl.DataFrame()
+
+    logger.info("Generating aggregate reports from daily summary data")
+
+    # Group by zone_id to calculate zone-level metrics
+    zones = daily_summary_df.select('zone_id').unique().sort('zone_id').to_series().to_list()
+
+    result_data = []
+
+    for zone_id in zones:
+        zone_data = daily_summary_df.filter(pl.col('zone_id') == zone_id)
+
+        if len(zone_data) == 0:
+            continue
+
+        # Calculate zone metrics from daily summaries
+        # If we have itinerary data, get distinct counts from there
+        if itinerary_df is not None and len(itinerary_df) > 0:
+            zone_itinerary = itinerary_df.filter(pl.col('zone_id') == zone_id)
+
+            # Count distinct primary and secondary locations
+            primary_pos = zone_itinerary.filter(pl.col('pos_class') == 'primary')
+            secondary_pos = zone_itinerary.filter(pl.col('pos_class') == 'secondary')
+
+            total_primary = primary_pos.select('pos_id').n_unique() if len(primary_pos) > 0 else 0
+            total_secondary = secondary_pos.select('pos_id').n_unique() if len(secondary_pos) > 0 else 0
+        else:
+            # Fallback: use max daily counts (not ideal but better than sum)
+            total_primary = zone_data.select('primary_locations').max().item() or 0
+            total_secondary = zone_data.select('secondary_locations').max().item() or 0
+        weekly_duration = zone_data.select('duration').sum().item() / 60.0  # convert to hours
+
+        # Calculate utilization metrics
+        target_weekly_hours = 5 * 8  # 5 days * 8 hours
+        utilization = (weekly_duration / target_weekly_hours) * 100 if target_weekly_hours > 0 else 0
+
+        # Sum position and drive times
+        total_pos_time = zone_data.select('total_pos_time').sum().item() / 60.0  # convert to hours
+        total_drive_time = zone_data.select('total_drive_time').sum().item() / 60.0  # convert to hours
+
+        # Count over/under utilized days
+        daily_capacity_hours = 8  # 8 hours per day
+        overutilized_days = len(zone_data.filter(pl.col('duration') > daily_capacity_hours * 60))
+
+        # Count days with locations that are under-utilized
+        days_with_locations = zone_data.filter(
+            (pl.col('primary_locations') + pl.col('secondary_locations')) > 0
+        )
+        underutilized_days = len(days_with_locations.filter(
+            pl.col('duration') < daily_capacity_hours * 60
+        ))
+
+        # Calculate secondary duration standard deviation
+        secondary_days = zone_data.filter(pl.col('secondary_locations') > 0)
+        if len(secondary_days) > 1:
+            secondary_durations = secondary_days.select('duration').to_series().to_list()
+            secondary_durations_hours = [d / 60.0 for d in secondary_durations]  # convert to hours
+            mean_duration = sum(secondary_durations_hours) / len(secondary_durations_hours)
+            variance = sum((x - mean_duration) ** 2 for x in secondary_durations_hours) / len(secondary_durations_hours)
+            sec_std = variance ** 0.5
+        else:
+            sec_std = 0.0
+
+        # Get metadata from first record
+        first_record = zone_data.row(0, named=True)
+
+        result_data.append({
+            'zone_id': zone_id,
+            'primary_count': total_primary,
+            'secondary_count': total_secondary,
+            'total_pos_time': total_pos_time,
+            'total_drive_time': total_drive_time,
+            'weekly_duration': weekly_duration,
+            'utilization': utilization,
+            'overutilized_days': overutilized_days,
+            'underutilized_days': underutilized_days,
+            'sec_std': sec_std,
+            'clusterer': first_record.get('clusterer', 'unknown'),
+            'router': first_record.get('router', 'unknown'),
+            'balancer': first_record.get('balancer', 'unknown'),
+            'created_on': first_record.get('created_on', '')
+        })
+
+    if result_data:
+        result_df = pl.DataFrame(result_data)
+        logger.success(f"Generated aggregate reports for {len(result_df)} zones")
+        return result_df
+    else:
+        return pl.DataFrame()
 
 
 if __name__ == "__main__":

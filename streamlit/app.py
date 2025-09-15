@@ -15,7 +15,8 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent))
 
 # local imports
-from aggregate_report import show_aggregate_report
+from zone_summary import show_zone_summary
+from aggregate_summary import show_aggregate_summary
 from utils import load_data
 from zone_details import show_zone_details
 
@@ -34,20 +35,22 @@ def main():
     """
     # load data
     with st.spinner("loading data..."):
-        itinerary_df, locations = load_data()
-        
+        itinerary_df = load_data()
+
     if itinerary_df is None:
         st.error("unable to load data. please check that the output files exist.")
         return
     
     # sidebar for navigation
     st.sidebar.title("navigation")
-    page = st.sidebar.selectbox("choose a page", ["aggregate report", "zone details"])
-    
-    if page == "aggregate report":
-        show_aggregate_report(itinerary_df, locations)
+    page = st.sidebar.selectbox("choose a page", ["zone summary", "zone details", "aggregate summary"])
+
+    if page == "zone summary":
+        show_zone_summary(itinerary_df)
     elif page == "zone details":
-        show_zone_details(itinerary_df, locations)
+        show_zone_details(itinerary_df)
+    elif page == "aggregate summary":
+        show_aggregate_summary()
 
 
 if __name__ == "__main__":

@@ -6,18 +6,19 @@ import os
 import sys
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from itertools import product
 
 # 3rd-party imports
 from loguru import logger
 import polars as pl
 from dotenv import load_dotenv
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, MofNCompleteColumn
+import yaml
 
 # local imports - new pipeline structure
 from src.core._1_extraction import extract_locations, validate_locations
-from src.core._2_preprocessing import preprocess_zone_data, group_by_zones
 from src.core._3_0_optimization import optimize_zone
-from src.core._4_reporting import aggregate as generate_reports
+from src.core._4_reporting import aggregate as generate_reports, generate_reports_from_daily_summary
 from src.core._5_loading import load_results_to_files
 
 
@@ -41,77 +42,59 @@ def extraction_stage(
     logger.info("=" * 60)
     
     # Extract locations
-    pos_df = extract_locations(pos_path, zone_ids)
-    
-    if pos_df.height == 0:
+    locations = extract_locations(pos_path, zone_ids)
+
+    if locations.height == 0:
         logger.error("No valid zones given for processing")
         return None
-    
+
     # Validate data
-    validated_df = validate_locations(pos_df)
-    
-    logger.success(f"Stage 1 complete: {len(validated_df)} locations extracted and validated")
-    logger.info(f"Sample data:\n{validated_df.head()}")
-    
-    return validated_df
+    validated_locations = validate_locations(locations)
+
+    logger.success(f"Stage 1 complete: {len(validated_locations)} locations extracted and validated")
+    logger.info(f"Sample data:\n{validated_locations.head()}")
+
+    return validated_locations
 
 
 # ------------------------------------------------------------------------------
 # Stage 2: Preprocessing  
 # ------------------------------------------------------------------------------
 
-def preprocessing_stage(pos_df: pl.DataFrame) -> dict:
+def preprocessing_stage(locations: pl.DataFrame) -> pl.DataFrame:
     """
     Stage 2: Preprocess data for optimization.
-    
-    :param pos_df: Location DataFrame
-    :return: Dictionary with preprocessed zone data
+
+    Currently a passthrough placeholder - preprocessing logic moved to optimization stage.
+
+    :param locations: Location DataFrame
+    :return: Same DataFrame (passthrough)
     """
     logger.info("=" * 60)
     logger.info("STAGE 2: PREPROCESSING")
     logger.info("=" * 60)
-    
-    # Group by zones
-    zone_groups = group_by_zones(pos_df)
-    
-    # Preprocess each zone with Rich progress bar
-    zone_data = {}
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[bold green]Preprocessing zones"),
-        BarColumn(bar_width=None),
-        MofNCompleteColumn(),
-        TextColumn("•"),
-        TimeElapsedColumn(),
-        TextColumn("[dim]Current: {task.fields[current_zone]}"),
-        expand=True
-    ) as progress:
-        task = progress.add_task("preprocessing", total=len(zone_groups), current_zone="Starting...")
-        
-        for zone_id, zone_df in zone_groups.items():
-            progress.update(task, current_zone=zone_id)
-            zone_df, centroid, od_matrix = preprocess_zone_data(zone_df, zone_id)
-            zone_data[zone_id] = {
-                'df': zone_df,
-                'centroid': centroid, 
-                'od_matrix': od_matrix
-            }
-            progress.advance(task)
-    
-    logger.success(f"Stage 2 complete: {len(zone_data)} zones preprocessed")
-    
-    return zone_data
+
+    logger.info(f"Passing through {len(locations)} locations from {locations['zone_id'].n_unique()} zones")
+    logger.success("Stage 2 complete: Data passed through for optimization")
+
+    return locations
 
 
 # ------------------------------------------------------------------------------
 # Stage 3: Optimization
 # ------------------------------------------------------------------------------
 
-def optimization_stage(zone_data: dict, clusterer: str = "mds_kmeans", balancer: str = "greedy") -> pl.DataFrame:
+def optimization_stage(
+    preprocessed_data: pl.DataFrame,
+    model_params: dict,
+    clusterer: str = "mds_kmeans",
+    balancer: str = "greedy"
+) -> pl.DataFrame:
     """
     Stage 3: Optimize routes for all zones.
-    
-    :param zone_data: Preprocessed zone data
+
+    :param preprocessed_data: DataFrame containing all location data
+    :param model_params: Model parameters configuration dictionary
     :param clusterer: Clustering algorithm for secondary locations
     :param balancer: Balancing approach for workload equalization
     :return: Complete itinerary DataFrame
@@ -120,24 +103,29 @@ def optimization_stage(zone_data: dict, clusterer: str = "mds_kmeans", balancer:
     logger.info("STAGE 3: OPTIMIZATION")
     logger.info("=" * 60)
     
+    # Partition data by zone_id
+    zone_data = {}
+    for zone_id in preprocessed_data["zone_id"].unique().to_list():
+        zone_data[zone_id] = preprocessed_data.filter(pl.col("zone_id") == zone_id)
+
     zone_count = len(zone_data)
     max_workers = max(1, os.cpu_count() // 2)
     logger.info(f"Optimizing {zone_count} zone(s) using {max_workers} threads")
-    
+    logger.info(f"Data partitioned: {[f'{zone_id}({len(df)})' for zone_id, df in zone_data.items()]}")
+
     # Optimize zones in parallel
     itinerary_list = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit optimization tasks
+        # Submit optimization tasks with zone-specific data
         future_to_zone = {}
-        for zone_id, data in zone_data.items():
+        for zone_id, zone_df in zone_data.items():
             future = executor.submit(
-                optimize_zone, 
-                data['df'], 
-                zone_id, 
-                data['od_matrix'],
+                optimize_zone,
+                zone_df,  # Pass only zone-specific DataFrame
+                zone_id,
+                model_params,
                 clusterer,
-                balancer,
-                data['centroid']
+                balancer
             )
             future_to_zone[future] = zone_id
         
@@ -181,29 +169,36 @@ def optimization_stage(zone_data: dict, clusterer: str = "mds_kmeans", balancer:
 # Stage 4: Reporting
 # ------------------------------------------------------------------------------
 
-def reporting_stage(itinerary_df: pl.DataFrame) -> tuple:
+def reporting_stage(itinerary: pl.DataFrame) -> tuple:
     """
-    Stage 4: Generate analytics and reports.
-    
-    :param itinerary_df: Complete itinerary DataFrame
-    :return: Tuple of (aggregate_df, summary_df)
+    Stage 4: Generate analytics and reports from itinerary data.
+
+    :param itinerary: Itinerary DataFrame from optimization stage
+    :return: Tuple of (daily_summary, aggregate_results, summary_stats)
     """
     logger.info("=" * 60)
     logger.info("STAGE 4: REPORTING")
     logger.info("=" * 60)
-    
-    if len(itinerary_df) == 0:
+    # Extract clusterer and balancer from itinerary data
+    clusterer = itinerary.select("clusterer").unique().to_series().to_list()[0]
+    balancer = itinerary.select("balancer").unique().to_series().to_list()[0]
+
+    # Generate daily summary from itinerary
+    from src.core._3_5_optimization_detailed_routing import generate_daily_summary
+    daily_summary = generate_daily_summary(itinerary, clusterer, balancer, "exhaustive")
+
+    if len(daily_summary) == 0:
         logger.warning("No data to report on")
-        return None, None
-    
-    zone_count = itinerary_df['zone_id'].n_unique()
+        return None, None, None
+
+    zone_count = daily_summary['zone_id'].n_unique()
     logger.info(f"Generating reports for {zone_count} zone(s)")
-    
+
     # Generate aggregate metrics
-    aggregate_df = generate_reports(itinerary_df, local=True)
-    
+    aggregate_results = generate_reports_from_daily_summary(daily_summary, itinerary)
+
     # Generate summary statistics
-    summary_df = aggregate_df.select([
+    summary_stats = aggregate_results.select([
         pl.col('weekly_duration').mean().alias("average_weekly_duration"),
         pl.col('utilization').mean().alias("average_utilization"),
         pl.col('overutilized_days').mean().alias("average_overutilized_days"),
@@ -214,9 +209,9 @@ def reporting_stage(itinerary_df: pl.DataFrame) -> tuple:
     ])
     
     logger.success("Stage 4 complete: Reports generated")
-    logger.info(f"Aggregate summary:\n{summary_df}")
-    
-    return aggregate_df, summary_df
+    logger.info(f"Aggregate summary:\n{summary_stats}")
+
+    return daily_summary, aggregate_results, summary_stats
 
 
 # ------------------------------------------------------------------------------
@@ -224,30 +219,41 @@ def reporting_stage(itinerary_df: pl.DataFrame) -> tuple:
 # ------------------------------------------------------------------------------
 
 def loading_stage(
-    itinerary_df: pl.DataFrame,
-    aggregate_df: Optional[pl.DataFrame] = None,
-    summary_df: Optional[pl.DataFrame] = None
+    itinerary: pl.DataFrame,
+    daily_summary: Optional[pl.DataFrame] = None,
+    aggregate_results: Optional[pl.DataFrame] = None,
+    summary_stats: Optional[pl.DataFrame] = None
 ) -> None:
     """
     Stage 5: Export results to files.
-    
-    :param itinerary_df: Complete itinerary DataFrame
-    :param aggregate_df: Aggregate analytics DataFrame
-    :param summary_df: Summary statistics DataFrame
+
+    :param itinerary: Complete itinerary DataFrame (individual position records)
+    :param daily_summary: Daily summary DataFrame
+    :param aggregate_results: Aggregate analytics DataFrame
+    :param summary_stats: Summary statistics DataFrame
     """
     logger.info("=" * 60)
     logger.info("STAGE 5: LOADING")
     logger.info("=" * 60)
-    
+
+    # Extract clusterer, balancer, and router from itinerary data
+    clusterer = itinerary.select("clusterer").unique().to_series().to_list()[0]
+    balancer = itinerary.select("balancer").unique().to_series().to_list()[0]
+    router = itinerary.select("router").unique().to_series().to_list()[0]
+
     # Ensure output directory exists
     os.makedirs("./output", exist_ok=True)
-    
+
     # Export all results
     load_results_to_files(
-        itinerary_df=itinerary_df,
-        aggregate_df=aggregate_df,
-        summary_df=summary_df,
-        output_dir="./output"
+        itinerary=itinerary,
+        daily_summary=daily_summary,
+        zone_summary=aggregate_results,
+        aggregate_summary=summary_stats,
+        output_dir="./output",
+        clusterer=clusterer,
+        balancer=balancer,
+        router=router
     )
     
     logger.success("Stage 5 complete: Results exported to ./output/")
@@ -265,18 +271,18 @@ def main(
 ) -> None:
     """
     Main pipeline orchestrator following the 5-stage structure:
-    
+
     1. Extraction - Load and validate location data
     2. Preprocessing - Clean and prepare data
     3. Optimization - Execute route optimization
         3.1. Primary day assignment
-        3.2. Secondary day clustering  
+        3.2. Secondary day clustering
         3.3. Route optimization
         3.4. Cluster balancing
         3.5. Detailed routing
     4. Reporting - Generate analytics
     5. Loading - Export results
-    
+
     :param zone_ids: List of zone_ids to optimize
     :param local: Whether operations use local files
     :param clusterer: Clustering algorithm for secondary locations
@@ -284,37 +290,92 @@ def main(
     """
     logger.info("🚀 ROUTE OPTIMIZATION PIPELINE STARTING")
     logger.info("Pipeline Structure: Extraction → Preprocessing → Optimization → Reporting → Loading")
-    
+
+    # Load model parameters configuration
+    with open("./config/model-params.yaml", "r") as f:
+        config = yaml.safe_load(f)
+        model_params = config["model_params"]
+    logger.info(f"Loaded model parameters: {model_params}")
+
     try:
         # Stage 1: Extraction
-        pos_df = extraction_stage(zone_ids)
-        if pos_df is None or pos_df.is_empty():
+        locations = extraction_stage(zone_ids)
+        if locations is None or locations.is_empty():
             logger.error("Pipeline terminated: No data extracted")
             return
-        
-        # Stage 2: Preprocessing  
-        zone_data = preprocessing_stage(pos_df)
-        if not zone_data:
+
+        # Stage 2: Preprocessing
+        preprocessed_data = preprocessing_stage(locations)
+        if preprocessed_data.is_empty():
             logger.error("Pipeline terminated: No zones preprocessed")
             return
-        
+
         # Stage 3: Optimization
-        itinerary_df = optimization_stage(zone_data, clusterer, balancer)
-        if len(itinerary_df) == 0:
+        itinerary = optimization_stage(preprocessed_data, model_params, clusterer, balancer)
+        if len(itinerary) == 0:
             logger.error("Pipeline terminated: No routes optimized")
             return
-        
+
         # Stage 4: Reporting
-        aggregate_df, summary_df = reporting_stage(itinerary_df)
-        
+        daily_summary, aggregate_results, summary_stats = reporting_stage(itinerary)
+
         # Stage 5: Loading
-        loading_stage(itinerary_df, aggregate_df, summary_df)
+        loading_stage(itinerary, daily_summary, aggregate_results, summary_stats)
         
         logger.success("✅ ROUTE OPTIMIZATION PIPELINE COMPLETED SUCCESSFULLY")
         
     except Exception as e:
         logger.error(f"❌ Pipeline failed: {e}")
         raise
+
+
+def multi_main(
+    zone_ids: Optional[List[str]] = None,
+    local: bool = True,
+    clusterers: List[str] = ["mds_kmeans"],
+    balancers: List[str] = ["greedy"]
+) -> None:
+    """
+    Multi-algorithm orchestrator that runs the pipeline for all combinations
+    of clusterer and balancer algorithms.
+
+    :param zone_ids: List of zone_ids to optimize
+    :param local: Whether operations use local files
+    :param clusterers: List of clustering algorithms to test
+    :param balancers: List of balancing approaches to test
+    """
+    # Create grid of all combinations
+    algorithm_grid = list(product(clusterers, balancers))
+    total_combinations = len(algorithm_grid)
+
+    logger.info(f"🔀 MULTI-ALGORITHM ORCHESTRATOR STARTING")
+    logger.info(f"Running {total_combinations} combinations: {clusterers} × {balancers}")
+    logger.info("="*80)
+
+    # Run each combination sequentially (no parallelization as optimization is already parallel)
+    for i, (clusterer, balancer) in enumerate(algorithm_grid, 1):
+        logger.info(f"🔄 COMBINATION {i}/{total_combinations}: {clusterer} + {balancer}")
+        logger.info("-"*60)
+
+        try:
+            # Run main pipeline for this combination
+            main(
+                zone_ids=zone_ids,
+                local=local,
+                clusterer=clusterer,
+                balancer=balancer
+            )
+            logger.success(f"✅ Combination {i}/{total_combinations} completed: {clusterer} + {balancer}")
+
+        except Exception as e:
+            logger.error(f"❌ Combination {i}/{total_combinations} failed: {clusterer} + {balancer} - {e}")
+            # Continue with next combination rather than stopping entire orchestration
+            continue
+
+        logger.info("="*60)
+
+    logger.success(f"🎉 MULTI-ALGORITHM ORCHESTRATOR COMPLETED")
+    logger.info(f"Processed {total_combinations} combinations across {len(clusterers)} clusterers and {len(balancers)} balancers")
 
 
 if __name__ == "__main__":
@@ -345,17 +406,25 @@ if __name__ == "__main__":
     parser.add_argument(
         '--clusterer',
         type=str,
-        default="mds_kmeans",
+        nargs="*",
+        default=["mds_kmeans"],
         choices=["mds_kmeans", "dbscan", "hierarchical", "spectral", "balanced"],
-        help="Clustering algorithm for secondary locations (default: mds_kmeans)"
+        help="Clustering algorithm(s) for secondary locations (default: mds_kmeans). Multiple values will run all combinations."
     )
-    
+
     parser.add_argument(
         '--balancer',
         type=str,
-        default="greedy",
+        nargs="*",
+        default=["greedy"],
         choices=["greedy", "local_search", "simulated_annealing", "min_max", "network_flow"],
-        help="Balancing approach for workload equalization (default: greedy)"
+        help="Balancing approach(es) for workload equalization (default: greedy). Multiple values will run all combinations."
+    )
+
+    parser.add_argument(
+        '--full-grid',
+        action='store_true',
+        help="Run all possible combinations of all available clusterers and balancers. Overrides --clusterer and --balancer arguments."
     )
 
     args = parser.parse_args()
@@ -399,12 +468,41 @@ if __name__ == "__main__":
         )
         logger.info(f"🚀 Full pipeline run: Using {log_level} level for main, ERROR level for core loggers")
 
-    main(
-        zone_ids=args.zone_ids,
-        local=args.local,
-        clusterer=args.clusterer,
-        balancer=args.balancer
-    )
+    # Handle --full-grid argument
+    if args.full_grid:
+        # Override arguments with all available options
+        all_clusterers = ["mds_kmeans", "dbscan", "hierarchical", "spectral", "balanced"]
+        all_balancers = ["greedy", "local_search", "simulated_annealing", "min_max", "network_flow"]
+
+        logger.info(f"🌐 Full grid mode: Running all {len(all_clusterers)} × {len(all_balancers)} = {len(all_clusterers) * len(all_balancers)} combinations")
+
+        # Multi-algorithm orchestration with full grid
+        multi_main(
+            zone_ids=args.zone_ids,
+            local=args.local,
+            clusterers=all_clusterers,
+            balancers=all_balancers
+        )
+    else:
+        # Determine if we should run single or multi execution
+        is_multi_execution = len(args.clusterer) > 1 or len(args.balancer) > 1
+
+        if is_multi_execution:
+            # Multi-algorithm orchestration
+            multi_main(
+                zone_ids=args.zone_ids,
+                local=args.local,
+                clusterers=args.clusterer,
+                balancers=args.balancer
+            )
+        else:
+            # Single algorithm execution
+            main(
+                zone_ids=args.zone_ids,
+                local=args.local,
+                clusterer=args.clusterer[0],  # Extract single value from list
+                balancer=args.balancer[0]     # Extract single value from list
+            )
 
 
 # ------------------------------------------------------------------------------

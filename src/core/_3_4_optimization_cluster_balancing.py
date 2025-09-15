@@ -16,7 +16,7 @@ from src.utils.clustering_utils import haversine_distance
 
 
 def balance_cluster_workloads(
-    day_assignments: Dict[int, List[int]],
+    secondary_assignments: Dict[int, List[int]],
     df: pl.DataFrame,
     od_matrix: Dict[Tuple[int, int], float],
     zone_id: str,
@@ -25,50 +25,54 @@ def balance_cluster_workloads(
     max_iterations: int = 5
 ) -> Dict[int, List[int]]:
     """
-    Balance workloads across clusters using selected balancing approach.
-    
+    Balance workloads across secondary clusters only.
+
     This is substage 3.4 where we:
-    1. Calculate duration per cluster
-    2. Identify imbalances
-    3. Apply selected balancing algorithm
-    4. Iterate until convergence
-    
-    :param day_assignments: Initial day assignments
+    1. Only rebalance secondary day clusters
+    2. Never touch primary store assignments
+    3. Calculate duration per secondary cluster
+    4. Apply selected balancing algorithm only to secondary locations
+
+    :param secondary_assignments: Secondary cluster assignments (cluster_id -> location_ids)
     :param df: Location DataFrame
     :param od_matrix: Distance matrix
     :param zone_id: Zone identifier
     :param balancer: Balancing algorithm to use
     :param duration_threshold_min: Threshold for rebalancing
     :param max_iterations: Maximum rebalancing iterations
-    :return: Balanced day assignments
+    :return: Balanced secondary cluster assignments
     """
     logger.info(f"Stage 3.4: CLUSTER BALANCING - Zone {zone_id}")
-    logger.info(f"Starting {balancer} balancing (threshold: {duration_threshold_min} min)")
-    
+    logger.info(f"Starting {balancer} balancing on secondary clusters only (threshold: {duration_threshold_min} min)")
+
+    if not secondary_assignments:
+        logger.info("No secondary clusters to balance")
+        return secondary_assignments
+
     if balancer == "greedy":
         return apply_greedy_transfer_balancing(
-            day_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
+            secondary_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
         )
     elif balancer == "local_search":
         return apply_local_search_balancing(
-            day_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
+            secondary_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
         )
     elif balancer == "simulated_annealing":
         return apply_simulated_annealing_balancing(
-            day_assignments, df, od_matrix, zone_id, duration_threshold_min
+            secondary_assignments, df, od_matrix, zone_id, duration_threshold_min
         )
     elif balancer == "min_max":
         return apply_min_max_balancing(
-            day_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
+            secondary_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
         )
     elif balancer == "network_flow":
         return apply_network_flow_balancing(
-            day_assignments, df, od_matrix, zone_id
+            secondary_assignments, df, od_matrix, zone_id
         )
     else:
         logger.warning(f"Unknown balancer {balancer}, falling back to greedy")
         return apply_greedy_transfer_balancing(
-            day_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
+            secondary_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
         )
 
 

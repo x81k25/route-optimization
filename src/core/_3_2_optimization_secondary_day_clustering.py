@@ -1,6 +1,6 @@
 """
 Stage 3.2: Secondary Day Clustering
-Cluster secondary locations into days using K-means
+Cluster secondary locations into days using various clustering algorithms
 """
 
 # standard library imports
@@ -13,63 +13,187 @@ import polars as pl
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering, SpectralClustering
 from sklearn.manifold import MDS
 from sklearn.preprocessing import StandardScaler
+from datetime import datetime
 
 # local imports
 from src.utils.clustering_utils import (
     identify_noise_points,
     kmeans_cluster_locations
 )
+from src.data_models.itinerary_frame import ItineraryFrame
+
+
+def cluster_secondary_days(
+    itinerary: pl.DataFrame,
+    zone_df: pl.DataFrame,
+    od_matrix: Dict[Tuple[int, int], float],
+    centroid: Tuple[float, float],
+    model_params: Dict[str, any],
+    clusterer: str = "mds_kmeans"
+) -> pl.DataFrame:
+    """
+    Stage 3.2: Cluster secondary locations into available secondary days.
+
+    Logic:
+    1. Count days with no primary class POS - this is the number of output clusters
+    2. Collect all secondary stores and cluster them
+    3. Strip original arbitrary day assignments from stage 3.1
+    4. Apply clustering algorithm to secondary locations only
+
+    :param itinerary: ItineraryFrame from stage 3.1 with primary day assignments
+    :param zone_df: Zone location data
+    :param od_matrix: Distance matrix for clustering
+    :param centroid: Zone centroid coordinates
+    :param model_params: Model parameters configuration dictionary
+    :param clusterer: Clustering algorithm to use
+    :return: Updated itinerary with secondary day assignments
+    """
+    logger.info("Stage 3.2: SECONDARY DAY CLUSTERING")
+
+    # Get zone_id from itinerary (all records will have same zone_id)
+    zone_id = itinerary.select("zone_id").unique().to_series().to_list()[0]
+    logger.info(f"Processing zone {zone_id}")
+
+    # Step 1: Count days with no primary class POS
+    days_per_week = model_params.get("days_per_week", 5)
+    hours_per_non_primary = model_params.get("hours_per_non_primary", 1)
+    primary_days = itinerary.filter(pl.col("pos_class") == "primary").select("day").unique().to_series().to_list()
+
+    all_days = set(range(1, days_per_week + 1))
+    primary_days_set = set(primary_days)
+    secondary_days_available = list(all_days - primary_days_set)
+    n_secondary_clusters = len(secondary_days_available)
+
+    logger.info(f"Primary days: {sorted(primary_days)}")
+    logger.info(f"Secondary days available: {sorted(secondary_days_available)}")
+    logger.info(f"Number of secondary clusters needed: {n_secondary_clusters}")
+
+    # Step 2: Collect all secondary stores from zone_df (ignore existing day assignments)
+    secondary_df = zone_df.filter(pl.col("class") == "secondary")
+
+    if len(secondary_df) == 0:
+        logger.info("No secondary locations to cluster")
+        # Return only primary assignments
+        return itinerary.filter(pl.col("pos_class") == "primary")
+
+    if n_secondary_clusters == 0:
+        logger.warning("No secondary days available - all days are primary days")
+        # Return only primary assignments
+        return itinerary.filter(pl.col("pos_class") == "primary")
+
+    # Step 3 & 4: Cluster secondary locations
+    cluster_assignments = cluster_secondary_locations(
+        secondary_df=secondary_df,
+        secondary_days=n_secondary_clusters,
+        od_matrix=od_matrix,
+        zone_id=zone_id,
+        clusterer=clusterer
+    )
+
+    # DEBUG: Print cluster assignments for zone_000
+    if zone_id == "zone_000":
+        logger.info(f"DEBUG: Zone {zone_id} cluster assignments: {cluster_assignments}")
+        logger.info(f"DEBUG: Zone {zone_id} secondary days available: {secondary_days_available}")
+
+    # Step 5: Create new secondary itinerary records
+    secondary_records = []
+    created_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Get metadata from existing itinerary
+    sample_record = itinerary.row(0, named=True)
+    clusterer_name = sample_record["clusterer"]
+    router_name = sample_record["router"]
+    balancer_name = sample_record["balancer"]
+
+    for cluster_id, pos_ids in cluster_assignments.items():
+        if cluster_id < len(secondary_days_available):
+            assigned_day = secondary_days_available[cluster_id]
+
+            for pos_id in pos_ids:
+                # Get location data
+                pos_data = secondary_df.filter(pl.col("pos_id") == pos_id).row(0, named=True)
+
+                secondary_records.append({
+                    "zone_id": zone_id,
+                    "day": assigned_day,
+                    "pos_id": str(pos_id),
+                    "pos_name": pos_data["name"],
+                    "pos_class": "secondary",
+                    "route": [[pos_data["longitude"], pos_data["latitude"]]],
+                    "action": None,
+                    "schedule": None,
+                    "duration": hours_per_non_primary * 60.0,  # convert hours to minutes
+                    "route_order": None,  # Will be populated in route optimization stage
+                    "clusterer": clusterer_name,
+                    "router": router_name,
+                    "balancer": balancer_name,
+                    "created_on": created_on
+                })
+
+    # Step 6: Combine primary and secondary assignments
+    primary_itinerary = itinerary.filter(pl.col("pos_class") == "primary")
+
+    if secondary_records:
+        secondary_itinerary = pl.DataFrame(secondary_records, schema=itinerary.schema)
+        final_itinerary = pl.concat([primary_itinerary, secondary_itinerary], how="vertical")
+    else:
+        final_itinerary = primary_itinerary
+
+    logger.success(f"Secondary clustering complete: {len(secondary_records)} secondary assignments created")
+
+    return final_itinerary
 
 
 def cluster_secondary_locations(
     secondary_df: pl.DataFrame,
-    available_days: List[int],
+    secondary_days: int,
     od_matrix: Dict[Tuple[int, int], float],
     zone_id: str,
     clusterer: str = "mds_kmeans",
     noise_threshold_km: float = 150.0
 ) -> Dict[int, List[int]]:
     """
-    Cluster secondary locations into available days.
-    
+    Cluster secondary locations using the calculated secondary_days count.
+
     This is substage 3.2 where we:
-    1. Apply selected clustering algorithm
-    2. Detect and handle noise points
-    3. Create day assignments
-    
+    1. Use secondary_days as the number of clusters to create
+    2. Apply selected clustering algorithm to secondary POS only
+    3. Detect and handle noise points
+    4. Create day assignments for secondary clusters
+
     :param secondary_df: DataFrame of secondary locations
-    :param available_days: Days available for secondary locations
+    :param secondary_days: Number of secondary days (clusters) to create
     :param od_matrix: Distance matrix
     :param zone_id: Zone identifier
     :param clusterer: Clustering algorithm to use
     :param noise_threshold_km: Distance threshold for noise detection
-    :return: Dictionary mapping days to location IDs
+    :return: Dictionary mapping cluster IDs to location IDs
     """
     logger.info(f"Stage 3.2: SECONDARY CLUSTERING - Zone {zone_id}")
-    logger.info(f"Clustering {len(secondary_df)} locations into {len(available_days)} days using {clusterer}")
-    
+    logger.info(f"Clustering {len(secondary_df)} locations into {secondary_days} clusters using {clusterer}")
+
     if len(secondary_df) == 0:
         logger.warning("No secondary locations to cluster")
         return {}
-    
-    if len(available_days) == 0:
-        logger.warning("No available days for secondary locations")
+
+    if secondary_days <= 0:
+        logger.warning("No secondary days available for clustering")
         return {}
-    
-    # detect noise points  
+
+    # detect noise points
     noise_points = identify_noise_points(
-        secondary_df,  # keep as polars DataFrame  
+        secondary_df,  # keep as polars DataFrame
         noise_threshold_km=noise_threshold_km
     )
-    
+
     n_noise = len(noise_points)
     if n_noise > 0:
         logger.warning(f"Detected {n_noise} noise points (isolated locations)")
-    
-    # apply selected clustering algorithm
-    n_clusters = min(len(available_days), len(secondary_df))
+
+    # apply selected clustering algorithm using secondary_days as cluster count
+    n_clusters = min(secondary_days, len(secondary_df))
     locations_data = secondary_df.select(['pos_id', 'latitude', 'longitude'])
-    
+
     if clusterer == "mds_kmeans":
         clustered_df = apply_mds_kmeans_clustering(locations_data, n_clusters, od_matrix)
     elif clusterer == "dbscan":
@@ -83,28 +207,28 @@ def cluster_secondary_locations(
     else:
         logger.warning(f"Unknown clusterer {clusterer}, falling back to mds_kmeans")
         clustered_df = apply_mds_kmeans_clustering(locations_data, n_clusters, od_matrix)
-    
+
     # extract cluster assignments
     cluster_assignments = clustered_df['cluster_id'].to_list()
-    
-    # map clusters to days
-    day_assignments = {}
+
+    # map clusters to cluster IDs (0, 1, 2, etc.)
+    cluster_assignments_dict = {}
     pos_ids = clustered_df['pos_id'].to_list()
-    
-    for day_idx, day in enumerate(available_days[:n_clusters]):
+
+    for cluster_id in range(n_clusters):
         cluster_locations = []
-        for idx, cluster_id in enumerate(cluster_assignments):
-            if cluster_id == day_idx:
+        for idx, assigned_cluster in enumerate(cluster_assignments):
+            if assigned_cluster == cluster_id:
                 pos_id = pos_ids[idx]
                 cluster_locations.append(pos_id)
-        
+
         if cluster_locations:
-            day_assignments[day] = cluster_locations
-            logger.info(f"Day {day}: {len(cluster_locations)} locations")
-    
-    logger.success(f"Clustering complete: {len(day_assignments)} clusters created")
-    
-    return day_assignments
+            cluster_assignments_dict[cluster_id] = cluster_locations
+            logger.info(f"Cluster {cluster_id}: {len(cluster_locations)} locations")
+
+    logger.success(f"Clustering complete: {len(cluster_assignments_dict)} clusters created")
+
+    return cluster_assignments_dict
 
 
 def apply_mds_kmeans_clustering(
