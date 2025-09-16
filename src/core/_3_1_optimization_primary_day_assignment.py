@@ -33,7 +33,7 @@ def assign_primary_days(
     :return: Itinerary DataFrame with day assignments
     """
     zone_id = zone_df["zone_id"].unique().to_list()[0]  # Extract zone_id from data
-    logger.info(f"Stage 3.1: PRIMARY DAY ASSIGNMENT - Zone {zone_id}")
+    logger.info(f"stage 3.1: primary day assignment - zone {zone_id}")
 
     # use passed model parameters
     days_per_week = model_params["days_per_week"]
@@ -45,18 +45,18 @@ def assign_primary_days(
     secondary_df = zone_df.filter(pl.col("class") == "secondary")
 
     num_primary = len(primary_df)
-    logger.info(f"Found {num_primary} primary, {len(secondary_df)} secondary locations")
+    logger.info(f"found {num_primary} primary, {len(secondary_df)} secondary locations")
 
     # calculate primary days needed using simple division (no drive time)
     if num_primary > 0:
         hours_per_primary = primary_hours_per_week / num_primary
         days_per_primary = hours_per_primary / hours_per_day
         total_primary_days = num_primary * days_per_primary
-        logger.info(f"Each primary gets {hours_per_primary:.1f} hours = {days_per_primary:.2f} days")
-        logger.info(f"Total primary days needed: {total_primary_days:.2f}")
+        logger.info(f"each primary gets {hours_per_primary:.1f} hours = {days_per_primary:.2f} days")
+        logger.info(f"total primary days needed: {total_primary_days:.2f}")
     else:
         total_primary_days = 0
-        logger.info("No primary stores - all days become secondary")
+        logger.info("no primary stores - all days become secondary")
 
     # calculate secondary days using the correct formula from instructions
     # secondary_days = (days_per_week) - (sum of primary hours in store)/hours_per_day
@@ -69,8 +69,8 @@ def assign_primary_days(
     if secondary_days < 0:
         secondary_days = 0
 
-    logger.info(f"Primary hours total: {primary_hours_total}, Primary days used: {primary_days_used:.2f}")
-    logger.info(f"Secondary days available: {secondary_days}")
+    logger.info(f"primary hours total: {primary_hours_total}, primary days used: {primary_days_used:.2f}")
+    logger.info(f"secondary days available: {secondary_days}")
 
     # assign primary stores to days
     primary_assignments = {}  # pos_id -> [list of days]
@@ -92,7 +92,7 @@ def assign_primary_days(
             for day in range(1, days_needed + 1):
                 primary_day_durations[(pos_id, day)] = full_day_minutes
 
-            logger.info(f"Single primary {pos_id} assigned to days: {list(range(1, days_needed + 1))}")
+            logger.info(f"single primary {pos_id} assigned to days: {list(range(1, days_needed + 1))}")
 
         elif num_primary == 2:
             # Two primaries: need to handle fractional days correctly
@@ -116,9 +116,9 @@ def assign_primary_days(
                 primary_day_durations[(primary_ids[1], 2)] = half_day_minutes  # Primary 2, day 2: half day
                 primary_day_durations[(primary_ids[1], 3)] = full_day_minutes  # Primary 2, day 3: full day
 
-                logger.info(f"Primary {primary_ids[0]} assigned 1.5 days: full day 1 + half day 2")
-                logger.info(f"Primary {primary_ids[1]} assigned 1.5 days: half day 2 + full day 3")
-                logger.info(f"Day 2 is shared: {half_day_minutes/60} hours each primary")
+                logger.info(f"primary {primary_ids[0]} assigned 1.5 days: full day 1 + half day 2")
+                logger.info(f"primary {primary_ids[1]} assigned 1.5 days: half day 2 + full day 3")
+                logger.info(f"day 2 is shared: {half_day_minutes/60} hours each primary")
             elif days_per_primary < 1.0:
                 # Both primaries share day 1
                 primary_assignments[primary_ids[0]] = [1]
@@ -129,8 +129,8 @@ def assign_primary_days(
                 primary_day_durations[(primary_ids[0], 1)] = shared_minutes
                 primary_day_durations[(primary_ids[1], 1)] = shared_minutes
 
-                logger.info(f"Primary {primary_ids[0]} assigned to days: [1]")
-                logger.info(f"Primary {primary_ids[1]} assigned to days: [1]")
+                logger.info(f"primary {primary_ids[0]} assigned to days: [1]")
+                logger.info(f"primary {primary_ids[1]} assigned to days: [1]")
             else:
                 # General case: round to nearest integer
                 days_needed = int(round(days_per_primary))
@@ -144,8 +144,8 @@ def assign_primary_days(
                 for day in range(days_needed, 2 * days_needed):
                     primary_day_durations[(primary_ids[1], day)] = full_day_minutes
 
-                logger.info(f"Primary {primary_ids[0]} assigned to days: {list(range(1, days_needed + 1))}")
-                logger.info(f"Primary {primary_ids[1]} assigned to days: {list(range(days_needed, 2 * days_needed))}")
+                logger.info(f"primary {primary_ids[0]} assigned to days: {list(range(1, days_needed + 1))}")
+                logger.info(f"primary {primary_ids[1]} assigned to days: {list(range(days_needed, 2 * days_needed))}")
 
         elif num_primary == 3:
             # Three primaries: each gets 8 hours = 1 day each
@@ -155,7 +155,7 @@ def assign_primary_days(
                 pos_id = row["pos_id"]
                 primary_assignments[pos_id] = [day]
                 primary_day_durations[(pos_id, day)] = full_day_minutes
-                logger.info(f"Primary {pos_id} assigned to day: {day}")
+                logger.info(f"primary {pos_id} assigned to day: {day}")
                 day += 1
 
         else:
@@ -175,7 +175,7 @@ def assign_primary_days(
                         primary_day_durations[(pos_id, current_day)] = full_day_minutes
                         current_day += 1
                 primary_assignments[pos_id] = assigned_days
-                logger.info(f"Primary {pos_id} assigned to days: {assigned_days}")
+                logger.info(f"primary {pos_id} assigned to days: {assigned_days}")
 
     # assign secondary stores to remaining days (dumb split)
     secondary_assignments = {}  # pos_id -> [list of days]
@@ -191,12 +191,12 @@ def assign_primary_days(
         # if we calculated more secondary days than available, use available days
         if secondary_days > len(available_days):
             secondary_days = len(available_days)
-            logger.warning(f"Adjusted secondary days to {secondary_days} based on available days: {available_days}")
+            logger.warning(f"adjusted secondary days to {secondary_days} based on available days: {available_days}")
         else:
             # take only the first secondary_days from available days
             available_days = available_days[:secondary_days]
 
-        logger.info(f"Available days for secondaries: {available_days}")
+        logger.info(f"available days for secondaries: {available_days}")
 
         # dumb split: distribute secondary stores evenly across available days
         secondary_stores = [row["pos_id"] for row in secondary_df.iter_rows(named=True)]
@@ -216,10 +216,10 @@ def assign_primary_days(
                     store_index += 1
 
             if day_stores:
-                logger.info(f"Day {day}: assigned {len(day_stores)} secondary stores: {day_stores}")
+                logger.info(f"day {day}: assigned {len(day_stores)} secondary stores: {day_stores}")
 
-    logger.success(f"Primary assignment complete: {secondary_days} days available for secondary clustering")
-    logger.success(f"Secondary assignment complete: {len(secondary_assignments)} stores assigned to {secondary_days} days")
+    logger.success(f"primary assignment complete: {secondary_days} days available for secondary clustering")
+    logger.success(f"secondary assignment complete: {len(secondary_assignments)} stores assigned to {secondary_days} days")
 
     # Create ItineraryFrame using the new class
     assignments = {
@@ -235,5 +235,5 @@ def assign_primary_days(
         model_params=model_params
     )
 
-    logger.info(f"Created ItineraryFrame with {len(itinerary)} records")
+    logger.info(f"created ItineraryFrame with {len(itinerary)} records")
     return itinerary

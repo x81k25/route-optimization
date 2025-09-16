@@ -27,7 +27,6 @@ streamlit/
 ├── utils.py            # Shared utilities (data loading, maps)
 ├── aggregate_report.py # Aggregate report page
 ├── zone_details.py     # Zone details page
-├── requirements.txt    # Dependencies
 ├── run.py             # Python launcher script
 ├── launch.sh          # Shell launcher with optimized settings
 ├── test_app.py        # Test suite
@@ -36,14 +35,14 @@ streamlit/
 
 ## Installation
 
-1. Install dependencies:
+1. Install and sync dependencies:
    ```bash
-   uv add streamlit pandas polars plotly pyyaml
+   uv sync
    ```
 
-2. Or install from requirements file:
+2. Or add individual dependencies:
    ```bash
-   uv run pip install -r streamlit/requirements.txt
+   uv add streamlit pandas polars plotly pyyaml
    ```
 
 ## Running the App

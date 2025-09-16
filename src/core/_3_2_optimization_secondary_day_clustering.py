@@ -48,11 +48,11 @@ def cluster_secondary_days(
     :param clusterer: Clustering algorithm to use
     :return: Updated itinerary with secondary day assignments
     """
-    logger.info("Stage 3.2: SECONDARY DAY CLUSTERING")
+    logger.info("stage 3.2: secondary day clustering")
 
     # Get zone_id from itinerary (all records will have same zone_id)
     zone_id = itinerary.select("zone_id").unique().to_series().to_list()[0]
-    logger.info(f"Processing zone {zone_id}")
+    logger.info(f"processing zone {zone_id}")
 
     # Step 1: Count days with no primary class POS
     days_per_week = model_params.get("days_per_week", 5)
@@ -64,20 +64,20 @@ def cluster_secondary_days(
     secondary_days_available = list(all_days - primary_days_set)
     n_secondary_clusters = len(secondary_days_available)
 
-    logger.info(f"Primary days: {sorted(primary_days)}")
-    logger.info(f"Secondary days available: {sorted(secondary_days_available)}")
-    logger.info(f"Number of secondary clusters needed: {n_secondary_clusters}")
+    logger.info(f"primary days: {sorted(primary_days)}")
+    logger.info(f"secondary days available: {sorted(secondary_days_available)}")
+    logger.info(f"number of secondary clusters needed: {n_secondary_clusters}")
 
     # Step 2: Collect all secondary stores from zone_df (ignore existing day assignments)
     secondary_df = zone_df.filter(pl.col("class") == "secondary")
 
     if len(secondary_df) == 0:
-        logger.info("No secondary locations to cluster")
+        logger.info("no secondary locations to cluster")
         # Return only primary assignments
         return itinerary.filter(pl.col("pos_class") == "primary")
 
     if n_secondary_clusters == 0:
-        logger.warning("No secondary days available - all days are primary days")
+        logger.warning("no secondary days available - all days are primary days")
         # Return only primary assignments
         return itinerary.filter(pl.col("pos_class") == "primary")
 
@@ -92,8 +92,8 @@ def cluster_secondary_days(
 
     # DEBUG: Print cluster assignments for zone_000
     if zone_id == "zone_000":
-        logger.info(f"DEBUG: Zone {zone_id} cluster assignments: {cluster_assignments}")
-        logger.info(f"DEBUG: Zone {zone_id} secondary days available: {secondary_days_available}")
+        logger.info(f"debug: zone {zone_id} cluster assignments: {cluster_assignments}")
+        logger.info(f"debug: zone {zone_id} secondary days available: {secondary_days_available}")
 
     # Step 5: Create new secondary itinerary records
     secondary_records = []
@@ -139,7 +139,7 @@ def cluster_secondary_days(
     else:
         final_itinerary = primary_itinerary
 
-    logger.success(f"Secondary clustering complete: {len(secondary_records)} secondary assignments created")
+    logger.success(f"secondary clustering complete: {len(secondary_records)} secondary assignments created")
 
     return final_itinerary
 
@@ -169,15 +169,15 @@ def cluster_secondary_locations(
     :param noise_threshold_km: Distance threshold for noise detection
     :return: Dictionary mapping cluster IDs to location IDs
     """
-    logger.info(f"Stage 3.2: SECONDARY CLUSTERING - Zone {zone_id}")
-    logger.info(f"Clustering {len(secondary_df)} locations into {secondary_days} clusters using {clusterer}")
+    logger.info(f"stage 3.2: secondary clustering - zone {zone_id}")
+    logger.info(f"clustering {len(secondary_df)} locations into {secondary_days} clusters using {clusterer}")
 
     if len(secondary_df) == 0:
-        logger.warning("No secondary locations to cluster")
+        logger.warning("no secondary locations to cluster")
         return {}
 
     if secondary_days <= 0:
-        logger.warning("No secondary days available for clustering")
+        logger.warning("no secondary days available for clustering")
         return {}
 
     # detect noise points
@@ -188,7 +188,7 @@ def cluster_secondary_locations(
 
     n_noise = len(noise_points)
     if n_noise > 0:
-        logger.warning(f"Detected {n_noise} noise points (isolated locations)")
+        logger.warning(f"detected {n_noise} noise points (isolated locations)")
 
     # apply selected clustering algorithm using secondary_days as cluster count
     n_clusters = min(secondary_days, len(secondary_df))
@@ -205,7 +205,7 @@ def cluster_secondary_locations(
     elif clusterer == "balanced":
         clustered_df = apply_balanced_clustering(locations_data, n_clusters, od_matrix)
     else:
-        logger.warning(f"Unknown clusterer {clusterer}, falling back to mds_kmeans")
+        logger.warning(f"unknown clusterer {clusterer}, falling back to mds_kmeans")
         clustered_df = apply_mds_kmeans_clustering(locations_data, n_clusters, od_matrix)
 
     # extract cluster assignments
@@ -224,9 +224,9 @@ def cluster_secondary_locations(
 
         if cluster_locations:
             cluster_assignments_dict[cluster_id] = cluster_locations
-            logger.info(f"Cluster {cluster_id}: {len(cluster_locations)} locations")
+            logger.info(f"cluster {cluster_id}: {len(cluster_locations)} locations")
 
-    logger.success(f"Clustering complete: {len(cluster_assignments_dict)} clusters created")
+    logger.success(f"clustering complete: {len(cluster_assignments_dict)} clusters created")
 
     return cluster_assignments_dict
 

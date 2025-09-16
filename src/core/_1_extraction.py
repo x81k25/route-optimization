@@ -32,18 +32,18 @@ def extract_locations(
     :param zone_ids: Optional list of zone IDs to filter
     :return: DataFrame with validated location data
     """
-    logger.info("Stage 1: EXTRACTION - Loading location data")
-    logger.info(f"Extracting from: {filepath}")
+    logger.info("stage 1: extraction - loading location data")
+    logger.info(f"extracting from: {filepath}")
     
     # use existing io_utils extract function
     df = io_extract(zone_ids=zone_ids, locations_path=filepath)
     
-    logger.success(f"Extraction complete: {len(df)} locations loaded")
+    logger.success(f"extraction complete: {len(df)} locations loaded")
     
     if len(df) > 0 and "zone_id" in df.columns:
-        logger.info(f"Zones: {df['zone_id'].unique().to_list()}")
+        logger.info(f"zones: {df['zone_id'].unique().to_list()}")
     else:
-        logger.warning("No zone_id column found or empty dataset")
+        logger.warning("no zone_id column found or empty dataset")
     
     return df
 
@@ -82,6 +82,6 @@ def validate_locations(df: pl.DataFrame) -> pl.DataFrame:
     
     removed = initial_count - len(df)
     if removed > 0:
-        logger.warning(f"Removed {removed} invalid locations during validation")
+        logger.warning(f"removed {removed} invalid locations during validation")
     
     return df

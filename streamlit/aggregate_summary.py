@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from utils import load_aggregate_metrics
 
 
-def show_aggregate_summary():
+def show_aggregate_summary() -> None:
     """
     Display the aggregate summary page showing system-wide statistics.
 

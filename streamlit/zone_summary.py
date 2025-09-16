@@ -18,14 +18,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from utils import (
     calculate_zone_metrics,
     create_zones_map,
-    load_aggregate_metrics,
-    get_latest_timestamp_data,
     filter_by_algorithm,
-    get_unique_algorithms
+    get_latest_timestamp_data,
+    get_unique_algorithms,
+    load_aggregate_metrics
 )
 
 
-def show_zone_summary(itinerary_df):
+def show_zone_summary(itinerary_df) -> None:
     """
     Display the zone summary page with algorithm filtering.
 

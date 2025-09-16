@@ -55,5 +55,5 @@ def group_by_zones(df: pl.DataFrame) -> Dict[str, pl.DataFrame]:
         if zone_id is not None:
             zones[zone_id] = df.filter(pl.col("zone_id") == zone_id)
     
-    logger.info(f"Grouped into {len(zones)} zones for processing")
+    logger.info(f"grouped into {len(zones)} zones for processing")
     return zones

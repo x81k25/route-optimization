@@ -416,7 +416,10 @@ def calculate_quality_metrics(clustered_df: pl.DataFrame) -> Dict[str, float]:
     return metrics
 
 
-def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tuple[pl.DataFrame, Dict[str, float]]:
+def cluster_locations(
+    locations_df: pl.DataFrame,
+    config: Dict[str, any]
+) -> Tuple[pl.DataFrame, Dict[str, float]]:
     """
     Main function to cluster locations into geographic zones.
     
@@ -424,7 +427,7 @@ def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tup
     :param config: Clustering configuration dictionary
     :return: Tuple of (clustered_df_with_zone_ids, quality_metrics)
     """
-    logger.info(f"Clustering {len(locations_df)} locations with method: {config['method']}")
+    logger.info(f"clustering {len(locations_df)} locations with method: {config['method']}")
     
     # Set random seed
     np.random.seed(config['random_seed'])
@@ -436,14 +439,14 @@ def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tup
     clusterable_locations = locations_with_noise.filter(pl.col('is_noise') == False).drop('is_noise')
     
     if len(noise_points) > 0:
-        logger.info(f"Identified {len(noise_points)} noise points (isolated locations)")
-        logger.info(f"Clustering remaining {len(clusterable_locations)} locations")
+        logger.info(f"identified {len(noise_points)} noise points (isolated locations)")
+        logger.info(f"clustering remaining {len(clusterable_locations)} locations")
     
     # Determine number of clusters based on clusterable locations only
     target_size = (config['min_locations_per_cluster'] + config['max_locations_per_cluster']) // 2
     n_clusters = max(1, len(clusterable_locations) // target_size)
     
-    logger.info(f"Target cluster size: {target_size}, creating {n_clusters} initial clusters")
+    logger.info(f"target cluster size: {target_size}, creating {n_clusters} initial clusters")
     
     # Perform initial clustering on clusterable locations only
     if config['method'] == "kmeans":
@@ -451,7 +454,7 @@ def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tup
     elif config['method'] == "geographic":
         clustered_df = geographic_cluster_locations(clusterable_locations, target_size)
     else:
-        logger.warning(f"Unknown method {config['method']}, using kmeans")
+        logger.warning(f"unknown method {config['method']}, using kmeans")
         clustered_df = kmeans_cluster_locations(clusterable_locations, n_clusters, config['random_seed'])
     
     # Balance cluster sizes and assign zone_ids
@@ -467,21 +470,21 @@ def cluster_locations(locations_df: pl.DataFrame, config: Dict[str, any]) -> Tup
             pl.lit('secondary').alias('class')  # Default to secondary for noise points
         )
         final_df = pl.concat([final_df, noise_with_null_zones])
-        logger.info(f"Added {len(noise_points)} noise points with null zone_ids")
+        logger.info(f"added {len(noise_points)} noise points with null zone_ids")
     
     # Calculate quality metrics (excluding noise points)
     quality_metrics = calculate_quality_metrics(final_df.filter(pl.col('zone_id').is_not_null()))
     
-    logger.info(f"Created {quality_metrics['n_clusters']} clusters")
-    logger.info(f"Cluster sizes: min={quality_metrics['min_cluster_size']}, "
+    logger.info(f"created {quality_metrics['n_clusters']} clusters")
+    logger.info(f"cluster sizes: min={quality_metrics['min_cluster_size']}, "
                f"max={quality_metrics['max_cluster_size']}, "
                f"avg={quality_metrics['avg_cluster_size']:.1f}")
-    logger.info(f"Average intra-cluster distance: {quality_metrics['avg_intra_cluster_distance']:.2f} km")
+    logger.info(f"average intra-cluster distance: {quality_metrics['avg_intra_cluster_distance']:.2f} km")
     
     # Count primary stores assigned
     primary_count = len(final_df.filter(pl.col('class') == 'primary'))
     secondary_count = len(final_df.filter(pl.col('class') == 'secondary'))
-    logger.info(f"Assigned {primary_count} primary stores and {secondary_count} secondary stores")
+    logger.info(f"assigned {primary_count} primary stores and {secondary_count} secondary stores")
     
     return final_df, quality_metrics
 
@@ -500,7 +503,7 @@ def add_zone_ids_to_jsonl_dataset(
     :return: Quality metrics dictionary
     """
     config = config or default_cluster_config()
-    logger.info(f"Adding zone_ids to JSONL dataset: {input_file} -> {output_file}")
+    logger.info(f"adding zone_ids to JSONL dataset: {input_file} -> {output_file}")
     
     # load dataset as DataFrame
     locations_df = pl.read_ndjson(input_file)
@@ -529,7 +532,7 @@ def add_zone_ids_to_json_dataset(
     :return: Quality metrics dictionary
     """
     config = config or default_cluster_config()
-    logger.info(f"Adding zone_ids to JSON dataset: {input_file} -> {output_file}")
+    logger.info(f"adding zone_ids to JSON dataset: {input_file} -> {output_file}")
     
     # load dataset
     with open(input_file, 'r') as f:
@@ -601,11 +604,11 @@ if __name__ == "__main__":
         config=config
     )
     
-    print(f"clustering results:")
-    print(f"created {quality_metrics['n_clusters']} zones")
-    print(f"average locations per zone: {quality_metrics['avg_cluster_size']:.1f}")
-    print(f"zone size range: {quality_metrics['min_cluster_size']} - {quality_metrics['max_cluster_size']}")
-    print(f"average intra-cluster distance: {quality_metrics['avg_intra_cluster_distance']:.1f} km")
+    logger.info("clustering results:")
+    logger.info(f"created {quality_metrics['n_clusters']} zones")
+    logger.info(f"average locations per zone: {quality_metrics['avg_cluster_size']:.1f}")
+    logger.info(f"zone size range: {quality_metrics['min_cluster_size']} - {quality_metrics['max_cluster_size']}")
+    logger.info(f"average intra-cluster distance: {quality_metrics['avg_intra_cluster_distance']:.1f} km")
 
 
 # ------------------------------------------------------------------------------

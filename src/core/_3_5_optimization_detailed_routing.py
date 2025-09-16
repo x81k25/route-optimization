@@ -35,8 +35,8 @@ def add_detailed_action_sequences(
     :param od_matrix: Distance matrix for driving times between locations
     :return: Updated itinerary with detailed action sequences
     """
-    logger.info("Stage 3.5: DETAILED ROUTING")
-    logger.info("Adding detailed action sequences with driving times")
+    logger.info("stage 3.5: detailed routing")
+    logger.info("adding detailed action sequences with driving times")
 
     # Get zone_id and metadata from itinerary
     zone_id = itinerary.select("zone_id").unique().to_series().to_list()[0]
@@ -65,7 +65,7 @@ def add_detailed_action_sequences(
                 "route_order": row["route_order"]
             })
 
-        logger.info(f"Processing day {day}: {len(day_locations)} locations")
+        logger.info(f"processing day {day}: {len(day_locations)} locations")
 
         # Process each location in sequence to create full action flow
         for i, location in enumerate(day_locations):
@@ -92,7 +92,7 @@ def add_detailed_action_sequences(
                 "created_on": created_on
             }
             detailed_records.append(departing_record)
-            logger.debug(f"Added departing record for {location['pos_id']} with route_order {departing_record['route_order']}")
+            logger.debug(f"added departing record for {location['pos_id']} with route_order {departing_record['route_order']}")
 
             # If this is not the last location, add driving and arriving actions
             if i < len(day_locations) - 1:
@@ -123,7 +123,7 @@ def add_detailed_action_sequences(
                     "created_on": created_on
                 }
                 detailed_records.append(driving_record)
-                logger.debug(f"Added driving record from {current_pos_id} to {next_pos_id} with route_order {driving_record['route_order']} and duration {driving_time}")
+                logger.debug(f"added driving record from {current_pos_id} to {next_pos_id} with route_order {driving_record['route_order']} and duration {driving_time}")
 
                 # Add "arriving" action at next location
                 arriving_record = {
@@ -143,7 +143,7 @@ def add_detailed_action_sequences(
                     "created_on": created_on
                 }
                 detailed_records.append(arriving_record)
-                logger.debug(f"Added arriving record for {next_location['pos_id']} with route_order {arriving_record['route_order']}")
+                logger.debug(f"added arriving record for {next_location['pos_id']} with route_order {arriving_record['route_order']}")
 
     # Create new itinerary DataFrame with detailed actions
     if detailed_records:
@@ -153,8 +153,8 @@ def add_detailed_action_sequences(
     else:
         detailed_itinerary = pl.DataFrame(schema=itinerary.schema)
 
-    logger.success(f"Detailed routing complete: {len(detailed_records)} action records created")
-    logger.debug(f"Detailed records breakdown: {len([r for r in detailed_records if r['action'] == 'departing'])} departing, {len([r for r in detailed_records if r['action'] == 'driving'])} driving, {len([r for r in detailed_records if r['action'] == 'arriving'])} arriving")
+    logger.success(f"detailed routing complete: {len(detailed_records)} action records created")
+    logger.debug(f"detailed records breakdown: {len([r for r in detailed_records if r['action'] == 'departing'])} departing, {len([r for r in detailed_records if r['action'] == 'driving'])} driving, {len([r for r in detailed_records if r['action'] == 'arriving'])} arriving")
 
     return detailed_itinerary
 
@@ -180,8 +180,8 @@ def get_detailed_route_information(
     :param centroid: Zone centroid coordinates (lat, lon)
     :return: DataFrame with individual position records
     """
-    logger.info(f"Stage 3.5: DETAILED ROUTING - Zone {zone_id}")
-    logger.info("Getting detailed routes and timing for all days")
+    logger.info(f"stage 3.5: detailed routing - zone {zone_id}")
+    logger.info("getting detailed routes and timing for all days")
 
     detailed_records = []
 
@@ -189,7 +189,7 @@ def get_detailed_route_information(
         if not route:
             continue
 
-        logger.info(f"Fetching detailed route for zone {zone_id}, day {day} with {len(route)} locations: {route}")
+        logger.info(f"fetching detailed route for zone {zone_id}, day {day} with {len(route)} locations: {route}")
 
         # get route geometry and timing from OSRM
         route_details = fetch_detailed_route_osrm(route, df, zone_id, day, centroid)
@@ -207,13 +207,13 @@ def get_detailed_route_information(
 
             detailed_records.extend(position_records)
 
-            logger.info(f"Zone {zone_id}, day {day}: {len(position_records)} position records, "
+            logger.info(f"zone {zone_id}, day {day}: {len(position_records)} position records, "
                        f"{route_details.get('total_duration', 0):.1f} min total")
 
     # convert to DataFrame
     if detailed_records:
         result_df = pl.DataFrame(detailed_records)
-        logger.success(f"Detailed routes completed with {len(detailed_records)} position records")
+        logger.success(f"detailed routes completed with {len(detailed_records)} position records")
         return result_df
     else:
         # return empty DataFrame with expected schema
@@ -320,7 +320,7 @@ def fetch_detailed_route_osrm(
         }
         
     except Exception as e:
-        logger.error(f"Failed to fetch route geometry for zone {zone_id}, day {day}: {e}")
+        logger.error(f"failed to fetch route geometry for zone {zone_id}, day {day}: {e}")
         return None
 
 
@@ -444,7 +444,10 @@ def build_position_records(
     return records
 
 
-def build_schedule(legs: List[Dict], num_locations: int) -> List[float]:
+def build_schedule(
+    legs: List[Dict],
+    num_locations: int
+) -> List[float]:
     """
     Build cumulative timing schedule from OSRM leg information.
     
@@ -468,7 +471,11 @@ def build_schedule(legs: List[Dict], num_locations: int) -> List[float]:
     return schedule[:num_locations]
 
 
-def extract_route_segment(full_geometry: List[List[float]], legs: List[Dict], leg_index: int) -> List[List[float]]:
+def extract_route_segment(
+    full_geometry: List[List[float]],
+    legs: List[Dict],
+    leg_index: int
+) -> List[List[float]]:
     """
     Extract route geometry segment for a specific leg.
 
@@ -505,7 +512,7 @@ def generate_daily_summary(
     if len(itinerary_df) == 0:
         return create_empty_daily_summary_dataframe()
 
-    logger.info("Generating daily summary from individual position records")
+    logger.info("generating daily summary from individual position records")
 
     # Group by zone_id and day to calculate daily metrics
     summary_data = []
@@ -572,7 +579,7 @@ def generate_daily_summary(
 
     if summary_data:
         result_df = pl.DataFrame(summary_data)
-        logger.info(f"Generated {len(result_df)} daily summary records")
+        logger.info(f"generated {len(result_df)} daily summary records")
         return result_df
     else:
         return create_empty_daily_summary_dataframe()

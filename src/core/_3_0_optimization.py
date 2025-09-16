@@ -83,23 +83,23 @@ def optimize_zone(
     :param balancer: Balancing approach for workload equalization
     :return: DataFrame with detailed route information
     """
-    logger.info(f"Stage 3: OPTIMIZATION - Zone {zone_id}")
-    logger.info("Executing complete optimization pipeline")
+    logger.info(f"stage 3: optimization - zone {zone_id}")
+    logger.info("executing complete optimization pipeline")
 
     # Stage 3.0: Calculate centroid and OD matrix (moved from preprocessing)
-    logger.info(f"Processing {len(zone_df)} locations for zone {zone_id}")
+    logger.info(f"processing {len(zone_df)} locations for zone {zone_id}")
 
     # Calculate centroid
     centroid = calculate_zone_centroid(zone_df)
-    logger.info(f"Centroid calculated: ({centroid[0]:.4f}, {centroid[1]:.4f})")
+    logger.info(f"centroid calculated: ({centroid[0]:.4f}, {centroid[1]:.4f})")
 
     # Generate distance matrix
     od_matrix = build_distance_matrix(zone_df, zone_id, centroid)
-    logger.info(f"Distance matrix generated: {len(od_matrix)} pairs")
+    logger.info(f"distance matrix generated: {len(od_matrix)} pairs")
     
     # Stage 3.1: Primary Day Assignment
     itinerary = assign_primary_days(zone_df, model_params)
-    print(f"DEBUG 3.1: After assign_primary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
+    logger.debug(f"after assign_primary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
     # DEBUG: Print primary assignments for zone_000
     if zone_id == "zone_000":
@@ -110,18 +110,18 @@ def optimize_zone(
             if pos_id not in primary_assignments:
                 primary_assignments[pos_id] = []
             primary_assignments[pos_id].append(day)
-        print(f"DEBUG: Zone {zone_id} primary assignments: {primary_assignments}")
+        logger.debug(f"zone {zone_id} primary assignments: {primary_assignments}")
 
     # Stage 3.2: Secondary Day Clustering
     if clusterer == "none":
-        logger.info("Clusterer set to 'none' - skipping secondary day clustering")
+        logger.info("clusterer set to 'none' - skipping secondary day clustering")
     else:
         itinerary = cluster_secondary_days(itinerary, zone_df, od_matrix, centroid, model_params, clusterer)
-        print(f"DEBUG 3.2: After cluster_secondary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
+        logger.debug(f"after cluster_secondary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
     # Stage 3.3: Route Optimization
     itinerary = optimize_itinerary_routes(itinerary, zone_df, od_matrix, centroid)
-    print(f"DEBUG 3.3: After optimize_itinerary_routes - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
+    logger.debug(f"after optimize_itinerary_routes - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
     # TODO: Implement remaining optimization stages to work with itinerary pattern
     # Stage 3.4: Cluster Balancing
@@ -129,12 +129,17 @@ def optimize_zone(
 
     # Stage 3.5: Detailed Routing
     itinerary = add_detailed_action_sequences(itinerary, od_matrix)
-    print(f"DEBUG 3.5: After add_detailed_action_sequences - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
+    logger.debug(f"after add_detailed_action_sequences - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
-    logger.success(f"Optimization complete for zone {zone_id}")
+    logger.success(f"optimization complete for zone {zone_id}")
 
     return itinerary
 
 
 # Note: combine_assignments function removed as primary and secondary
 # assignments are now handled separately throughout the pipeline
+
+
+# ------------------------------------------------------------------------------
+# end of _3_0_optimization.py
+# ------------------------------------------------------------------------------

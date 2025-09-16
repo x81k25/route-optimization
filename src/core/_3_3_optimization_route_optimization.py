@@ -33,11 +33,11 @@ def optimize_itinerary_routes(
     :param centroid: Zone centroid coordinates (lat, lon)
     :return: Updated itinerary with optimized routes
     """
-    logger.info("Stage 3.3: ROUTE OPTIMIZATION")
+    logger.info("stage 3.3: route optimization")
 
     # Get zone_id from itinerary
     zone_id = itinerary.select("zone_id").unique().to_series().to_list()[0]
-    logger.info(f"Processing zone {zone_id}")
+    logger.info(f"processing zone {zone_id}")
 
     # Group by day and optimize each day's route
     days = itinerary.select("day").unique().sort("day").to_series().to_list()
@@ -65,7 +65,7 @@ def optimize_itinerary_routes(
                 "duration": row["duration"]
             })
 
-        logger.info(f"Optimizing day {day}: {len(day_locations)} locations")
+        logger.info(f"optimizing day {day}: {len(day_locations)} locations")
 
         # Step 1: Add centroid as first stop
         centroid_record = {
@@ -95,7 +95,7 @@ def optimize_itinerary_routes(
 
             # Optimize route order
             optimized_route, route_cost = optimize_route_tsp(location_ids, od_matrix)
-            logger.info(f"Day {day}: TSP optimization complete, route cost: {route_cost:.1f} min")
+            logger.info(f"day {day}: TSP optimization complete, route cost: {route_cost:.1f} min")
 
             # Step 3: Create records in optimized order (skip centroid since we already added it)
             for order_idx, pos_id in enumerate(optimized_route[1:], start=1):  # skip first element (centroid)
@@ -125,12 +125,15 @@ def optimize_itinerary_routes(
     else:
         optimized_itinerary = pl.DataFrame(schema=itinerary.schema)
 
-    logger.success(f"Route optimization complete: {len(optimized_records)} records with optimized order")
+    logger.success(f"route optimization complete: {len(optimized_records)} records with optimized order")
 
     return optimized_itinerary
 
 
-def optimize_route_tsp(location_ids: List[int], od_matrix: Dict[Tuple[int, int], float]) -> Tuple[List[int], float]:
+def optimize_route_tsp(
+    location_ids: List[int],
+    od_matrix: Dict[Tuple[int, int], float]
+) -> Tuple[List[int], float]:
     """
     Optimize a single route using TSP algorithms.
 
@@ -169,7 +172,7 @@ def optimize_daily_routes(
     :param centroid_id: ID for zone centroid
     :return: Dictionary mapping days to (route, cost) tuples
     """
-    logger.info(f"Stage 3.3: ROUTE OPTIMIZATION - Zone {zone_id}")
+    logger.info(f"stage 3.3: route optimization - zone {zone_id}")
 
     optimized_routes = {}
 
@@ -186,7 +189,7 @@ def optimize_daily_routes(
         route_locations = [centroid_id] + primary_pos_ids[:2]  # limit to 2 total POS
         n_locations = len(route_locations)
 
-        logger.info(f"Optimizing primary day {day}: {n_locations} locations (including centroid)")
+        logger.info(f"optimizing primary day {day}: {n_locations} locations (including centroid)")
 
         if n_locations <= 10:
             route, cost = exhaustive_tsp(route_locations, od_matrix)
@@ -194,10 +197,10 @@ def optimize_daily_routes(
         else:
             route, cost = greedy_plus_2opt_tsp(route_locations, od_matrix)
             algorithm = "greedy+2opt_fallback"
-            logger.warning(f"Primary day {day}: Using greedy+2opt fallback for {n_locations} locations")
+            logger.warning(f"primary day {day}: using greedy+2opt fallback for {n_locations} locations")
 
         optimized_routes[day] = (route, cost)
-        logger.info(f"Primary day {day}: {algorithm}, {cost:.1f} min drive time")
+        logger.info(f"primary day {day}: {algorithm}, {cost:.1f} min drive time")
 
     # then, handle secondary days (clusters)
     # we need to map cluster IDs to actual day numbers
@@ -215,7 +218,7 @@ def optimize_daily_routes(
         route_locations = [centroid_id] + secondary_pos_ids
         n_locations = len(route_locations)
 
-        logger.info(f"Optimizing secondary day {day} (cluster {cluster_id}): {n_locations} locations (including centroid)")
+        logger.info(f"optimizing secondary day {day} (cluster {cluster_id}): {n_locations} locations (including centroid)")
 
         if n_locations <= 10:
             route, cost = exhaustive_tsp(route_locations, od_matrix)
@@ -223,17 +226,20 @@ def optimize_daily_routes(
         else:
             route, cost = greedy_plus_2opt_tsp(route_locations, od_matrix)
             algorithm = "greedy+2opt_fallback"
-            logger.warning(f"Secondary day {day}: Using greedy+2opt fallback for {n_locations} locations")
+            logger.warning(f"secondary day {day}: using greedy+2opt fallback for {n_locations} locations")
 
         optimized_routes[day] = (route, cost)
-        logger.info(f"Secondary day {day}: {algorithm}, {cost:.1f} min drive time")
+        logger.info(f"secondary day {day}: {algorithm}, {cost:.1f} min drive time")
 
-    logger.success(f"Route optimization complete for {len(optimized_routes)} days ({len(primary_days_created)} primary, {len(secondary_assignments)} secondary)")
+    logger.success(f"route optimization complete for {len(optimized_routes)} days ({len(primary_days_created)} primary, {len(secondary_assignments)} secondary)")
 
     return optimized_routes
 
 
-def exhaustive_tsp(locations: List[int], od_matrix: Dict[Tuple[int, int], float]) -> Tuple[List[int], float]:
+def exhaustive_tsp(
+    locations: List[int],
+    od_matrix: Dict[Tuple[int, int], float]
+) -> Tuple[List[int], float]:
     """
     Solve TSP using exhaustive search (guaranteed optimal).
     
@@ -261,7 +267,10 @@ def exhaustive_tsp(locations: List[int], od_matrix: Dict[Tuple[int, int], float]
     return best_route, best_cost
 
 
-def greedy_plus_2opt_tsp(locations: List[int], od_matrix: Dict[Tuple[int, int], float]) -> Tuple[List[int], float]:
+def greedy_plus_2opt_tsp(
+    locations: List[int],
+    od_matrix: Dict[Tuple[int, int], float]
+) -> Tuple[List[int], float]:
     """
     Solve TSP using greedy nearest neighbor + 2-opt improvement.
     
@@ -279,7 +288,10 @@ def greedy_plus_2opt_tsp(locations: List[int], od_matrix: Dict[Tuple[int, int], 
     return improved_route, cost
 
 
-def greedy_nearest_neighbor(locations: List[int], od_matrix: Dict[Tuple[int, int], float]) -> List[int]:
+def greedy_nearest_neighbor(
+    locations: List[int],
+    od_matrix: Dict[Tuple[int, int], float]
+) -> List[int]:
     """
     Build route using greedy nearest neighbor heuristic.
     
@@ -302,7 +314,10 @@ def greedy_nearest_neighbor(locations: List[int], od_matrix: Dict[Tuple[int, int
     return route
 
 
-def two_opt_improvement(route: List[int], od_matrix: Dict[Tuple[int, int], float]) -> List[int]:
+def two_opt_improvement(
+    route: List[int],
+    od_matrix: Dict[Tuple[int, int], float]
+) -> List[int]:
     """
     Improve route using 2-opt local search.
     
@@ -339,7 +354,10 @@ def two_opt_improvement(route: List[int], od_matrix: Dict[Tuple[int, int], float
     return current_route
 
 
-def calculate_route_cost(route: List[int], od_matrix: Dict[Tuple[int, int], float]) -> float:
+def calculate_route_cost(
+    route: List[int],
+    od_matrix: Dict[Tuple[int, int], float]
+) -> float:
     """
     Calculate total cost of a route.
     

@@ -27,7 +27,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-def main():
+def main() -> None:
     """
     Main application function.
     

@@ -42,15 +42,15 @@ def balance_cluster_workloads(
     :param max_iterations: Maximum rebalancing iterations
     :return: Balanced secondary cluster assignments
     """
-    logger.info(f"Stage 3.4: CLUSTER BALANCING - Zone {zone_id}")
-    logger.info(f"Starting {balancer} balancing on secondary clusters only (threshold: {duration_threshold_min} min)")
+    logger.info(f"stage 3.4: cluster balancing - zone {zone_id}")
+    logger.info(f"starting {balancer} balancing on secondary clusters only (threshold: {duration_threshold_min} min)")
 
     if not secondary_assignments:
-        logger.info("No secondary clusters to balance")
+        logger.info("no secondary clusters to balance")
         return secondary_assignments
 
     if balancer == "none":
-        logger.info("Balancer set to 'none' - skipping cluster balancing")
+        logger.info("balancer set to 'none' - skipping cluster balancing")
         return secondary_assignments
     elif balancer == "greedy":
         return apply_greedy_transfer_balancing(
@@ -73,7 +73,7 @@ def balance_cluster_workloads(
             secondary_assignments, df, od_matrix, zone_id
         )
     else:
-        logger.warning(f"Unknown balancer {balancer}, falling back to greedy")
+        logger.warning(f"unknown balancer {balancer}, falling back to greedy")
         return apply_greedy_transfer_balancing(
             secondary_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
         )
@@ -104,11 +104,11 @@ def apply_greedy_transfer_balancing(
         max_duration = max(cluster_durations.values())
         duration_gap = max_duration - min_duration
         
-        logger.info(f"Iteration {iteration + 1}: Duration gap = {duration_gap:.1f} min "
+        logger.info(f"iteration {iteration + 1}: duration gap = {duration_gap:.1f} min "
                    f"(max: {max_duration:.1f}, min: {min_duration:.1f})")
         
         if duration_gap <= duration_threshold_min:
-            logger.info(f"Converged! Duration gap {duration_gap:.1f} <= {duration_threshold_min} threshold")
+            logger.info(f"converged! duration gap {duration_gap:.1f} <= {duration_threshold_min} threshold")
             break
         
         # find clusters to balance
@@ -125,12 +125,12 @@ def apply_greedy_transfer_balancing(
         )
         
         if not moved:
-            logger.info("No beneficial moves found, stopping rebalancing")
+            logger.info("no beneficial moves found, stopping rebalancing")
             break
             
-        logger.info(f"Moved location from day {overloaded_day} to day {underloaded_day}")
+        logger.info(f"moved location from day {overloaded_day} to day {underloaded_day}")
     
-    logger.success("Enhanced greedy transfer balancing completed")
+    logger.success("enhanced greedy transfer balancing completed")
     return balanced_assignments
 
 
@@ -153,7 +153,7 @@ def apply_local_search_balancing(
             break
         
         current_variance = calculate_duration_variance(cluster_durations)
-        logger.info(f"Iteration {iteration + 1}: Duration variance = {current_variance:.1f}")
+        logger.info(f"iteration {iteration + 1}: duration variance = {current_variance:.1f}")
         
         # Try all possible swaps between clusters
         days = list(cluster_durations.keys())
@@ -179,7 +179,7 @@ def apply_local_search_balancing(
                         new_variance = calculate_duration_variance(new_durations)
                         
                         if new_variance < current_variance - duration_threshold_min:
-                            logger.info(f"Swap improved variance: {current_variance:.1f} → {new_variance:.1f}")
+                            logger.info(f"swap improved variance: {current_variance:.1f} → {new_variance:.1f}")
                             improved = True
                             current_variance = new_variance
                             break
@@ -198,10 +198,10 @@ def apply_local_search_balancing(
                 break
         
         if not improved:
-            logger.info("No improving swaps found, stopping")
+            logger.info("no improving swaps found, stopping")
             break
     
-    logger.success("Local search balancing completed")
+    logger.success("local search balancing completed")
     return balanced_assignments
 
 
@@ -266,7 +266,7 @@ def apply_simulated_annealing_balancing(
         
         temperature *= cooling_rate
     
-    logger.success("Simulated annealing balancing completed")
+    logger.success("simulated annealing balancing completed")
     return balanced_assignments
 
 
@@ -291,7 +291,7 @@ def apply_min_max_balancing(
         max_duration = max(cluster_durations.values())
         duration_gap = max_duration - min_duration
         
-        logger.info(f"Iteration {iteration + 1}: Min-Max gap = {duration_gap:.1f} min")
+        logger.info(f"iteration {iteration + 1}: min-max gap = {duration_gap:.1f} min")
         
         if duration_gap <= duration_threshold_min:
             break
@@ -308,7 +308,7 @@ def apply_min_max_balancing(
         if not moved:
             break
     
-    logger.success("Min-max balancing completed")
+    logger.success("min-max balancing completed")
     return balanced_assignments
 
 
@@ -321,13 +321,15 @@ def apply_network_flow_balancing(
     """Apply network flow formulation balancing (simplified implementation)."""
     # For now, use greedy approach as placeholder
     # Full network flow implementation would require specialized solvers
-    logger.warning("Network flow balancing not fully implemented, using greedy fallback")
+    logger.warning("network flow balancing not fully implemented, using greedy fallback")
     return apply_greedy_transfer_balancing(
         day_assignments, df, od_matrix, zone_id, 60.0, 5
     )
 
 
-def calculate_duration_variance(cluster_durations: Dict[int, float]) -> float:
+def calculate_duration_variance(
+    cluster_durations: Dict[int, float]
+) -> float:
     """Calculate variance of cluster durations."""
     if not cluster_durations:
         return 0.0
@@ -437,14 +439,17 @@ def move_location_between_clusters(
             day_assignments[to_day] = []
         day_assignments[to_day].append(best_location)
         
-        logger.info(f"Moved location {best_location} from day {from_day} to day {to_day} "
+        logger.info(f"moved location {best_location} from day {from_day} to day {to_day} "
                    f"(distance improvement: {best_distance:.1f} km)")
         return True
     
     return False
 
 
-def calculate_cluster_centroid(location_ids: List[int], df: pl.DataFrame) -> Tuple[float, float]:
+def calculate_cluster_centroid(
+    location_ids: List[int],
+    df: pl.DataFrame
+) -> Tuple[float, float]:
     """
     Calculate centroid for a cluster of locations.
     

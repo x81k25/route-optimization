@@ -19,7 +19,7 @@ import yaml
 # add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-def load_data():
+def load_data() -> tuple:
     """
     Load itinerary data from Parquet files (primary) with JSONL fallback.
 
@@ -57,7 +57,7 @@ def load_data():
         st.error(f"Error loading data: {e}")
         return None
 
-def load_aggregate_metrics():
+def load_aggregate_metrics() -> tuple:
     """Load aggregate summary data from Parquet (primary) with JSONL fallback."""
     try:
         # prefer Parquet format
@@ -91,7 +91,7 @@ def load_aggregate_metrics():
         st.error(f"Error loading aggregate summary: {e}")
         return None
 
-def calculate_zone_metrics(itinerary_df):
+def calculate_zone_metrics(itinerary_df) -> tuple:
     """Load zone-level metrics from Parquet (primary) with JSONL fallback."""
     try:
         # prefer Parquet format
@@ -126,7 +126,7 @@ def calculate_zone_metrics(itinerary_df):
         st.error(f"Error loading zone summary: {e}")
         return None
 
-def load_daily_summary():
+def load_daily_summary() -> tuple:
     """Load daily-summary data from Parquet (primary) with JSONL fallback."""
     try:
         # prefer Parquet format
@@ -160,7 +160,7 @@ def load_daily_summary():
         st.error(f"Error loading daily summary: {e}")
         return None
 
-def create_zones_map(itinerary_df):
+def create_zones_map(itinerary_df) -> object:
     """Create a map showing all zone locations."""
     if itinerary_df is None:
         return None
@@ -223,7 +223,7 @@ def create_zones_map(itinerary_df):
 
                     # Get location name from pos_name field or fallback
                     name = row.get('pos_name', f"Location {pos_id}")
-                    hover_text = f"{zone_id} - {name} ({'PRIMARY' if pos_class == 'primary' else 'SECONDARY'})"
+                    hover_text = f"{zone_id} - {name} ({'primary' if pos_class == 'primary' else 'secondary'})"
 
                     if pos_class == 'primary':
                         primary_locations['lat'].append(lat)
@@ -294,7 +294,12 @@ def create_zones_map(itinerary_df):
     
     return fig
 
-def get_gradient_opacity(stop_index, total_stops, min_opacity=0.3, max_opacity=1.0):
+def get_gradient_opacity(
+    stop_index,
+    total_stops,
+    min_opacity=0.3,
+    max_opacity=1.0
+):
     """Generate an opacity value based on stop position for gradient effect."""
     if total_stops <= 1:
         return max_opacity
@@ -303,7 +308,10 @@ def get_gradient_opacity(stop_index, total_stops, min_opacity=0.3, max_opacity=1
     progress = stop_index / (total_stops - 1)
     return min_opacity + (max_opacity - min_opacity) * progress
 
-def create_zone_specific_map(itinerary_df, zone_id):
+def create_zone_specific_map(
+    itinerary_df,
+    zone_id
+):
     """Create a map showing detailed routes for a specific zone with gradient colors."""
     if itinerary_df is None:
         return None
@@ -570,7 +578,7 @@ def create_zone_specific_map(itinerary_df, zone_id):
     return fig
 
 
-def generate_detailed_itinerary_table(zone_data):
+def generate_detailed_itinerary_table(zone_data) -> object:
     """Generate detailed itinerary table with separate rows for stops and travel segments."""
     table_data = []
 
@@ -612,10 +620,10 @@ def generate_detailed_itinerary_table(zone_data):
                     table_data.append({
                         'day': f"Day {day}",
                         'type': 'travel',
-                        'stop_num': 'START',
+                        'stop_num': 'start',
                         'time': time_str,
                         'location': 'Departing from zone centroid',
-                        'activity': 'DRIVING',
+                        'activity': 'driving',
                         'duration': '--'
                     })
                 else:
@@ -632,7 +640,7 @@ def generate_detailed_itinerary_table(zone_data):
                     'stop_num': str(stop_num),
                     'time': time_str,
                     'location': f"Arrive at {store_name}",
-                    'activity': pos_class.upper() if pos_class else 'LOCATION',
+                    'activity': pos_class if pos_class else 'location',
                     'duration': '--'
                 })
 
@@ -645,14 +653,14 @@ def generate_detailed_itinerary_table(zone_data):
                     'stop_num': f"← {stop_num}",
                     'time': time_str,
                     'location': f"Depart from {store_name}",
-                    'activity': 'DRIVING',
+                    'activity': 'driving',
                     'duration': '--'
                 })
 
     return table_data
 
 
-def get_latest_timestamp_data(df):
+def get_latest_timestamp_data(df) -> object:
     """
     Get data with the latest timestamp and return default clusterer/balancer values.
     Used only on page load.
@@ -685,7 +693,11 @@ def get_latest_timestamp_data(df):
     return latest_df_clean, default_clusterer, default_balancer
 
 
-def filter_by_algorithm(df, clusterer=None, balancer=None):
+def filter_by_algorithm(
+    df,
+    clusterer=None,
+    balancer=None
+):
     """
     Filter DataFrame by clusterer and balancer.
     Used for subsequent filter selections (ignores timestamp).
@@ -709,7 +721,7 @@ def filter_by_algorithm(df, clusterer=None, balancer=None):
     return filtered_df
 
 
-def get_unique_algorithms(df):
+def get_unique_algorithms(df) -> tuple:
     """
     Get unique clusterer and balancer values from DataFrame.
 

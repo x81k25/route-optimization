@@ -7,7 +7,10 @@ import polars as pl
 from loguru import logger
 
 
-def gen_daily_summary(itinerary_df: pl.DataFrame, model_params: Dict[str, Any]) -> pl.DataFrame:
+def gen_daily_summary(
+    itinerary_df: pl.DataFrame,
+    model_params: Dict[str, Any]
+) -> pl.DataFrame:
     """
     Generate daily summary table from individual itinerary records.
     Aggregates position records into daily metrics and rolls up metadata from itinerary.
@@ -17,10 +20,10 @@ def gen_daily_summary(itinerary_df: pl.DataFrame, model_params: Dict[str, Any]) 
     :return: DataFrame with daily summary records including rolled-up metadata
     """
     if len(itinerary_df) == 0:
-        logger.warning("No itinerary data to generate daily summary from")
+        logger.warning("no itinerary data to generate daily summary from")
         return pl.DataFrame()
 
-    logger.info("Generating daily summary from itinerary")
+    logger.info("generating daily summary from itinerary")
 
     # Roll up clusterer, balancer, and router from itinerary using Polars
     metadata_df = itinerary_df.select([
@@ -39,11 +42,11 @@ def gen_daily_summary(itinerary_df: pl.DataFrame, model_params: Dict[str, Any]) 
     router = router_values[0] if len(router_values) == 1 else "unknown"
 
     if len(clusterer_values) > 1:
-        logger.warning(f"Multiple clusterers found in itinerary: {clusterer_values}")
+        logger.warning(f"multiple clusterers found in itinerary: {clusterer_values}")
     if len(balancer_values) > 1:
-        logger.warning(f"Multiple balancers found in itinerary: {balancer_values}")
+        logger.warning(f"multiple balancers found in itinerary: {balancer_values}")
     if len(router_values) > 1:
-        logger.warning(f"Multiple routers found in itinerary: {router_values}")
+        logger.warning(f"multiple routers found in itinerary: {router_values}")
 
     created_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     hours_per_day_minutes = model_params.get("hours_per_day", 8) * 60  # convert to minutes
@@ -125,14 +128,17 @@ def gen_daily_summary(itinerary_df: pl.DataFrame, model_params: Dict[str, Any]) 
     )
 
     if len(daily_summary) > 0:
-        logger.success(f"Generated daily summary for {len(daily_summary)} zone-days")
+        logger.success(f"generated daily summary for {len(daily_summary)} zone-days")
         return daily_summary
     else:
-        logger.warning("No daily summary data generated")
+        logger.warning("no daily summary data generated")
         return pl.DataFrame()
 
 
-def gen_zone_summary(daily_summary_df: pl.DataFrame, model_params: Dict[str, Any] = None) -> pl.DataFrame:
+def gen_zone_summary(
+    daily_summary_df: pl.DataFrame,
+    model_params: Dict[str, Any] = None
+) -> pl.DataFrame:
     """
     Generate zone-level summary from daily summary data using Polars methods.
 
@@ -141,10 +147,10 @@ def gen_zone_summary(daily_summary_df: pl.DataFrame, model_params: Dict[str, Any
     :return: DataFrame with zone-level aggregate metrics
     """
     if len(daily_summary_df) == 0:
-        logger.warning("No daily summary data to generate zone summary from")
+        logger.warning("no daily summary data to generate zone summary from")
         return pl.DataFrame()
 
-    logger.info("Generating zone summary from daily summary data")
+    logger.info("generating zone summary from daily summary data")
 
     # Get model parameters with defaults
     if model_params is None:
@@ -208,10 +214,10 @@ def gen_zone_summary(daily_summary_df: pl.DataFrame, model_params: Dict[str, Any
     )
 
     if len(zone_summary) > 0:
-        logger.success(f"Generated zone summary for {len(zone_summary)} zones")
+        logger.success(f"generated zone summary for {len(zone_summary)} zones")
         return zone_summary
     else:
-        logger.warning("No zone summary data generated")
+        logger.warning("no zone summary data generated")
         return pl.DataFrame()
 
 
@@ -223,10 +229,10 @@ def gen_aggregate_summary(zone_summary_df: pl.DataFrame) -> pl.DataFrame:
     :return: DataFrame with aggregate statistics across all zones
     """
     if len(zone_summary_df) == 0:
-        logger.warning("No zone summary data to generate aggregate summary from")
+        logger.warning("no zone summary data to generate aggregate summary from")
         return pl.DataFrame()
 
-    logger.info("Generating aggregate summary from zone summary data")
+    logger.info("generating aggregate summary from zone summary data")
 
     # Generate aggregate statistics using Polars aggregation
     aggregate_summary = (
@@ -249,10 +255,10 @@ def gen_aggregate_summary(zone_summary_df: pl.DataFrame) -> pl.DataFrame:
     )
 
     if len(aggregate_summary) > 0:
-        logger.success("Generated aggregate summary statistics")
+        logger.success("generated aggregate summary statistics")
         return aggregate_summary
     else:
-        logger.warning("No aggregate summary data generated")
+        logger.warning("no aggregate summary data generated")
         return pl.DataFrame()
 
 

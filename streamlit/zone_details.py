@@ -18,16 +18,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # local imports
 from utils import (
+    calculate_zone_metrics,
     create_zone_specific_map,
-    get_latest_timestamp_data,
     filter_by_algorithm,
+    get_latest_timestamp_data,
     get_unique_algorithms,
-    load_daily_summary,
-    calculate_zone_metrics
+    load_daily_summary
 )
 
 
-def get_day_color(day):
+def get_day_color(day) -> str:
     """Get the color for a specific day matching the map colors."""
     day_colors = [
         '#FF0040',  # Vibrant Red (Day 1)
@@ -41,7 +41,10 @@ def get_day_color(day):
     return day_colors[(day_int - 1) % len(day_colors)]
 
 
-def style_dataframe_by_day(df, day_column='day'):
+def style_dataframe_by_day(
+    df,
+    day_column='day'
+) -> object:
     """Apply day-based color styling to dataframe rows."""
     def apply_day_color(row):
         day = row[day_column]
@@ -58,7 +61,7 @@ def style_dataframe_by_day(df, day_column='day'):
     return df.style.apply(apply_day_color, axis=1)
 
 
-def show_zone_details(itinerary_df):
+def show_zone_details(itinerary_df) -> None:
     """
     Display zone details page with algorithm filtering.
     Shows 1:1 data from itinerary and daily-summary tables.

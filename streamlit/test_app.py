@@ -9,25 +9,26 @@ import sys
 from pathlib import Path
 
 # 3rd-party imports
+from loguru import logger
 import pandas as pd
 import polars as pl
 
 # add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-def test_data_loading():
+def test_data_loading() -> bool:
     """
     Test that required data files can be loaded.
     
     :return: True if data loading succeeds, False otherwise
     """
-    print("Testing data loading...")
+    logger.info("testing data loading...")
     
     try:
         # test itinerary loading
         itinerary_path = Path(__file__).parent.parent / "output" / "itinerary.jsonl"
         if not itinerary_path.exists():
-            print(f"✗ Itinerary file not found: {itinerary_path}")
+            logger.warning(f"itinerary file not found: {itinerary_path}")
             return False
         
         # load a sample of data
@@ -41,13 +42,13 @@ def test_data_loading():
                     itinerary_data.append(json.loads(line))
         
         if not itinerary_data:
-            print("✗ No itinerary data found")
+            logger.warning("no itinerary data found")
             return False
         
         itinerary_df = pl.DataFrame(itinerary_data)
         zones = itinerary_df['zone_id'].unique()
-        print(f"✓ Loaded {len(itinerary_data)} itinerary records")
-        print(f"  Found {len(zones)} zones: {sorted(zones)[:5]}{'...' if len(zones) > 5 else ''}")
+        logger.info(f"loaded {len(itinerary_data)} itinerary records")
+        logger.info(f"found {len(zones)} zones: {sorted(zones)[:5]}{'...' if len(zones) > 5 else ''}")
         
         # test locations loading
         locations_path = Path(__file__).parent.parent / "data" / "locations.jsonl"
@@ -59,23 +60,23 @@ def test_data_loading():
                     if line:
                         location = json.loads(line)
                         locations[location['pos_id']] = location
-            print(f"✓ Loaded {len(locations)} location records")
+            logger.info(f"loaded {len(locations)} location records")
         else:
-            print("⚠ Locations file not found (map will be limited)")
+            logger.warning("locations file not found (map will be limited)")
         
         return True
         
     except Exception as e:
-        print(f"✗ Data loading failed: {e}")
+        logger.error(f"data loading failed: {e}")
         return False
 
-def test_imports():
+def test_imports() -> bool:
     """
     Test that all required packages can be imported.
     
     :return: True if all imports succeed, False otherwise
     """
-    print("Testing package imports...")
+    logger.info("testing package imports...")
     
     required_packages = [
         ('streamlit', 'st'),
@@ -96,27 +97,27 @@ def test_imports():
                 exec(f"import {package} as {alias}")
             else:
                 exec(f"import {package}")
-            print(f"✓ {package}")
+            logger.info(f"imported {package}")
         except ImportError as e:
-            print(f"✗ {package}: {e}")
+            logger.error(f"failed to import {package}: {e}")
             failed_imports.append(package)
     
     return len(failed_imports) == 0
 
-def test_config():
+def test_config() -> bool:
     """
     Test configuration loading.
     
     :return: True if configuration loading succeeds, False otherwise
     """
-    print("Testing configuration...")
+    logger.info("testing configuration...")
     
     try:
         import yaml
         config_path = Path(__file__).parent.parent / "config" / "model-params.yaml"
         
         if not config_path.exists():
-            print("⚠ Config file not found, using defaults")
+            logger.warning("config file not found, using defaults")
             return True
         
         with open(config_path, 'r') as f:
@@ -124,24 +125,23 @@ def test_config():
             
         if 'model_params' in config:
             params = config['model_params']
-            print(f"✓ Config loaded with {len(params)} parameters")
+            logger.info(f"config loaded with {len(params)} parameters")
             return True
         else:
-            print("⚠ Config file missing 'model_params' section")
+            logger.warning("config file missing 'model_params' section")
             return True
             
     except Exception as e:
-        print(f"✗ Config loading failed: {e}")
+        logger.error(f"config loading failed: {e}")
         return False
 
-def main():
+def main() -> bool:
     """
     Run all tests.
     
     :return: True if all tests pass, False otherwise
     """
-    print("🧪 Testing Streamlit Route Optimization Dashboard")
-    print("=" * 50)
+    logger.info("testing Streamlit route optimization dashboard")
     
     tests = [
         ("Package Imports", test_imports),
@@ -152,32 +152,29 @@ def main():
     results = []
     
     for test_name, test_func in tests:
-        print(f"\n{test_name}:")
+        logger.info(f"{test_name}:")
         result = test_func()
         results.append((test_name, result))
-        print()
     
-    print("=" * 50)
-    print("Test Results:")
+    logger.info("test results:")
     
     all_passed = True
     for test_name, result in results:
-        status = "PASS" if result else "FAIL"
-        print(f"  {test_name}: {status}")
+        status = "pass" if result else "fail"
+        logger.info(f"{test_name}: {status}")
         if not result:
             all_passed = False
     
-    print("=" * 50)
     
     if all_passed:
-        print("🎉 All tests passed! The Streamlit app should work correctly.")
-        print("\nTo run the app:")
-        print("  python streamlit/run.py")
-        print("or")
-        print("  uv run streamlit run streamlit/app.py --theme.base dark")
+        logger.success("all tests passed! the Streamlit app should work correctly.")
+        logger.info("to run the app:")
+        logger.info("  python streamlit/run.py")
+        logger.info("or")
+        logger.info("  uv run streamlit run streamlit/app.py --theme.base dark")
         return True
     else:
-        print("❌ Some tests failed. Please fix the issues above.")
+        logger.error("some tests failed. please fix the issues above.")
         return False
 
 if __name__ == "__main__":

@@ -37,7 +37,7 @@ def load_results_to_files(
     :param aggregate_summary: Overall summary statistics
     :param output_dir: Output directory path
     """
-    logger.info("Stage 5: LOADING - Exporting results to files")
+    logger.info("stage 5: loading - exporting results to files")
 
     # ensure output directory exists
     output_path = Path(output_dir)
@@ -61,7 +61,7 @@ def load_results_to_files(
     if aggregate_summary is not None:
         export_aggregate_summary_data(aggregate_summary, output_path, created_on)
 
-    logger.success(f"Results exported to {output_dir}")
+    logger.success(f"results exported to {output_dir}")
 
 
 def export_itinerary_data(
@@ -79,7 +79,7 @@ def export_itinerary_data(
     :param created_on: Timestamp of creation
     """
     if len(itinerary) == 0:
-        logger.warning("No itinerary data to export")
+        logger.warning("no itinerary data to export")
         return
 
     output_file = output_path / "itinerary.jsonl"
@@ -104,17 +104,17 @@ def export_itinerary_data(
     if parquet_file.exists():
         try:
             existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"Read {len(existing_data)} existing records from Parquet")
+            logger.debug(f"read {len(existing_data)} existing records from Parquet")
         except Exception as e:
-            logger.warning(f"Could not read existing Parquet file {parquet_file}: {e}. Trying JSONL migration.")
+            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
 
     # fallback to JSONL only for migration from legacy format
     if existing_data is None and output_file.exists():
         try:
             existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"Migrating {len(existing_data)} records from JSONL to Parquet format")
+            logger.info(f"migrating {len(existing_data)} records from JSONL to Parquet format")
         except Exception as e:
-            logger.warning(f"Could not read existing JSONL file {output_file}: {e}. Using new data only.")
+            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
 
     # perform upsert operation using Polars
     if existing_data is not None and len(existing_data) > 0:
@@ -122,7 +122,7 @@ def export_itinerary_data(
         migration_needed = False
 
         if 'duration' not in existing_data.columns:
-            logger.info("Migrating existing data: adding duration column with default values")
+            logger.info("migrating existing data: adding duration column with default values")
             existing_data = existing_data.with_columns([
                 pl.when(pl.col('action') == 'departing')
                 .then(0.0)
@@ -134,7 +134,7 @@ def export_itinerary_data(
             migration_needed = True
 
         if 'pos_name' not in existing_data.columns:
-            logger.info("Migrating existing data: adding pos_name column with default values")
+            logger.info("migrating existing data: adding pos_name column with default values")
             existing_data = existing_data.with_columns([
                 pl.when(pl.col('pos_id').is_null())
                 .then(pl.lit(None))  # centroid has no name
@@ -144,7 +144,7 @@ def export_itinerary_data(
             migration_needed = True
 
         if 'route_order' not in existing_data.columns:
-            logger.info("Migrating existing data: adding route_order column with default values")
+            logger.info("migrating existing data: adding route_order column with default values")
             existing_data = existing_data.with_columns([
                 pl.lit(None, dtype=pl.Int64).alias('route_order')  # Will be populated in route optimization stage
             ])
@@ -178,7 +178,7 @@ def export_itinerary_data(
     # write JSONL second (human-readable backup)
     write_dataframe_to_jsonl(final_data, output_file)
 
-    logger.info(f"Exported {len(final_data)} itinerary records to {output_file} and {parquet_file} (merged and deduplicated)")
+    logger.info(f"exported {len(final_data)} itinerary records to {output_file} and {parquet_file} (merged and deduplicated)")
 
 
 def export_zone_summary_data(
@@ -194,7 +194,7 @@ def export_zone_summary_data(
     :param created_on: Timestamp of creation
     """
     if len(zone_summary) == 0:
-        logger.warning("No zone summary data to export")
+        logger.warning("no zone summary data to export")
         return
 
     output_file = output_path / "zone-summary.jsonl"
@@ -219,17 +219,17 @@ def export_zone_summary_data(
     if parquet_file.exists():
         try:
             existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"Read {len(existing_data)} existing zone summary records from Parquet")
+            logger.debug(f"read {len(existing_data)} existing zone summary records from Parquet")
         except Exception as e:
-            logger.warning(f"Could not read existing Parquet file {parquet_file}: {e}. Trying JSONL migration.")
+            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
 
     # fallback to JSONL only for migration from legacy format
     if existing_data is None and output_file.exists():
         try:
             existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"Migrating {len(existing_data)} zone summary records from JSONL to Parquet format")
+            logger.info(f"migrating {len(existing_data)} zone summary records from JSONL to Parquet format")
         except Exception as e:
-            logger.warning(f"Could not read existing JSONL file {output_file}: {e}. Using new data only.")
+            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
 
     # perform upsert operation using Polars
     if existing_data is not None and len(existing_data) > 0:
@@ -254,7 +254,7 @@ def export_zone_summary_data(
     # write JSONL second (human-readable backup)
     write_dataframe_to_jsonl(final_data, output_file)
 
-    logger.info(f"Exported {len(final_data)} zone summary records to {output_file} and {parquet_file} (merged and deduplicated)")
+    logger.info(f"exported {len(final_data)} zone summary records to {output_file} and {parquet_file} (merged and deduplicated)")
 
 
 def export_daily_summary_data(
@@ -272,7 +272,7 @@ def export_daily_summary_data(
     :param created_on: Timestamp of creation
     """
     if len(daily_summary) == 0:
-        logger.warning("No daily summary data to export")
+        logger.warning("no daily summary data to export")
         return
 
     output_file = output_path / "daily-summary.jsonl"
@@ -299,17 +299,17 @@ def export_daily_summary_data(
     if parquet_file.exists():
         try:
             existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"Read {len(existing_data)} existing daily summary records from Parquet")
+            logger.debug(f"read {len(existing_data)} existing daily summary records from Parquet")
         except Exception as e:
-            logger.warning(f"Could not read existing Parquet file {parquet_file}: {e}. Trying JSONL migration.")
+            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
 
     # fallback to JSONL only for migration from legacy format
     if existing_data is None and output_file.exists():
         try:
             existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"Migrating {len(existing_data)} daily summary records from JSONL to Parquet format")
+            logger.info(f"migrating {len(existing_data)} daily summary records from JSONL to Parquet format")
         except Exception as e:
-            logger.warning(f"Could not read existing JSONL file {output_file}: {e}. Using new data only.")
+            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
 
     # perform upsert operation using Polars
     if existing_data is not None and len(existing_data) > 0:
@@ -334,7 +334,7 @@ def export_daily_summary_data(
     # write JSONL second (human-readable backup)
     write_dataframe_to_jsonl(final_data, output_file)
 
-    logger.info(f"Exported {len(final_data)} daily summary records to {output_file} and {parquet_file} (merged and deduplicated)")
+    logger.info(f"exported {len(final_data)} daily summary records to {output_file} and {parquet_file} (merged and deduplicated)")
 
 
 def export_aggregate_summary_data(
@@ -352,7 +352,7 @@ def export_aggregate_summary_data(
     :param created_on: Timestamp of creation
     """
     if len(aggregate_summary) == 0:
-        logger.warning("No aggregate summary data to export")
+        logger.warning("no aggregate summary data to export")
         return
 
     output_file = output_path / "aggregate-summary.jsonl"
@@ -377,17 +377,17 @@ def export_aggregate_summary_data(
     if parquet_file.exists():
         try:
             existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"Read {len(existing_data)} existing aggregate summary records from Parquet")
+            logger.debug(f"read {len(existing_data)} existing aggregate summary records from Parquet")
         except Exception as e:
-            logger.warning(f"Could not read existing Parquet file {parquet_file}: {e}. Trying JSONL migration.")
+            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
 
     # fallback to JSONL only for migration from legacy format
     if existing_data is None and output_file.exists():
         try:
             existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"Migrating {len(existing_data)} aggregate summary records from JSONL to Parquet format")
+            logger.info(f"migrating {len(existing_data)} aggregate summary records from JSONL to Parquet format")
         except Exception as e:
-            logger.warning(f"Could not read existing JSONL file {output_file}: {e}. Using new data only.")
+            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
 
     # perform upsert operation using Polars
     if existing_data is not None and len(existing_data) > 0:
@@ -411,7 +411,7 @@ def export_aggregate_summary_data(
     # write JSONL second (human-readable backup)
     write_dataframe_to_jsonl(final_data, output_file)
 
-    logger.info(f"Exported {len(final_data)} aggregate summary records to {output_file} and {parquet_file} (merged and deduplicated)")
+    logger.info(f"exported {len(final_data)} aggregate summary records to {output_file} and {parquet_file} (merged and deduplicated)")
 
 
 def export_csv_files(
@@ -427,7 +427,7 @@ def export_csv_files(
     :param flatten_routes: Whether to flatten route geometry
     """
     if len(itinerary) == 0:
-        logger.warning("No data to export as CSV")
+        logger.warning("no data to export as CSV")
         return
 
     # create simplified version for CSV export with new schema
@@ -443,7 +443,7 @@ def export_csv_files(
     output_file = output_path / "routes_summary.csv"
     csv_data.write_csv(output_file)
 
-    logger.info(f"Exported CSV summary to {output_file}")
+    logger.info(f"exported CSV summary to {output_file}")
 
 
 def clean_record_for_json(record: Dict) -> Dict:
@@ -467,7 +467,7 @@ def clean_record_for_json(record: Dict) -> Dict:
     return cleaned
 
 
-def clean_list_item(item):
+def clean_list_item(item) -> any:
     """
     Clean individual list items for JSON serialization.
     
@@ -538,7 +538,7 @@ def create_zone_visualization(
     with open(output_file, 'w') as f:
         f.write(html_content)
 
-    logger.info(f"Created visualization placeholder for {zone_id} at {output_file}")
+    logger.info(f"created visualization placeholder for {zone_id} at {output_file}")
 
 
 def read_jsonl_to_dataframe(file_path: Path) -> pl.DataFrame:
@@ -561,7 +561,7 @@ def read_jsonl_to_dataframe(file_path: Path) -> pl.DataFrame:
         else:
             return pl.DataFrame()
     except Exception as e:
-        logger.warning(f"Error reading JSONL file {file_path}: {e}")
+        logger.warning(f"error reading JSONL file {file_path}: {e}")
         return pl.DataFrame()
 
 
