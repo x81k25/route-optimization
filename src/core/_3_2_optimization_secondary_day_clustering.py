@@ -29,7 +29,7 @@ def cluster_secondary_days(
     od_matrix: Dict[Tuple[int, int], float],
     centroid: Tuple[float, float],
     model_params: Dict[str, any],
-    clusterer: str = "mds_kmeans"
+    clusterer: str
 ) -> pl.DataFrame:
     """
     Stage 3.2: Cluster secondary locations into available secondary days.
@@ -149,7 +149,7 @@ def cluster_secondary_locations(
     secondary_days: int,
     od_matrix: Dict[Tuple[int, int], float],
     zone_id: str,
-    clusterer: str = "mds_kmeans",
+    clusterer: str,
     noise_threshold_km: float = 150.0
 ) -> Dict[int, List[int]]:
     """

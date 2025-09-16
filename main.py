@@ -18,7 +18,7 @@ import yaml
 # local imports - new pipeline structure
 from src.core._1_extraction import extract_locations, validate_locations
 from src.core._3_0_optimization import optimize_zone
-from src.core._4_reporting import aggregate as generate_reports, generate_reports_from_daily_summary
+from src.core._4_reporting import gen_zone_summary, gen_aggregate_summary
 from src.core._5_loading import load_results_to_files
 
 
@@ -87,8 +87,8 @@ def preprocessing_stage(locations: pl.DataFrame) -> pl.DataFrame:
 def optimization_stage(
     preprocessed_data: pl.DataFrame,
     model_params: dict,
-    clusterer: str = "mds_kmeans",
-    balancer: str = "greedy"
+    clusterer: str,
+    balancer: str
 ) -> pl.DataFrame:
     """
     Stage 3: Optimize routes for all zones.
@@ -169,23 +169,21 @@ def optimization_stage(
 # Stage 4: Reporting
 # ------------------------------------------------------------------------------
 
-def reporting_stage(itinerary: pl.DataFrame) -> tuple:
+def reporting_stage(itinerary: pl.DataFrame, model_params: dict) -> tuple:
     """
     Stage 4: Generate analytics and reports from itinerary data.
 
     :param itinerary: Itinerary DataFrame from optimization stage
-    :return: Tuple of (daily_summary, aggregate_results, summary_stats)
+    :param model_params: Model configuration parameters
+    :return: Tuple of (daily_summary, zone_summary, aggregate_summary)
     """
     logger.info("=" * 60)
     logger.info("STAGE 4: REPORTING")
     logger.info("=" * 60)
-    # Extract clusterer and balancer from itinerary data
-    clusterer = itinerary.select("clusterer").unique().to_series().to_list()[0]
-    balancer = itinerary.select("balancer").unique().to_series().to_list()[0]
 
-    # Generate daily summary from itinerary
-    from src.core._3_5_optimization_detailed_routing import generate_daily_summary
-    daily_summary = generate_daily_summary(itinerary, clusterer, balancer, "exhaustive")
+    # Generate daily summary from itinerary using new function
+    from src.core._4_reporting import gen_daily_summary
+    daily_summary = gen_daily_summary(itinerary, model_params)
 
     if len(daily_summary) == 0:
         logger.warning("No data to report on")
@@ -194,24 +192,16 @@ def reporting_stage(itinerary: pl.DataFrame) -> tuple:
     zone_count = daily_summary['zone_id'].n_unique()
     logger.info(f"Generating reports for {zone_count} zone(s)")
 
-    # Generate aggregate metrics
-    aggregate_results = generate_reports_from_daily_summary(daily_summary, itinerary)
+    # Generate zone summary metrics
+    zone_summary = gen_zone_summary(daily_summary, model_params)
 
-    # Generate summary statistics
-    summary_stats = aggregate_results.select([
-        pl.col('weekly_duration').mean().alias("average_weekly_duration"),
-        pl.col('utilization').mean().alias("average_utilization"),
-        pl.col('overutilized_days').mean().alias("average_overutilized_days"),
-        pl.col('underutilized_days').mean().alias("average_underutilized_days"),
-        pl.col('total_pos_time').mean().alias("average_daily_pos_time"),
-        pl.col('total_drive_time').mean().alias("average_daily_drive_time"),  
-        pl.col('sec_std').mean().alias("average_secondary_duration_standard_deviation"),  
-    ])
+    # Generate aggregate summary statistics
+    aggregate_summary = gen_aggregate_summary(zone_summary)
     
     logger.success("Stage 4 complete: Reports generated")
-    logger.info(f"Aggregate summary:\n{summary_stats}")
+    logger.info(f"Aggregate summary:\n{aggregate_summary}")
 
-    return daily_summary, aggregate_results, summary_stats
+    return daily_summary, zone_summary, aggregate_summary
 
 
 # ------------------------------------------------------------------------------
@@ -221,25 +211,20 @@ def reporting_stage(itinerary: pl.DataFrame) -> tuple:
 def loading_stage(
     itinerary: pl.DataFrame,
     daily_summary: Optional[pl.DataFrame] = None,
-    aggregate_results: Optional[pl.DataFrame] = None,
-    summary_stats: Optional[pl.DataFrame] = None
+    zone_summary: Optional[pl.DataFrame] = None,
+    aggregate_summary: Optional[pl.DataFrame] = None
 ) -> None:
     """
     Stage 5: Export results to files.
 
     :param itinerary: Complete itinerary DataFrame (individual position records)
     :param daily_summary: Daily summary DataFrame
-    :param aggregate_results: Aggregate analytics DataFrame
-    :param summary_stats: Summary statistics DataFrame
+    :param zone_summary: Zone-level summary DataFrame
+    :param aggregate_summary: Aggregate summary statistics DataFrame
     """
     logger.info("=" * 60)
     logger.info("STAGE 5: LOADING")
     logger.info("=" * 60)
-
-    # Extract clusterer, balancer, and router from itinerary data
-    clusterer = itinerary.select("clusterer").unique().to_series().to_list()[0]
-    balancer = itinerary.select("balancer").unique().to_series().to_list()[0]
-    router = itinerary.select("router").unique().to_series().to_list()[0]
 
     # Ensure output directory exists
     os.makedirs("./output", exist_ok=True)
@@ -248,12 +233,9 @@ def loading_stage(
     load_results_to_files(
         itinerary=itinerary,
         daily_summary=daily_summary,
-        zone_summary=aggregate_results,
-        aggregate_summary=summary_stats,
-        output_dir="./output",
-        clusterer=clusterer,
-        balancer=balancer,
-        router=router
+        zone_summary=zone_summary,
+        aggregate_summary=aggregate_summary,
+        output_dir="./output"
     )
     
     logger.success("Stage 5 complete: Results exported to ./output/")
@@ -266,8 +248,8 @@ def loading_stage(
 def main(
     zone_ids: Optional[List[str]] = None,
     local: bool = True,
-    clusterer: str = "mds_kmeans",
-    balancer: str = "greedy"
+    clusterer: str = "none",
+    balancer: str = "none"
 ) -> None:
     """
     Main pipeline orchestrator following the 5-stage structure:
@@ -317,10 +299,10 @@ def main(
             return
 
         # Stage 4: Reporting
-        daily_summary, aggregate_results, summary_stats = reporting_stage(itinerary)
+        daily_summary, zone_summary, aggregate_summary = reporting_stage(itinerary, model_params)
 
         # Stage 5: Loading
-        loading_stage(itinerary, daily_summary, aggregate_results, summary_stats)
+        loading_stage(itinerary, daily_summary, zone_summary, aggregate_summary)
         
         logger.success("✅ ROUTE OPTIMIZATION PIPELINE COMPLETED SUCCESSFULLY")
         
@@ -333,7 +315,7 @@ def multi_main(
     zone_ids: Optional[List[str]] = None,
     local: bool = True,
     clusterers: List[str] = ["mds_kmeans"],
-    balancers: List[str] = ["greedy"]
+    balancers: List[str] = ["none"]
 ) -> None:
     """
     Multi-algorithm orchestrator that runs the pipeline for all combinations
@@ -407,18 +389,18 @@ if __name__ == "__main__":
         '--clusterer',
         type=str,
         nargs="*",
-        default=["mds_kmeans"],
-        choices=["mds_kmeans", "dbscan", "hierarchical", "spectral", "balanced"],
-        help="Clustering algorithm(s) for secondary locations (default: mds_kmeans). Multiple values will run all combinations."
+        default=["none"],
+        choices=["none", "mds_kmeans", "dbscan", "hierarchical", "spectral", "balanced"],
+        help="Clustering algorithm(s) for secondary locations (default: none). Multiple values will run all combinations."
     )
 
     parser.add_argument(
         '--balancer',
         type=str,
         nargs="*",
-        default=["greedy"],
-        choices=["greedy", "local_search", "simulated_annealing", "min_max", "network_flow"],
-        help="Balancing approach(es) for workload equalization (default: greedy). Multiple values will run all combinations."
+        default=["none"],
+        choices=["none", "greedy", "local_search", "simulated_annealing", "min_max", "network_flow"],
+        help="Balancing approach(es) for workload equalization (default: none - no balancing). Multiple values will run all combinations."
     )
 
     parser.add_argument(
@@ -471,8 +453,8 @@ if __name__ == "__main__":
     # Handle --full-grid argument
     if args.full_grid:
         # Override arguments with all available options
-        all_clusterers = ["mds_kmeans", "dbscan", "hierarchical", "spectral", "balanced"]
-        all_balancers = ["greedy", "local_search", "simulated_annealing", "min_max", "network_flow"]
+        all_clusterers = ["none", "mds_kmeans", "dbscan", "hierarchical", "spectral", "balanced"]
+        all_balancers = ["none", "greedy", "local_search", "simulated_annealing", "min_max", "network_flow"]
 
         logger.info(f"🌐 Full grid mode: Running all {len(all_clusterers)} × {len(all_balancers)} = {len(all_clusterers) * len(all_balancers)} combinations")
 

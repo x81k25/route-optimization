@@ -19,10 +19,7 @@ def load_results_to_files(
     daily_summary: Optional[pl.DataFrame] = None,
     zone_summary: Optional[pl.DataFrame] = None,
     aggregate_summary: Optional[pl.DataFrame] = None,
-    output_dir: str = "./output",
-    clusterer: str = "mds_kmeans",
-    balancer: str = "greedy",
-    router: str = "exhaustive"
+    output_dir: str = "./output"
 ) -> None:
     """
     Export all results to output files.
@@ -39,9 +36,6 @@ def load_results_to_files(
     :param zone_summary: Zone analytics data
     :param aggregate_summary: Overall summary statistics
     :param output_dir: Output directory path
-    :param clusterer: Clustering algorithm used
-    :param balancer: Balancing method used
-    :param router: Routing algorithm used
     """
     logger.info("Stage 5: LOADING - Exporting results to files")
 
@@ -53,19 +47,19 @@ def load_results_to_files(
     created_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # export itinerary data (individual position records)
-    export_itinerary_data(itinerary, output_path, clusterer, balancer, router, created_on)
+    export_itinerary_data(itinerary, output_path, created_on)
 
     # export daily summary data if provided
     if daily_summary is not None:
-        export_daily_summary_data(daily_summary, output_path, clusterer, balancer, router, created_on)
+        export_daily_summary_data(daily_summary, output_path, created_on)
 
     # export zone summary data if provided
     if zone_summary is not None:
-        export_zone_summary_data(zone_summary, output_path, clusterer, balancer, router, created_on)
+        export_zone_summary_data(zone_summary, output_path, created_on)
 
     # export aggregate summary data if provided
     if aggregate_summary is not None:
-        export_aggregate_summary_data(aggregate_summary, output_path, clusterer, balancer, router, created_on)
+        export_aggregate_summary_data(aggregate_summary, output_path, created_on)
 
     logger.success(f"Results exported to {output_dir}")
 
@@ -73,9 +67,6 @@ def load_results_to_files(
 def export_itinerary_data(
     itinerary: pl.DataFrame,
     output_path: Path,
-    clusterer: str,
-    balancer: str,
-    router: str,
     created_on: str
 ) -> None:
     """
@@ -85,9 +76,6 @@ def export_itinerary_data(
 
     :param itinerary: Itinerary DataFrame
     :param output_path: Output directory path
-    :param clusterer: Clustering algorithm used
-    :param balancer: Balancing method used
-    :param router: Routing algorithm used
     :param created_on: Timestamp of creation
     """
     if len(itinerary) == 0:
@@ -95,6 +83,11 @@ def export_itinerary_data(
         return
 
     output_file = output_path / "itinerary.jsonl"
+
+    # extract metadata from dataframe or set defaults
+    clusterer = itinerary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in itinerary.columns and len(itinerary) > 0 else 'mds_kmeans'
+    balancer = itinerary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in itinerary.columns and len(itinerary) > 0 else 'greedy'
+    router = itinerary.select('router').unique().to_series().to_list()[0] if 'router' in itinerary.columns and len(itinerary) > 0 else 'osrm'
 
     # add metadata to new dataframe
     new_data = itinerary.with_columns([
@@ -191,9 +184,6 @@ def export_itinerary_data(
 def export_zone_summary_data(
     zone_summary: pl.DataFrame,
     output_path: Path,
-    clusterer: str,
-    balancer: str,
-    router: str,
     created_on: str
 ) -> None:
     """
@@ -201,9 +191,6 @@ def export_zone_summary_data(
 
     :param zone_summary: Zone summary DataFrame
     :param output_path: Output directory path
-    :param clusterer: Clustering algorithm used
-    :param balancer: Balancing method used
-    :param router: Routing algorithm used
     :param created_on: Timestamp of creation
     """
     if len(zone_summary) == 0:
@@ -211,6 +198,11 @@ def export_zone_summary_data(
         return
 
     output_file = output_path / "zone-summary.jsonl"
+
+    # extract metadata from dataframe or set defaults
+    clusterer = zone_summary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in zone_summary.columns and len(zone_summary) > 0 else 'mds_kmeans'
+    balancer = zone_summary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in zone_summary.columns and len(zone_summary) > 0 else 'greedy'
+    router = zone_summary.select('router').unique().to_series().to_list()[0] if 'router' in zone_summary.columns and len(zone_summary) > 0 else 'osrm'
 
     # add metadata to new dataframe
     new_data = zone_summary.with_columns([
@@ -268,9 +260,6 @@ def export_zone_summary_data(
 def export_daily_summary_data(
     daily_summary: pl.DataFrame,
     output_path: Path,
-    clusterer: str,
-    balancer: str,
-    router: str,
     created_on: str
 ) -> None:
     """
@@ -280,9 +269,6 @@ def export_daily_summary_data(
 
     :param daily_summary: Daily summary DataFrame
     :param output_path: Output directory path
-    :param clusterer: Clustering algorithm used
-    :param balancer: Balancing method used
-    :param router: Routing algorithm used
     :param created_on: Timestamp of creation
     """
     if len(daily_summary) == 0:
@@ -290,6 +276,11 @@ def export_daily_summary_data(
         return
 
     output_file = output_path / "daily-summary.jsonl"
+
+    # extract metadata from dataframe or set defaults
+    clusterer = daily_summary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in daily_summary.columns and len(daily_summary) > 0 else 'mds_kmeans'
+    balancer = daily_summary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in daily_summary.columns and len(daily_summary) > 0 else 'greedy'
+    router = daily_summary.select('router').unique().to_series().to_list()[0] if 'router' in daily_summary.columns and len(daily_summary) > 0 else 'osrm'
 
     # add metadata to new dataframe (if not already present)
     new_data = daily_summary
@@ -349,9 +340,6 @@ def export_daily_summary_data(
 def export_aggregate_summary_data(
     aggregate_summary: pl.DataFrame,
     output_path: Path,
-    clusterer: str,
-    balancer: str,
-    router: str,
     created_on: str
 ) -> None:
     """
@@ -361,9 +349,6 @@ def export_aggregate_summary_data(
 
     :param aggregate_summary: Aggregate summary DataFrame
     :param output_path: Output directory path
-    :param clusterer: Clustering algorithm used
-    :param balancer: Balancing method used
-    :param router: Routing algorithm used
     :param created_on: Timestamp of creation
     """
     if len(aggregate_summary) == 0:
@@ -371,6 +356,11 @@ def export_aggregate_summary_data(
         return
 
     output_file = output_path / "aggregate-summary.jsonl"
+
+    # extract metadata from dataframe or set defaults
+    clusterer = aggregate_summary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in aggregate_summary.columns and len(aggregate_summary) > 0 else 'mds_kmeans'
+    balancer = aggregate_summary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in aggregate_summary.columns and len(aggregate_summary) > 0 else 'greedy'
+    router = aggregate_summary.select('router').unique().to_series().to_list()[0] if 'router' in aggregate_summary.columns and len(aggregate_summary) > 0 else 'osrm'
 
     # add metadata to new dataframe
     new_data = aggregate_summary.with_columns([

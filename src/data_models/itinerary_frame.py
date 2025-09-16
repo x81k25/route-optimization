@@ -42,9 +42,9 @@ class ItineraryFrame(pl.DataFrame):
         assignments: Dict[str, Any],
         zone_df: pl.DataFrame,
         model_params: Dict[str, Any],
-        clusterer: str = "mds_kmeans",
-        router: str = "exhaustive",
-        balancer: str = "greedy"
+        clusterer: str = None,
+        router: str = None,
+        balancer: str = None
     ):
         """
         Create ItineraryFrame from assignment data.

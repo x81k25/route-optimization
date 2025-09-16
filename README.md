@@ -460,7 +460,7 @@ Zone-level performance metrics and statistics:
 | `underutilized_days`   | integer  | Count of days below optimal capacity                 | `3`                   |
 | `total_pos_time`       | float    | Total time spent at locations (hours)                | `12.0`                |
 | `total_drive_time`     | float    | Total driving time (hours)                           | `0.0`                 |
-| `sec_std`              | float    | Standard deviation of secondary location durations   | `0.78`                |
+| `duration_std`         | float    | Standard deviation of all daily durations            | `0.78`                |
 | `clusterer`            | string   | Clustering algorithm used for creation               | `"mds_kmeans"`        |
 | `router`               | string   | Routing algorithm used for individual days           | `"exhaustive"`        |
 | `balancer`             | string   | Method used for cluster balancing                    | `"greedy"`            |
@@ -481,7 +481,7 @@ System-wide summary statistics (single record):
 | `average_underutilized_days`                   | float    | Average underutilized days per zone                   | `3.71`                |
 | `average_daily_pos_time`                       | float    | Average daily time at locations (hours)               | `14.64`               |
 | `average_daily_drive_time`                     | float    | Average daily driving time (hours)                    | `0.0`                 |
-| `average_secondary_duration_standard_deviation`| float    | Average std dev of secondary location times           | `0.0`                 |
+| `average_duration_standard_deviation`          | float    | Average std dev of all daily durations                | `0.0`                 |
 | `clusterer`                                    | string   | Clustering algorithm used for creation                | `"mds_kmeans"`        |
 | `router`                                       | string   | Routing algorithm used for individual days            | `"exhaustive"`        |
 | `balancer`                                     | string   | Method used for cluster balancing                     | `"greedy"`            |

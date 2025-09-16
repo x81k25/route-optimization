@@ -20,7 +20,7 @@ def balance_cluster_workloads(
     df: pl.DataFrame,
     od_matrix: Dict[Tuple[int, int], float],
     zone_id: str,
-    balancer: str = "greedy",
+    balancer: str,
     duration_threshold_min: float = 60.0,
     max_iterations: int = 5
 ) -> Dict[int, List[int]]:
@@ -49,7 +49,10 @@ def balance_cluster_workloads(
         logger.info("No secondary clusters to balance")
         return secondary_assignments
 
-    if balancer == "greedy":
+    if balancer == "none":
+        logger.info("Balancer set to 'none' - skipping cluster balancing")
+        return secondary_assignments
+    elif balancer == "greedy":
         return apply_greedy_transfer_balancing(
             secondary_assignments, df, od_matrix, zone_id, duration_threshold_min, max_iterations
         )

@@ -488,9 +488,9 @@ def extract_route_segment(full_geometry: List[List[float]], legs: List[Dict], le
 
 def generate_daily_summary(
     itinerary_df: pl.DataFrame,
-    clusterer: str = "unknown",
-    balancer: str = "unknown",
-    router: str = "unknown"
+    clusterer: str,
+    balancer: str,
+    router: str
 ) -> pl.DataFrame:
     """
     Generate daily summary table from individual itinerary records.

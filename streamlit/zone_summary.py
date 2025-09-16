@@ -134,14 +134,20 @@ def show_zone_summary(itinerary_df):
     # Format the dataframe for display
     display_df = zone_metrics_df.copy()
 
+    # Remove unwanted columns
+    columns_to_remove = ['clusterer', 'router', 'balancer', 'created_on']
+    for col in columns_to_remove:
+        if col in display_df.columns:
+            display_df = display_df.drop(columns=[col])
+
     # handle different possible column names from Parquet
     column_mapping = {}
     if 'zone_id' in display_df.columns:
         column_mapping['zone_id'] = 'Zone ID'
     if 'primary_pos_count' in display_df.columns:
-        column_mapping['primary_pos_count'] = 'Primary Locations'
+        column_mapping['primary_pos_count'] = 'Primaries'
     if 'secondary_pos_count' in display_df.columns:
-        column_mapping['secondary_pos_count'] = 'Secondary Locations'
+        column_mapping['secondary_pos_count'] = 'Secondaries'
     if 'weekly_duration' in display_df.columns:
         column_mapping['weekly_duration'] = 'Weekly Duration (hrs)'
     if 'utilization' in display_df.columns:
@@ -154,8 +160,8 @@ def show_zone_summary(itinerary_df):
         column_mapping['total_pos_time'] = 'Total POS Time (hrs)'
     if 'total_drive_time' in display_df.columns:
         column_mapping['total_drive_time'] = 'Total Drive Time (hrs)'
-    if 'sec_std' in display_df.columns:
-        column_mapping['sec_std'] = 'Sec Std Dev (hrs)'
+    if 'duration_std' in display_df.columns:
+        column_mapping['duration_std'] = 'Duration Std Dev (hrs)'
 
     display_df = display_df.rename(columns=column_mapping)
     
@@ -166,15 +172,15 @@ def show_zone_summary(itinerary_df):
         hide_index=True,
         column_config={
             "Zone ID": st.column_config.TextColumn(width="small"),
-            "Primary Locations": st.column_config.NumberColumn(width="small"),
-            "Secondary Locations": st.column_config.NumberColumn(width="small"),
+            "Primaries": st.column_config.NumberColumn(width="small"),
+            "Secondaries": st.column_config.NumberColumn(width="small"),
             "Weekly Duration (hrs)": st.column_config.NumberColumn(format="%.2f"),
             "Utilization (%)": st.column_config.NumberColumn(format="%.1f"),
             "Overutilized Days": st.column_config.NumberColumn(width="small"),
             "Underutilized Days": st.column_config.NumberColumn(width="small"),
             "Total POS Time (hrs)": st.column_config.NumberColumn(format="%.2f"),
             "Total Drive Time (hrs)": st.column_config.NumberColumn(format="%.2f"),
-            "Sec Std Dev (hrs)": st.column_config.NumberColumn(format="%.2f", width="small")
+            "Duration Std Dev (hrs)": st.column_config.NumberColumn(format="%.2f", width="small")
         }
     )
     

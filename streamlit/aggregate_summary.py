@@ -104,7 +104,7 @@ def show_aggregate_summary():
         'average_underutilized_days',
         'average_daily_pos_time',
         'average_daily_drive_time',
-        'average_secondary_duration_standard_deviation',
+        'average_duration_standard_deviation',
         'created_on'
     ]
 
@@ -116,7 +116,7 @@ def show_aggregate_summary():
         'average_underutilized_days': 'Underutilized Days',
         'average_daily_pos_time': 'Daily POS Time (hrs)',
         'average_daily_drive_time': 'Daily Drive Time (hrs)',
-        'average_secondary_duration_standard_deviation': 'Secondary Duration StdDev',
+        'average_duration_standard_deviation': 'Duration StdDev',
         'created_on': 'Created On'
     }
 

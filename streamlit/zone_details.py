@@ -253,7 +253,7 @@ def show_zone_details(itinerary_df):
             with col5:
                 st.metric("Underutilized Days", int(zone_record['underutilized_days']))
             with col6:
-                st.metric("Secondary Std Dev", f"{zone_record['sec_std']:.3f}")
+                st.metric("Duration Std Dev", f"{zone_record['duration_std']:.3f}")
     else:
         st.warning("No zone summary data available for this zone")
     

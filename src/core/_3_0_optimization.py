@@ -62,8 +62,8 @@ def optimize_zone(
     zone_df: pl.DataFrame,
     zone_id: str,
     model_params: dict,
-    clusterer: str = "mds_kmeans",
-    balancer: str = "greedy"
+    clusterer: str,
+    balancer: str
 ) -> pl.DataFrame:
     """
     Execute complete optimization pipeline for a single zone.
@@ -99,6 +99,7 @@ def optimize_zone(
     
     # Stage 3.1: Primary Day Assignment
     itinerary = assign_primary_days(zone_df, model_params)
+    print(f"DEBUG 3.1: After assign_primary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
     # DEBUG: Print primary assignments for zone_000
     if zone_id == "zone_000":
@@ -112,10 +113,15 @@ def optimize_zone(
         print(f"DEBUG: Zone {zone_id} primary assignments: {primary_assignments}")
 
     # Stage 3.2: Secondary Day Clustering
-    itinerary = cluster_secondary_days(itinerary, zone_df, od_matrix, centroid, model_params, clusterer)
+    if clusterer == "none":
+        logger.info("Clusterer set to 'none' - skipping secondary day clustering")
+    else:
+        itinerary = cluster_secondary_days(itinerary, zone_df, od_matrix, centroid, model_params, clusterer)
+        print(f"DEBUG 3.2: After cluster_secondary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
     # Stage 3.3: Route Optimization
     itinerary = optimize_itinerary_routes(itinerary, zone_df, od_matrix, centroid)
+    print(f"DEBUG 3.3: After optimize_itinerary_routes - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
     # TODO: Implement remaining optimization stages to work with itinerary pattern
     # Stage 3.4: Cluster Balancing
@@ -123,6 +129,7 @@ def optimize_zone(
 
     # Stage 3.5: Detailed Routing
     itinerary = add_detailed_action_sequences(itinerary, od_matrix)
+    print(f"DEBUG 3.5: After add_detailed_action_sequences - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
 
     logger.success(f"Optimization complete for zone {zone_id}")
 
