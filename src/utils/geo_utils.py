@@ -99,11 +99,11 @@ class NominatimGeocoder(GeocodeProvider):
                 logger.debug(f"geocoded '{address}' -> {lat:.4f}, {lon:.4f}")
                 return (lat, lon)
             else:
-                logger.warning(f"No results for address: {address}")
+                logger.warning(f"no results for address: {address}")
                 return None
                 
         except Exception as e:
-            logger.error(f"Geocoding failed for '{address}': {e}")
+            logger.error(f"geocoding failed for '{address}': {e}")
             return None
 
 class GoogleGeocoder(GeocodeProvider):
@@ -134,11 +134,11 @@ class GoogleGeocoder(GeocodeProvider):
                 logger.debug(f"geocoded '{address}' -> {lat:.4f}, {lon:.4f}")
                 return (lat, lon)
             else:
-                logger.warning(f"Google geocoding failed for '{address}': {data['status']}")
+                logger.warning(f"google geocoding failed for '{address}': {data['status']}")
                 return None
                 
         except Exception as e:
-            logger.error(f"Google geocoding failed for '{address}': {e}")
+            logger.error(f"google geocoding failed for '{address}': {e}")
             return None
 
 def load_locations(
@@ -214,9 +214,14 @@ def save_locations(
     
     logger.info(f"successfully saved locations to {file_path}")
 
-def geocode_single_location(location: Location, geocoder: GeocodeProvider, index: int, total: int) -> Tuple[Location, bool]:
+def geocode_single_location(
+    location: Location,
+    geocoder: GeocodeProvider,
+    index: int,
+    total: int
+) -> Tuple[Location, bool]:
     """Geocode a single location and return updated location with success flag"""
-    logger.info(f"Geocoding {index}/{total}: {location.name}")
+    logger.info(f"geocoding {index}/{total}: {location.name}")
     logger.info(f"  Address: {location.address}")
     logger.info(f"  Current: {location.latitude:.6f}, {location.longitude:.6f}")
     
@@ -247,13 +252,17 @@ def geocode_single_location(location: Location, geocoder: GeocodeProvider, index
         return location, False
 
 
-def geocode_locations(locations: List[Location], geocoder: GeocodeProvider, max_workers: int = 8) -> int:
+def geocode_locations(
+    locations: List[Location],
+    geocoder: GeocodeProvider,
+    max_workers: int = 8
+) -> int:
     """Geocode all locations concurrently and update their coordinates"""
     
     updated_count = 0
     failed_count = 0
     
-    logger.info(f"Starting concurrent geocoding of {len(locations)} locations with {max_workers} workers")
+    logger.info(f"starting concurrent geocoding of {len(locations)} locations with {max_workers} workers")
     
     # create thread-local geocoder instances to avoid session conflicts
     thread_local = threading.local()
@@ -286,10 +295,10 @@ def geocode_locations(locations: List[Location], geocoder: GeocodeProvider, max_
                 else:
                     failed_count += 1
             except Exception as e:
-                logger.error(f"Error geocoding location: {e}")
+                logger.error(f"error geocoding location: {e}")
                 failed_count += 1
     
-    logger.info(f"Concurrent geocoding completed: {updated_count} updated, {failed_count} failed (set to null)")
+    logger.info(f"concurrent geocoding completed: {updated_count} updated, {failed_count} failed (set to null)")
     return updated_count
 
 
@@ -297,19 +306,19 @@ def geocode_locations(locations: List[Location], geocoder: GeocodeProvider, max_
 # main function
 # ------------------------------------------------------------------------------
 
-def get_centroid(pos_zone):
+def get_centroid(pos_zone) -> Tuple[float, float]:
     """
     Calculate the centroid (geometric center) of coordinates in a dataframe.
     
-    :param pos_zone: pandas DataFrame containing latitude and longitude columns
-    :return: list [longitude, latitude] representing the centroid
+    :param pos_zone: Polars DataFrame containing latitude and longitude columns
+    :return: tuple (latitude, longitude) representing the centroid
     """
     centroid_lat = pos_zone['latitude'].mean()
     centroid_lon = pos_zone['longitude'].mean()
-    return [centroid_lon, centroid_lat]
+    return (centroid_lat, centroid_lon)
 
 
-def main():
+def main() -> None:
     """
     Main function to run geocoding process.
     
@@ -356,10 +365,10 @@ def main():
     # always save results (including null coordinates for failed geocoding)
     try:
         save_locations(locations, data_file)
-        logger.info(f"Successfully processed {len(locations)} locations ({updated_count} updated, {len(locations)-updated_count} failed)")
+        logger.info(f"successfully processed {len(locations)} locations ({updated_count} updated, {len(locations)-updated_count} failed)")
         
         # generate visualization map of all geocoded locations (including nulls)
-        logger.info("Generating geocoding results visualization...")
+        logger.info("generating geocoding results visualization...")
         try:
             from .visualization import create_geocoding_results_map
             
@@ -387,35 +396,32 @@ def main():
                 )
                 
                 if map_path:
-                    logger.info(f"Geocoding results map saved to: {map_path}")
-                    logger.info(f"Map contains {len(locations_data)} successfully geocoded locations")
+                    logger.info(f"geocoding results map saved to: {map_path}")
+                    logger.info(f"map contains {len(locations_data)} successfully geocoded locations")
                 else:
-                    logger.warning("Failed to generate geocoding results map")
+                    logger.warning("failed to generate geocoding results map")
             else:
-                logger.warning("No valid coordinates available for map generation")
+                logger.warning("no valid coordinates available for map generation")
                 
         except ImportError as e:
-            logger.warning(f"Could not generate visualization map: {e}")
+            logger.warning(f"could not generate visualization map: {e}")
         except Exception as e:
-            logger.error(f"Failed to generate visualization map: {e}")
+            logger.error(f"failed to generate visualization map: {e}")
             
     except Exception as e:
-        logger.error(f"Failed to save locations: {e}")
+        logger.error(f"failed to save locations: {e}")
         return 1
     
     # final summary
     failed_count = len(locations) - updated_count
-    logger.info("=" * 60)
-    logger.info("GEOCODING SUMMARY")
-    logger.info("=" * 60)
-    logger.info(f"Total locations processed: {len(locations)}")
-    logger.info(f"Successfully geocoded: {updated_count}")
-    logger.info(f"Failed (set to null): {failed_count}")
-    logger.info(f"Success rate: {(updated_count/len(locations)*100):.1f}%")
-    logger.info(f"Data saved to: {data_file}")
+    logger.info("geocoding summary")
+    logger.info(f"total locations processed: {len(locations)}")
+    logger.info(f"successfully geocoded: {updated_count}")
+    logger.info(f"failed (set to null): {failed_count}")
+    logger.info(f"success rate: {(updated_count/len(locations)*100):.1f}%")
+    logger.info(f"data saved to: {data_file}")
     if failed_count > 0:
-        logger.info(f"NOTE: {failed_count} locations have null coordinates and will be excluded from route optimization")
-    logger.info("=" * 60)
+        logger.info(f"note: {failed_count} locations have null coordinates and will be excluded from route optimization")
     
     return 0
 

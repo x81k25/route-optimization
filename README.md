@@ -1,66 +1,99 @@
-# route optimization with OSRM integration
+# Route Optimization System
 
-A comprehensive Python-based route optimization system for solving vehicle routing problems (VRP) with real-world driving data. The system integrates with a local OSRM (Open Source Routing Machine) server for accurate distance matrices and turn-by-turn routing, supporting multi-threaded concurrent zone optimization with advanced TSP algorithms.
+A comprehensive Python-based route optimization system for solving vehicle routing problems (VRP) with real-world driving data. The system integrates with a local OSRM (Open Source Routing Machine) server for accurate distance matrices and turn-by-turn routing.
 
-## Project structure
+## System Overview
+
+The system follows a structured pipeline approach:
+
+### 1. Extraction
+- Load location data from JSONL files
+- Validate coordinates and location metadata
+- Filter locations by zone assignments
+
+### 2. Preprocessing
+- Clean and normalize location data
+- Calculate geographic centroids
+- Generate distance matrices via OSRM
+
+### 3. Optimization
+
+#### 3.1 Primary Day Assignment
+- Assign primary (high-value) locations to dedicated days
+- Allocate 8 hours per primary location
+- Distribute workload across available days
+
+#### 3.2 Secondary Day Clustering
+- K-means clustering for secondary locations
+- Noise detection for isolated locations (>150km)
+- Spatial grouping based on geographic proximity
+
+#### 3.3 Route Optimization
+- Adaptive TSP algorithms (exhaustive for ≤5 locations, greedy+2-opt for larger)
+- Minimize total drive time per day
+- Generate optimal visit sequences
+
+#### 3.4 Cluster Balancing
+- Organic duration rebalancing across clusters
+- Workload equalization (60-minute threshold)
+- Iterative location reassignment
+
+#### 3.5 Detailed Routing
+- Fetch turn-by-turn directions from OSRM
+- Generate route geometry polylines
+- Calculate accurate drive times and distances
+
+### 4. Reporting
+- Generate comprehensive analytics
+- Export JSON reports with itineraries
+- Create interactive HTML visualizations
+- Calculate utilization metrics
+
+### 5. Loading
+- Export optimized routes to dual-format output files (JSONL + Parquet)
+- Store results in structured formats for different use cases
+- Prepare data for downstream systems and analytics dashboards
+
+## Project Structure
 
 ```
 route-optimization/
 ├── main.py                           # Main entry point and CLI interface
-├── CLAUDE.md                         # Project instructions for Claude Code  
-├── README.md                         # Project documentation (this file)
-├── methodology.md                    # Detailed algorithmic methodology and variations
-├── pyproject.toml                    # Python project configuration (uv)
-├── .gitignore                        # Git ignore patterns
 ├── config/
-│   └── model-params.yaml             # Optimization parameters and settings
+│   └── model-params.yaml             # Optimization parameters
 ├── data/
-│   └── locations.jsonl               # Location data with zone assignments (257 locations)
-├── output/                           # Generated results (created at runtime)
-│   ├── aggregate-report.jsonl        # Cross-zone detailed analytics
-│   ├── aggregate-summary.jsonl       # Cross-zone summary statistics  
-│   └── itinerary.jsonl               # Daily route itineraries
+│   └── locations.jsonl               # Input location data
+├── output/                           # Generated results (dual format: JSONL + Parquet)
+│   ├── itinerary.jsonl               # Individual position records (JSONL)
+│   ├── itinerary.parquet             # Individual position records (Parquet)
+│   ├── daily-summary.jsonl           # Daily aggregated metrics (JSONL)
+│   ├── daily-summary.parquet         # Daily aggregated metrics (Parquet)
+│   ├── zone-summary.jsonl            # Zone-level analytics (JSONL)
+│   ├── zone-summary.parquet          # Zone-level analytics (Parquet)
+│   ├── aggregate-summary.jsonl       # System-wide statistics (JSONL)
+│   └── aggregate-summary.parquet     # System-wide statistics (Parquet)
 ├── src/
 │   ├── core/                         # Core optimization algorithms
-│   │   ├── optimize.py               # Main optimization engine with K-means clustering
-│   │   └── report.py                 # Comprehensive reporting and analytics
-│   └── utils/                        # Utility and support modules
-│       ├── clustering_utils.py       # K-means clustering with noise detection
-│       ├── geo_utils.py              # Geographic utilities and distance calculations
-│       ├── osrm_utils.py             # OSRM API integration (Table/Route APIs)
-│       └── io_utils.py               # Data input/output utilities
-├── streamlit/                        # Interactive web application
-│   ├── app.py                        # Main Streamlit dashboard
-│   ├── aggregate_report.py           # Aggregate reporting interface
-│   ├── zone_details.py               # Individual zone analysis
-│   └── utils.py                      # Streamlit utilities
-├── tests/                            # Test suite
-│   ├── test_main_optimizer.py        # Core optimization tests
-│   ├── test_osrm.py                  # OSRM integration tests
-│   ├── test_timeout.py               # Timeout handling tests
-│   └── test_*.py                     # Additional test modules
-├── .bak/                             # Backup of legacy pipeline stages
-└── .dev/                             # Development utilities and format tests
+│   │   ├── optimize.py               # Main optimization engine
+│   │   └── report.py                 # Reporting and analytics
+│   └── utils/                        # Utility modules
+│       ├── clustering_utils.py       # K-means clustering
+│       ├── geo_utils.py              # Geographic utilities
+│       ├── osrm_utils.py             # OSRM API integration
+│       └── io_utils.py               # Data I/O utilities
+├── streamlit/                        # Web application
+│   └── app.py                        # Interactive dashboard
+└── tests/                            # Test suite
 ```
-
-### Key Files
-
-**`main.py`**: Entry point supporting single-zone, multi-zone, clustering, and geocoding operations
-**`src/core/optimize.py`**: Main optimization engine with K-means clustering and organic rebalancing
-**`src/core/report.py`**: Comprehensive reporting, analytics, and visualization generation
-**`src/utils/osrm_utils.py`**: OSRM integration for distance matrices and route geometry
-**`src/utils/clustering_utils.py`**: K-means clustering with noise detection and duration rebalancing
-**`streamlit/app.py`**: Interactive web dashboard for visualization and analysis
-**`methodology.md`**: Complete algorithmic documentation with 8 variation analyses
 
 ## Installation
 
 ```bash
-# Install dependencies using uv (recommended)
+# Install dependencies using uv
 uv sync
 ```
 
-## Quick Start
+## Usage
 
 ### Single Zone Optimization
 ```bash
@@ -80,21 +113,246 @@ uv run python main.py
 uv run python main.py --workers 4 --zones 10
 ```
 
-### Location Management
+### Algorithm Selection
 ```bash
-# Re-cluster all locations with custom parameters
+# Choose clustering algorithm for secondary location grouping
+uv run python main.py --clusterer mds_kmeans           # Default: MDS + K-means
+uv run python main.py --clusterer hierarchical         # Hierarchical clustering
+uv run python main.py --clusterer spectral            # Spectral clustering
+uv run python main.py --clusterer dbscan              # DBSCAN clustering
+uv run python main.py --clusterer balanced            # Balanced clustering
+
+# Choose balancing approach for workload equalization
+uv run python main.py --balancer greedy               # Default: Enhanced greedy transfer
+uv run python main.py --balancer simulated_annealing  # Simulated annealing
+uv run python main.py --balancer min_max              # Min-max optimization
+uv run python main.py --balancer local_search         # Local search optimization
+uv run python main.py --balancer network_flow         # Network flow optimization
+
+# Multi-algorithm comparison
+uv run python main.py --clusterer mds_kmeans dbscan --balancer greedy min_max
+uv run python main.py --full-grid                     # Run all algorithm combinations
+```
+
+### Clustering Operations
+```bash
+# Re-cluster locations with custom parameters
 uv run python main.py --cluster --min 5 --max 20
 
 # Fix coordinates via geocoding
 uv run python main.py --geocode
 ```
 
-### Configuration
-The system uses `config/model-params.yaml` for optimization parameters:
-- `primary_hours_per_location`: Hours spent at primary stores (default: 8.0)
-- `secondary_hours_per_location`: Hours spent at secondary stores (default: 1.0) 
-- `working_days_per_week`: Available working days (default: 5)
-- `max_locations_per_day`: Maximum locations per day (default: 7)
+## Configuration
+
+The system uses `config/model-params.yaml`:
+- `primary_hours_per_location`: Hours for primary stores (default: 8.0)
+- `secondary_hours_per_location`: Hours for secondary stores (default: 1.0) 
+- `working_days_per_week`: Available days (default: 5)
+- `max_locations_per_day`: Daily location limit (default: 7)
+
+## OSRM Integration
+
+Local OSRM server configuration:
+- **Base URL**: `http://192.168.50.2:32050`
+- **Profile**: Driving profile (California road network)
+- **APIs**: Table (distance matrix) and Route (geometry)
+
+### API Endpoints
+
+The OSRM server provides a comprehensive HTTP API for routing and navigation services:
+
+#### Base URLs
+```bash
+# Kubernetes (external access)
+http://192.168.50.2:32050
+
+# Docker Compose (local development)
+http://localhost:5000
+```
+
+#### Available services
+
+**1. Route service - `/route/v1/driving/{coordinates}`**
+
+The route service calculates the fastest route between coordinates with detailed navigation information.
+
+```bash
+# Basic route between two points (SF to Oakland)
+curl "http://192.168.50.2:32050/route/v1/driving/-122.4194,37.7749;-122.2711,37.8044"
+# Returns: Route geometry, duration (1174.2s ≈ 19.6min), distance (18.1km)
+
+# Route with turn-by-turn navigation steps
+curl "http://192.168.50.2:32050/route/v1/driving/-122.4194,37.7749;-122.2711,37.8044?steps=true"
+# Returns: Detailed turn-by-turn instructions with intersections and maneuvers
+
+# Route with alternative paths
+curl "http://192.168.50.2:32050/route/v1/driving/-122.4194,37.7749;-122.2711,37.8044?alternatives=true"
+# Returns: Multiple route options with different paths
+
+# Route without geometry overview (faster response)
+curl "http://192.168.50.2:32050/route/v1/driving/-122.4194,37.7749;-122.2711,37.8044?overview=false"
+# Returns: Route info without detailed geometry polyline
+
+# Multi-waypoint route (SF → Oakland → San Jose)
+curl "http://192.168.50.2:32050/route/v1/driving/-122.4194,37.7749;-122.2711,37.8044;-121.8863,37.3382"
+# Returns: Route through multiple waypoints with leg-by-leg breakdown
+```
+
+**2. Nearest service - `/nearest/v1/driving/{coordinates}`**
+
+Finds the nearest road network point to given coordinates.
+
+```bash
+# Find nearest road point to SF coordinates
+curl "http://192.168.50.2:32050/nearest/v1/driving/-122.4194,37.7749"
+# Returns: Nearest routable point with node IDs and distance offset
+
+# Find 3 nearest road points
+curl "http://192.168.50.2:32050/nearest/v1/driving/-122.4194,37.7749?number=3"
+# Returns: Array of 3 closest routable points
+```
+
+**3. Table service - `/table/v1/driving/{coordinates}` (origin-destination matrix)**
+
+Computes distance and duration matrices between multiple points. This service generates **origin-destination matrices** that show travel times and distances from every origin to every destination - perfect for logistics, route optimization, fleet management, and delivery planning.
+
+```bash
+# Distance/duration matrix for 3 points (SF, Oakland, San Jose)
+curl "http://192.168.50.2:32050/table/v1/driving/-122.4194,37.7749;-122.2711,37.8044;-121.8863,37.3382"
+# Returns: Full 3x3 origin-destination matrix of distances and durations between all point pairs
+
+# Matrix with specific source (from SF to all destinations)
+curl "http://192.168.50.2:32050/table/v1/driving/-122.4194,37.7749;-122.2711,37.8044;-121.8863,37.3382?sources=0"
+# Returns: 1x3 matrix from SF to all other points
+
+# Matrix with distance and duration annotations
+curl "http://192.168.50.2:32050/table/v1/driving/-122.4194,37.7749;-122.2711,37.8044?annotations=distance,duration"
+# Returns: Separate distance and duration arrays for analysis
+```
+
+**4. Match service - `/match/v1/driving/{coordinates}` (GPS trace matching)**
+
+Matches GPS traces to road network - essential for cleaning noisy GPS data.
+
+```bash
+# GPS trace matching with noisy coordinates
+curl "http://192.168.50.2:32050/match/v1/driving/-122.4194,37.7749;-122.4190,37.7750;-122.4185,37.7751;-122.2711,37.8044"
+# Returns: Cleaned route snapped to road network with confidence scores
+
+# Match with full overview and turn-by-turn steps
+curl "http://192.168.50.2:32050/match/v1/driving/-122.4194,37.7749;-122.4190,37.7750;-122.4185,37.7751;-122.2711,37.8044?overview=full&steps=true"
+# Returns: Full route geometry and detailed navigation instructions
+```
+
+**5. Trip service - `/trip/v1/driving/{coordinates}` (traveling salesman optimization)**
+
+Solves traveling salesman problem to find optimal visit order for multiple locations.
+
+```bash
+# Trip optimization for 4 cities (finds optimal order)
+curl "http://192.168.50.2:32050/trip/v1/driving/-122.4194,37.7749;-122.2711,37.8044;-121.8863,37.3382;-122.2585,37.8716"
+# Returns: Optimized route visiting all points with minimal total distance
+
+# Trip with fixed start and end points
+curl "http://192.168.50.2:32050/trip/v1/driving/-122.4194,37.7749;-122.2711,37.8044;-121.8863,37.3382?source=first&destination=last"
+# Returns: Optimized route starting at first point, ending at last point
+```
+
+**6. Tile service - `/tile/v1/driving/tile(x,y,z).mvt` (debug vector tiles)**
+
+Generates Mapbox Vector Tiles for debugging and visualizing the routing graph.
+
+```bash
+# Vector tile for San Francisco area (zoom level 13)
+curl "http://192.168.50.2:32050/tile/v1/driving/tile(1310,3166,13).mvt"
+# Returns: Binary Mapbox Vector Tile (.mvt) with routing graph data
+
+# Notes:
+# - Requires zoom level 12 or higher (OSRM limitation)
+# - URL format: tile(x,y,z).mvt where x,y,z follow standard web map tile coordinates
+# - Returns binary protobuf data (application/x-protobuf)
+# - Primarily for debugging routing graphs, not optimized for general map rendering
+# - Contains two layers: 'speeds' and 'turns' with road geometries and metadata
+```
+
+#### Common parameters
+
+- `overview`: Geometry overview (`full`, `simplified`, `false`)
+- `steps`: Include turn-by-turn navigation (`true`, `false`)
+- `alternatives`: Return alternative routes (`true`, `false`)
+- `annotations`: Additional metadata (`duration`, `distance`, `speed`)
+- `geometries`: Response geometry format (`polyline`, `polyline6`, `geojson`)
+
+#### Response format
+
+All endpoints return JSON responses with this structure:
+```json
+{
+  "code": "Ok",
+  "routes": [...],
+  "waypoints": [...]
+}
+```
+
+### Example coordinates (California)
+
+The test suite and examples use these California coordinates:
+- **San Francisco**: `-122.4194,37.7749`
+- **Oakland**: `-122.2711,37.8044`
+- **San Jose**: `-121.8863,37.3382`
+- **Berkeley**: `-122.2585,37.8716`
+
+### API documentation
+
+For detailed API documentation and additional parameters:
+- **Official OSRM API docs**: https://project-osrm.org/docs/v5.24.0/api/
+- **GitHub documentation**: https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md
+
+## Performance
+
+Multi-threaded processing characteristics:
+- **Total Runtime**: ~6.36 seconds for 24 zones
+- **Threading**: 12 worker threads (CPU count / 2)
+- **Performance Gain**: 3.58x faster than sequential
+- **Optimization Quality**: 67% improved workload balance
+
+### Multi-Algorithm Orchestration
+
+The system supports comprehensive algorithm comparison through multi-algorithm orchestration:
+
+- **Grid Search**: Test all combinations of clustering and balancing algorithms
+- **Sequential Execution**: Run experiments sequentially for reliable results
+- **Smart Merging**: Combine new results with existing data, keeping newest records
+- **Performance**: 25 algorithm combinations (5 clusterers × 5 balancers) complete in ~2-3 minutes
+
+Available algorithms:
+- **Clusterers**: `mds_kmeans`, `hierarchical`, `spectral`, `dbscan`, `balanced` (5 total)
+- **Balancers**: `greedy`, `simulated_annealing`, `min_max`, `local_search`, `network_flow` (5 total)
+
+## Data Export Formats
+
+The system exports all output data in **dual formats** to optimize for different use cases:
+
+### JSONL Format
+- **Use case**: Human-readable debugging, data inspection, and external tool integration
+- **Characteristics**: Line-delimited JSON for easy streaming and manual inspection
+- **Files**: `itinerary.jsonl`, `daily-summary.jsonl`, `zone-summary.jsonl`, `aggregate-summary.jsonl`
+
+### Parquet Format
+- **Use case**: Fast analytics queries, Streamlit dashboards, and data science workflows
+- **Characteristics**: Columnar binary format optimized for analytical workloads
+- **Performance**: ~10x faster reads for large datasets compared to JSONL
+- **Files**: `itinerary.parquet`, `daily-summary.parquet`, `zone-summary.parquet`, `aggregate-summary.parquet`
+
+### Smart Merging & Processing Optimization
+The system uses Parquet as the primary format for all data operations:
+- **Primary format**: All upsert operations performed on Parquet files using Polars for maximum speed
+- **Legacy migration**: Automatically migrates from JSONL-only datasets on first run
+- **Processing order**: Read Parquet → Perform upsert → Write Parquet → Write JSONL backup
+- **Conflict resolution**: Keeps newest records based on `created_on` timestamp
+- **Uniqueness**: Maintains data integrity per uniqueness constraints documented below
+- **Performance**: ~10x faster processing compared to JSONL-based operations
 
 ## Development
 
@@ -109,265 +367,125 @@ uv run python -m black .
 uv run python -m mypy src/
 ```
 
-## OSRM Integration
+## data models
 
-The system integrates with a local OSRM (Open Source Routing Machine) server for accurate real-world routing data. The server provides precise drive times, distances, and route geometries.
+### input 
 
-### Server Configuration
-- **Base URL**: `http://192.168.50.2:32050`
-- **Profile**: Driving profile with California road network
-- **Coverage**: Optimized for California locations
+#### locations.jsonl
 
-### OSRM API Endpoints
+Each line in the JSONL file represents a single location with the following fields:
 
-**Table API** - Generate origin-destination matrices including zone centroid:
-- Calculates all pairwise distances and durations
-- Includes centroid (-1 ID) as potential starting point
-- Returns symmetric matrix for TSP optimization
+| Field       | Type    | Description                                              | Example                                     |
+|-------------|---------|----------------------------------------------------------|---------------------------------------------|
+| `pos_id`    | integer | Unique identifier for the location                       | `31`                                        |
+| `name`      | string  | Location name (typically "Subway - [City]")              | `"Subway - Buttonwillow"`                   |
+| `address`   | string  | Full street address                                      | `"20673 Tracy Ave, Buttonwillow, CA"`       |
+| `latitude`  | float   | Geographic latitude coordinate                           | `35.40011`                                  |
+| `longitude` | float   | Geographic longitude coordinate                          | `-119.3978`                                 |
+| `zone_id`   | string  | Zone identifier for grouping locations (nullable)        | `"zone_012"`                                |
+| `class`     | string  | Location classification ("primary" or "secondary")       | `"primary"`                                 |
 
-**Route API** - Fetch detailed route geometry:
-- Provides encoded polyline for visualization
-- Includes turn-by-turn instructions
-- Used for final route presentation
+- unique to (will hold only 1 unqiue combination of):
+  - `zone_id`
+  - `pos_id`
+  
+### output
 
-## Performance Characteristics
+#### itinerary.jsonl
 
-### Multi-threaded Performance (Current Implementation)
-- **Total Runtime**: ~6.36 seconds for 24 zones
-- **Threading**: 12 worker threads (CPU count / 2)
-- **Performance Gain**: 3.58x faster than sequential (72% reduction)
-- **Locations**: 206 total (51 filtered for null zone_ids)
-- **Optimization Quality**: 67% improvement in workload balance (std dev: 1.16)
+Each line represents an individual position record with action details:
 
-### Sequential Baseline
-- **Total Runtime**: ~22.76 seconds
-- **Same optimization algorithms and API calls
-- **Bottleneck**: Sequential OSRM API calls and optimization
+| Field            | Type         | Description                                           | Example                                      |
+|------------------|--------------|-------------------------------------------------------|----------------------------------------------|
+| `zone_id`        | string       | Zone identifier                                       | `"zone_017"`                                 |
+| `day`            | integer      | Day of the week (1-7)                                 | `2`                                          |
+| `pos_id`         | string       | String value of individual pos id (null for centroid) | `"302468"`                                   |
+| `pos_name`       | string       | name value associated with pos_id                     | `"Subway - Kettleman City"`                  |
+| `pos_class`      | string       | Classification of each location in route              | `"secondary"`                                |
+| `route`          | array[float] | Each lon, lat point along the path                    | `[[-120.97, 40.62]]`                         |
+| `action`         | string       | The action taken at each point along the route        | `"driving"`                                  |
+| `schedule`       | float        | Time in float minutes at the start of each action     | `4.222`                                      |
+| `clusterer`      | string       | Clustering algorithm used for creation                | `"mds_kmeans"`                               |
+| `router`         | string       | Routing algorithm used for individual days            | `"exhaustive"`                               |
+| `balancer`       | string       | Method used for cluster balancing                     | `"greedy"`                                   |
+| `created_on`     | datetime     | Timestamp at which the elements were written to file  | `"2025-09-09 09:55:27"`                      |
 
-## System Architecture
+**Action Types:**
+- `driving`: Vehicle is traveling between locations
+- `arriving`: Vehicle is arriving at a location
+- `departing`: Vehicle is departing from a location
 
-The route optimization system uses a multi-stage pipeline designed for concurrent multi-zone processing with OSRM integration.
+**Scheduling Rules:**
+- Each day starts at schedule = 0.0 with action = "driving" from centroid (pos_id = null)
+- Arrival and departure times are recorded for each location
+- Each day ends with action = "departing" from the final location
 
-### Architecture flow
+**Unique Constraints:**
+- `zone_id`, `pos_id`, `day`, `clusterer`, `balancer`
 
-```mermaid
-flowchart TD
-    A[main.py Entry Point]
-    A --> B[extract]
-    B --> |locations.jsonl| C[optimization_orchestrator]
-    
-    C --> D{Multi-zone Processing<br/>ThreadPoolExecutor}
-    D --> E1[Zone 1]
-    D --> E2[Zone 2]
-    D --> E3[Zone N...]
-    
-    E1 --> F1[get_centroid]
-    E2 --> F2[get_centroid]
-    E3 --> F3[get_centroid]
-    
-    F1 --> G1[generate_od_matrix]
-    F2 --> G2[generate_od_matrix]
-    F3 --> G3[generate_od_matrix]
-    
-    G1 --> H1[assign_anchor_days]
-    G2 --> H2[assign_anchor_days]
-    G3 --> H3[assign_anchor_days]
-    
-    H1 --> I1[cluster_secondary_pos]
-    H2 --> I2[cluster_secondary_pos]
-    H3 --> I3[cluster_secondary_pos]
-    
-    I1 --> J1[gen_secondary_routes]
-    I2 --> J2[gen_secondary_routes]
-    I3 --> J3[gen_secondary_routes]
-    
-    J1 --> K1[get_detailed_routes]
-    J2 --> K2[get_detailed_routes]
-    J3 --> K3[get_detailed_routes]
-    
-    K1 --> L[Combine Results]
-    K2 --> L
-    K3 --> L
-    
-    L --> |itinerary DataFrame| M[report]
-    
-    M --> N1[aggregate-report.jsonl]
-    M --> N2[aggregate-summary.jsonl]
-    M --> N3[itinerary.jsonl]
-    
-    subgraph "Core Algorithms Used"
-        O1[K-means Clustering]
-        O2[Noise Detection]
-        O3[Organic Rebalancing]
-        O4[TSP Optimization]
-        O5[OSRM Integration]
-    end
-    
-    I1 -.-> O1
-    I1 -.-> O2
-    I1 -.-> O3
-    J1 -.-> O4
-    G1 -.-> O5
-```
+#### daily-summary.jsonl
 
-### Processing Pipeline (6 Stages)
+Daily aggregation of position records by zone and day:
 
-**Stage 0: Data Ingestion**
-- Load locations from JSONL files
-- Filter by zone ID
-- Create zone optimization packages
-- Validate coordinates and location data
+| Field                    | Type     | Description                                           | Example               |
+|--------------------------|----------|-------------------------------------------------------|-----------------------|
+| `zone_id`                | string   | Zone identifier                                       | `"zone_017"`          |
+| `day`                    | integer  | Day of the week (1-7)                                 | `2`                   |
+| `primary_locations`      | integer  | Total number of primary locations visited on that day | `1`                   |
+| `secondary_locations`    | integer  | Total number of secondary locations visited           | `5`                   |
+| `duration`               | float    | Total duration of all activities on a given day (min) | `8.647815`            |
+| `utilization_percentage` | float    | Percentage of time compared to `hours_per_day` param  | `94.876`              |
+| `total_pos_time`         | float    | Total minutes spent at all POS locations             | `846.0000`            |
+| `total_drive_time`       | float    | Total minutes spent driving on a given day           | `46.486118`           |
+| `clusterer`              | string   | Clustering algorithm used for creation                | `"mds_kmeans"`        |
+| `router`                 | string   | Routing algorithm used for individual days            | `"exhaustive"`        |
+| `balancer`               | string   | Method used for cluster balancing                     | `"greedy"`            |
+| `created_on`             | datetime | Timestamp at which the elements were written to file | `"2025-09-09 09:55:27"` |
 
-**Stage 1: Day Assignment** 
-- Assign primary locations to dedicated days (8 hours each)
-- Use K-means clustering with noise detection for secondary locations
-- Apply organic duration rebalancing to balance workloads
-- Exclude isolated locations (>150km from neighbors)
+**Unique Constraints:**
+- `zone_id`, `day`, `clusterer`, `balancer`
 
-**Stage 2: Route Optimization**
-- Run adaptive TSP algorithms for each day's assigned locations
-- Use exhaustive search for ≤5 locations, greedy+2-opt for larger sets
-- Optimize for minimum total drive time per day
+#### zone-summary.jsonl
 
-**Stage 4: Route Geometry**
-- Fetch detailed route geometry from OSRM Route API
-- Generate turn-by-turn instructions
-- Calculate accurate drive times and distances
+Zone-level performance metrics and statistics:
 
-**Stage 5: Reporting**
-- Generate comprehensive metrics and analytics
-- Export detailed JSON reports with itineraries
-- Calculate utilization and efficiency metrics
+| Field                  | Type     | Description                                          | Example               |
+|------------------------|----------|------------------------------------------------------|-----------------------|
+| `zone_id`              | string   | Zone identifier                                      | `"zone_000"`          |
+| `primary_count`        | integer  | Number of primary locations in zone                  | `2`                   |
+| `secondary_count`      | integer  | Number of secondary locations in zone                | `10`                  |
+| `weekly_duration`      | float    | Total weekly route duration (hours)                  | `6.47725`             |
+| `utilization`          | float    | Average capacity utilization percentage              | `16.19`               |
+| `overutilized_days`    | integer  | Count of days exceeding capacity                     | `0`                   |
+| `underutilized_days`   | integer  | Count of days below optimal capacity                 | `3`                   |
+| `total_pos_time`       | float    | Total time spent at locations (hours)                | `12.0`                |
+| `total_drive_time`     | float    | Total driving time (hours)                           | `0.0`                 |
+| `duration_std`         | float    | Standard deviation of all daily durations            | `0.78`                |
+| `clusterer`            | string   | Clustering algorithm used for creation               | `"mds_kmeans"`        |
+| `router`               | string   | Routing algorithm used for individual days           | `"exhaustive"`        |
+| `balancer`             | string   | Method used for cluster balancing                    | `"greedy"`            |
+| `created_on`           | datetime | Timestamp at which the elements were written to file | `"2025-09-09 09:55:27"` |
 
-**Stage 6: Orchestration**
-- Coordinate end-to-end pipeline execution  
-- Handle concurrent multi-zone processing
-- Generate visualization and export packages
+**Unique Constraints:**
+- `zone_id`, `clusterer`, `balancer`
 
-### Multi-Zone Concurrent Processing
+#### aggregate-summary.jsonl
 
-```python
-def optimize_multiple_zones(zone_ids: List[str], max_workers: int = None):
-    """Concurrent optimization across multiple zones."""
-    
-    with ProcessPoolExecutor(max_workers=max_workers or cpu_count()) as executor:
-        # Submit all zone optimization tasks
-        futures = {
-            executor.submit(optimize_single_zone, zone_id): zone_id 
-            for zone_id in zone_ids
-        }
-        
-        # Collect results as they complete
-        results = {}
-        for future in as_completed(futures):
-            zone_id = futures[future]
-            try:
-                results[zone_id] = future.result()
-            except Exception as e:
-                results[zone_id] = {'error': str(e)}
-                
-        return results
-```
+System-wide summary statistics (single record):
 
-### Performance Characteristics
+| Field                                          | Type     | Description                                           | Example               |
+|------------------------------------------------|----------|-------------------------------------------------------|-----------------------|
+| `average_weekly_duration`                      | float    | Average weekly duration across all zones              | `0.0`                 |
+| `average_utilization`                          | float    | Average utilization across all zones                  | `0.0`                 |
+| `average_overutilized_days`                    | float    | Average overutilized days per zone                    | `0.0`                 |
+| `average_underutilized_days`                   | float    | Average underutilized days per zone                   | `3.71`                |
+| `average_daily_pos_time`                       | float    | Average daily time at locations (hours)               | `14.64`               |
+| `average_daily_drive_time`                     | float    | Average daily driving time (hours)                    | `0.0`                 |
+| `average_duration_standard_deviation`          | float    | Average std dev of all daily durations                | `0.0`                 |
+| `clusterer`                                    | string   | Clustering algorithm used for creation                | `"mds_kmeans"`        |
+| `router`                                       | string   | Routing algorithm used for individual days            | `"exhaustive"`        |
+| `balancer`                                     | string   | Method used for cluster balancing                     | `"greedy"`            |
+| `created_on`                                   | datetime | Timestamp at which the elements were written to file | `"2025-09-09 09:55:27"` |
 
-Current system performance with K-means clustering and organic rebalancing:
-
-| Metric | Single Zone | Multi-Zone (24 zones) |
-|--------|-------------|----------------------|
-| **Locations** | ~8-12 locations | ~206 locations |
-| **Processing Time** | ~0.1 seconds | ~6.4 seconds |
-| **OSRM API Calls** | 2-3 calls | ~48-72 calls |
-| **Memory Usage** | ~10MB | ~100MB |
-| **Output Files** | 2 files | ~48 files |
-| **Workload Balance** | N/A | 67% improved (std dev: 1.16) |
-
-## Data Structures
-
-### Input Data Format (JSONL)
-Location data is stored in JSONL format with the following schema:
-
-```json
-{
-  "pos_id": 1,
-  "name": "Subway - Granada Hills", 
-  "address": "11878 Balboa Blvd, Granada Hills, CA",
-  "latitude": 34.2776949,
-  "longitude": -118.502159,
-  "zone_id": "zone_000",
-  "class": "primary"
-}
-```
-
-| Field | Type | Description | Values |
-|-------|------|-------------|---------|
-| `id` | int | Unique location identifier | `1, 2, 3...` |
-| `name` | string | Business name | `"Subway - Store Name"` |
-| `address` | string | Full street address | `"123 Main St, City, CA"` |
-| `latitude` | float | GPS latitude coordinate | `34.2776949` |
-| `longitude` | float | GPS longitude coordinate | `-118.502159` |
-| `zone_id` | string | Zone assignment | `"zone_000", "zone_001"...` |
-| `class` | string | Location type | `"primary"` or `"secondary"` |
-
-### Processing Data Structures
-
-#### Zone Optimization Package
-Internal data structure used during optimization:
-
-```python
-@dataclass
-class ZoneOptimizationPackage:
-    zone_id: str
-    locations_df: pl.DataFrame      # Zone locations
-    od_matrix: Dict[Tuple[int, int], float]  # Distance matrix
-    primary_assignments: Dict[int, int]      # Primary locations → days
-    secondary_assignments: Dict[int, List[int]]  # Days → secondary locations
-    available_days: List[int]       # Working days for secondary locations
-```
-
-#### Output Structures
-
-**Zone Report (JSON Export)**
-```json
-{
-  "zone_id": "zone_000",
-  "metrics_summary": {
-    "total_locations_visited": 11,
-    "total_drive_time_minutes": 165.9,
-    "primary_store_count": 2,
-    "non_primary_store_count": 9
-  },
-  "daily_itineraries": {
-    "1": {
-      "day": 1,
-      "day_type": "primary",
-      "locations": [{"location_id": 80, "name": "Subway - Granada Hills", ...}]
-    }
-  },
-  "route_geometries": {
-    "3": {
-      "geometry_polyline": "encoded_polyline_string",
-      "total_distance_meters": 42847.2,
-      "total_duration_seconds": 2548.5,
-      "turn_by_turn_instructions": [...]
-    }
-  }
-}
-```
-
-**Visualization Data (HTML)**
-- Interactive maps with route geometry
-- Daily summary tables with metrics
-- Detailed itineraries with time schedules
-- Store classification badges (primary/secondary)
-
-## Algorithm Evolution
-
-This project has undergone systematic optimization through 8 major variations, achieving a **67% improvement in workload balance** through:
-
-1. **K-means clustering**: Superior spatial optimization for geographic data
-2. **Noise point detection**: Excludes isolated locations (>150km from neighbors)  
-3. **Organic duration rebalancing**: Balances workloads using real business metrics
-4. **Real drive time integration**: Accurate OSRM-based distance calculations
-
-See `methodology.md` for detailed algorithmic analysis and variation performance comparisons.
+**Unique Constraints:**
+- `clusterer`, `balancer`

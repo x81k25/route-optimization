@@ -8,7 +8,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-def main():
+# 3rd-party imports
+from loguru import logger
+
+def main() -> None:
     """
     Run the Streamlit app.
     
@@ -25,15 +28,15 @@ def main():
         "--theme.base", "dark"
     ]
     
-    print(f"Starting Streamlit app at http://localhost:8501")
-    print(f"Command: {' '.join(cmd)}")
+    logger.info(f"starting Streamlit app at http://localhost:8501")
+    logger.info(f"command: {' '.join(cmd)}")
     
     try:
         subprocess.run(cmd, check=True)
     except KeyboardInterrupt:
-        print("\nShutting down Streamlit app...")
+        logger.info("shutting down Streamlit app...")
     except subprocess.CalledProcessError as e:
-        print(f"Error running Streamlit: {e}")
+        logger.error(f"error running Streamlit: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

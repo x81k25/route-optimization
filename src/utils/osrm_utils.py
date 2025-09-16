@@ -236,7 +236,7 @@ def generate_od_matrix(
     # extract zone_id
     zone_ids = pos_zone['zone_id'].unique().to_list()
     if len(zone_ids) != 1:
-        logger.error(f"Expected single zone, got {len(zone_ids)} zones: {zone_ids}")
+        logger.error(f"expected single zone, got {len(zone_ids)} zones: {zone_ids}")
         raise ValueError(f"generate_od_matrix requires data from a single zone")
     zone_id = zone_ids[0]
     
@@ -314,10 +314,10 @@ def fetch_od_matrix(
         raise ValueError(f"Zone {zone_id}: No valid locations within California bounds")
     
     if len(valid_locations) != len(locations):
-        logger.warning(f"Zone {zone_id}: Using {len(valid_locations)} valid locations out of {len(locations)} total")
+        logger.warning(f"zone {zone_id}: using {len(valid_locations)} valid locations out of {len(locations)} total")
     
     if len(valid_locations) > 25:
-        logger.warning(f"Zone {zone_id}: {len(valid_locations)} valid locations exceeds recommended 25 limit")
+        logger.warning(f"zone {zone_id}: {len(valid_locations)} valid locations exceeds recommended 25 limit")
     
     # build coordinate string from valid locations
     coordinates = build_coordinates_string(valid_locations)
@@ -331,7 +331,7 @@ def fetch_od_matrix(
     params = {"annotations": ",".join(annotations)}
     
     # make API call
-    logger.info(f"Fetching OD matrix for zone {zone_id} with {len(locations)} locations")
+    logger.info(f"fetching OD matrix for zone {zone_id} with {len(locations)} locations")
     api_call_time = datetime.now()
     
     try:
@@ -340,20 +340,20 @@ def fetch_od_matrix(
         data = response.json()
         
     except requests.Timeout as e:
-        logger.error(f"OSRM Table API timeout (30s) for zone {zone_id} with {len(valid_locations)} locations: {e}")
-        logger.error(f"Endpoint: {endpoint}")
-        logger.error(f"Coordinates: {coordinates}")
+        logger.error(f"OSRM table API timeout (30s) for zone {zone_id} with {len(valid_locations)} locations: {e}")
+        logger.error(f"endpoint: {endpoint}")
+        logger.error(f"coordinates: {coordinates}")
         
         # generate dummy OD matrix with estimated distances
-        logger.warning(f"Generating fallback OD matrix using haversine distances for zone {zone_id}")
+        logger.warning(f"generating fallback OD matrix using haversine distances for zone {zone_id}")
         return generate_fallback_od_matrix(valid_locations, zone_id, api_call_time)
         
     except requests.RequestException as e:
-        logger.error(f"OSRM Table API request failed for zone {zone_id}: {e}")
-        logger.error(f"Endpoint: {endpoint}")
+        logger.error(f"OSRM table API request failed for zone {zone_id}: {e}")
+        logger.error(f"endpoint: {endpoint}")
         
         # generate dummy OD matrix as fallback
-        logger.warning(f"Generating fallback OD matrix using haversine distances for zone {zone_id}")
+        logger.warning(f"generating fallback OD matrix using haversine distances for zone {zone_id}")
         return generate_fallback_od_matrix(valid_locations, zone_id, api_call_time)
         
     # validate response
@@ -381,11 +381,11 @@ def fetch_od_matrix(
         distance_matrix = (distance_matrix + distance_matrix.T) / 2
     else:
         # estimate distances from durations (rough approximation)
-        logger.warning(f"No distance matrix in response for zone {zone_id}, estimating from durations")
+        logger.warning(f"no distance matrix in response for zone {zone_id}, estimating from durations")
         # assume average speed of 30 km/h = 8.33 m/s for city driving
         distance_matrix = duration_matrix * 8.33
     
-    logger.info(f"Successfully fetched OD matrix for zone {zone_id}")
+    logger.info(f"successfully fetched OD matrix for zone {zone_id}")
     
     return ODMatrixResult(
         zone_id=zone_id,
@@ -453,7 +453,7 @@ def generate_fallback_route_geometry(
             "geometry": "o|sbFx}liU"
         })
     
-    logger.info(f"Generated fallback route geometry for zone {zone_id}, day {day_number}")
+    logger.info(f"generated fallback route geometry for zone {zone_id}, day {day_number}")
     
     return RouteGeometry(
         zone_id=zone_id,
@@ -500,7 +500,7 @@ def fetch_route_geometry(
         raise ValueError(f"Zone {zone_id}, day {day_number}: Need at least 2 valid locations for route, got {len(valid_locations)}")
     
     if len(valid_locations) != len(route_locations):
-        logger.warning(f"Zone {zone_id}, day {day_number}: Using {len(valid_locations)} valid locations out of {len(route_locations)} total")
+        logger.warning(f"zone {zone_id}, day {day_number}: using {len(valid_locations)} valid locations out of {len(route_locations)} total")
     
     # build coordinate string from valid locations
     coordinates = build_coordinates_string(valid_locations)
@@ -517,7 +517,7 @@ def fetch_route_geometry(
     }
     
     # make API call
-    logger.info(f"Fetching route geometry for zone {zone_id}, day {day_number} with {len(route_locations)} stops")
+    logger.info(f"fetching route geometry for zone {zone_id}, day {day_number} with {len(route_locations)} stops")
     api_call_time = datetime.now()
     
     try:
@@ -526,20 +526,20 @@ def fetch_route_geometry(
         data = response.json()
         
     except requests.Timeout as e:
-        logger.error(f"OSRM Route API timeout (30s) for zone {zone_id}, day {day_number} with {len(valid_locations)} stops: {e}")
-        logger.error(f"Endpoint: {endpoint}")
-        logger.error(f"Coordinates: {coordinates}")
+        logger.error(f"OSRM route API timeout (30s) for zone {zone_id}, day {day_number} with {len(valid_locations)} stops: {e}")
+        logger.error(f"endpoint: {endpoint}")
+        logger.error(f"coordinates: {coordinates}")
         
         # generate dummy route geometry as fallback
-        logger.warning(f"Generating fallback route geometry for zone {zone_id}, day {day_number}")
+        logger.warning(f"generating fallback route geometry for zone {zone_id}, day {day_number}")
         return generate_fallback_route_geometry(valid_locations, zone_id, day_number, api_call_time)
         
     except requests.RequestException as e:
-        logger.error(f"OSRM Route API request failed for zone {zone_id}, day {day_number}: {e}")
-        logger.error(f"Endpoint: {endpoint}")
+        logger.error(f"OSRM route API request failed for zone {zone_id}, day {day_number}: {e}")
+        logger.error(f"endpoint: {endpoint}")
         
         # generate dummy route geometry as fallback
-        logger.warning(f"Generating fallback route geometry for zone {zone_id}, day {day_number}")
+        logger.warning(f"generating fallback route geometry for zone {zone_id}, day {day_number}")
         return generate_fallback_route_geometry(valid_locations, zone_id, day_number, api_call_time)
         
     # validate response
@@ -579,7 +579,7 @@ def fetch_route_geometry(
                 }
                 instructions.append(instruction)
     
-    logger.info(f"Successfully fetched route geometry for zone {zone_id}, day {day_number}")
+    logger.info(f"successfully fetched route geometry for zone {zone_id}, day {day_number}")
     
     return RouteGeometry(
         zone_id=zone_id,
@@ -654,14 +654,14 @@ if __name__ == "__main__":
     # test OD matrix fetch
     try:
         od_result = fetch_od_matrix("test_zone", sample_locations)
-        logger.info(f"OD Matrix shape: {od_result.duration_matrix.shape}")
-        logger.info(f"Sample duration (Location 1→2): {od_result.duration_matrix[0, 1]:.1f} seconds")
+        logger.info(f"OD matrix shape: {od_result.duration_matrix.shape}")
+        logger.info(f"sample duration (location 1→2): {od_result.duration_matrix[0, 1]:.1f} seconds")
         
         # test route geometry fetch  
         route_result = fetch_route_geometry("test_zone", 1, sample_locations)
-        logger.info(f"Route distance: {route_result.total_distance_meters:.0f} meters")
-        logger.info(f"Route duration: {route_result.total_duration_seconds:.0f} seconds")
-        logger.info(f"Turn-by-turn steps: {len(route_result.turn_by_turn_instructions)}")
+        logger.info(f"route distance: {route_result.total_distance_meters:.0f} meters")
+        logger.info(f"route duration: {route_result.total_duration_seconds:.0f} seconds")
+        logger.info(f"turn-by-turn steps: {len(route_result.turn_by_turn_instructions)}")
         
     except Exception as e:
         logger.warning(f"example failed (expected if OSRM server not running): {e}")

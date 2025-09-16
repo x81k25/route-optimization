@@ -3,7 +3,7 @@
 # Launch script for the Streamlit Route Optimization Dashboard
 # This script runs the app with dark theme and proper configuration
 
-echo "🚀 Starting Route Optimization Dashboard..."
+echo "Starting Route Optimization Dashboard..."
 echo "The app will be available at: http://localhost:8501"
 echo ""
 echo "Press Ctrl+C to stop the server"

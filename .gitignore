@@ -192,3 +192,4 @@ figures/
 CLAUDE.md
 .claude
 *.jsonl
+*.parquet
