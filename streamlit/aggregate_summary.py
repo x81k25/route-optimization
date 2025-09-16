@@ -25,7 +25,7 @@ def show_aggregate_summary() -> None:
 
     :return: None
     """
-    st.title("📊 Aggregate Summary")
+    st.title("Aggregate Summary")
     st.markdown("System-wide performance metrics across all algorithm combinations")
 
     # load aggregate summary data
@@ -47,7 +47,7 @@ def show_aggregate_summary() -> None:
         summary_pd = summary_df
 
     # display summary statistics
-    st.subheader("📈 Performance Overview")
+    st.subheader("Performance Overview")
 
     # create metric columns
     col1, col2, col3, col4 = st.columns(4)
@@ -144,7 +144,7 @@ def show_aggregate_summary() -> None:
     # display table with formatting
     st.dataframe(
         summary_display,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         column_config={
             'Weekly Duration (hrs)': st.column_config.NumberColumn(format="%.2f"),
@@ -159,7 +159,7 @@ def show_aggregate_summary() -> None:
     )
 
     # algorithm comparison charts
-    st.subheader("📊 Algorithm Performance Comparison")
+    st.subheader("Algorithm Performance Comparison")
 
     col1, col2 = st.columns(2)
 
@@ -182,7 +182,7 @@ def show_aggregate_summary() -> None:
         st.caption("Average Underutilized Days by Balancer")
 
     # data info
-    st.subheader("ℹ️ Data Information")
+    st.subheader("Data Information")
     st.info(f"""
     **Total Algorithm Combinations**: {len(summary_pd)}
 

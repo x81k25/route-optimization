@@ -199,7 +199,8 @@ def assign_primary_days(
         logger.info(f"available days for secondaries: {available_days}")
 
         # dumb split: distribute secondary stores evenly across available days
-        secondary_stores = [row["pos_id"] for row in secondary_df.iter_rows(named=True)]
+        # Sort secondary stores by pos_id for consistent, predictable assignment
+        secondary_stores = [row["pos_id"] for row in secondary_df.sort("pos_id").iter_rows(named=True)]
         stores_per_day = len(secondary_stores) // len(available_days) if available_days else 0
         extra_stores = len(secondary_stores) % len(available_days) if available_days else 0
 

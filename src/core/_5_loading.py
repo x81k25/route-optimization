@@ -1,13 +1,7 @@
-"""
-Stage 5: Loading
-Export optimized routes and results to output files
-"""
-
 # standard library imports
 import json
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 # 3rd-party imports
 from loguru import logger
@@ -27,9 +21,8 @@ def load_results_to_files(
     This is stage 5 where we:
     1. Write optimized routes to JSONL and Parquet files
     2. Write daily summaries to JSONL and Parquet files
-    3. Generate HTML visualizations
-    4. Create CSV exports for external systems
-    5. Organize output directory structure
+    3. Write zone summaries to JSONL and Parquet files
+    4. Write aggregate summaries to JSONL and Parquet files
 
     :param itinerary: Detailed route itineraries (individual position records)
     :param daily_summary: Daily summary data
@@ -43,132 +36,52 @@ def load_results_to_files(
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)
 
-    # get current timestamp
-    created_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     # export itinerary data (individual position records)
-    export_itinerary_data(itinerary, output_path, created_on)
+    export_itinerary_data(itinerary, output_path)
 
     # export daily summary data if provided
     if daily_summary is not None:
-        export_daily_summary_data(daily_summary, output_path, created_on)
+        export_daily_summary_data(daily_summary, output_path)
 
     # export zone summary data if provided
     if zone_summary is not None:
-        export_zone_summary_data(zone_summary, output_path, created_on)
+        export_zone_summary_data(zone_summary, output_path)
 
     # export aggregate summary data if provided
     if aggregate_summary is not None:
-        export_aggregate_summary_data(aggregate_summary, output_path, created_on)
+        export_aggregate_summary_data(aggregate_summary, output_path)
 
     logger.success(f"results exported to {output_dir}")
 
 
 def export_itinerary_data(
     itinerary: pl.DataFrame,
-    output_path: Path,
-    created_on: str
+    output_path: Path
 ) -> None:
     """
-    Export detailed itinerary data to JSONL and Parquet files.
-    Merges with existing data and keeps newest records based on uniqueness constraints.
-    Unique on: (zone_id, pos_id, day, clusterer, balancer)
+    Export detailed itinerary data by appending to JSONL and Parquet files.
 
     :param itinerary: Itinerary DataFrame
     :param output_path: Output directory path
-    :param created_on: Timestamp of creation
     """
     if len(itinerary) == 0:
         logger.warning("no itinerary data to export")
         return
 
     output_file = output_path / "itinerary.jsonl"
-
-    # extract metadata from dataframe or set defaults
-    clusterer = itinerary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in itinerary.columns and len(itinerary) > 0 else 'mds_kmeans'
-    balancer = itinerary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in itinerary.columns and len(itinerary) > 0 else 'greedy'
-    router = itinerary.select('router').unique().to_series().to_list()[0] if 'router' in itinerary.columns and len(itinerary) > 0 else 'osrm'
-
-    # add metadata to new dataframe
-    new_data = itinerary.with_columns([
-        pl.lit(clusterer).alias('clusterer'),
-        pl.lit(router).alias('router'),
-        pl.lit(balancer).alias('balancer'),
-        pl.lit(created_on).alias('created_on')
-    ])
-
-    # read existing data from Parquet (primary format) with JSONL fallback for migration
     parquet_file = output_path / "itinerary.parquet"
-    existing_data = None
 
+    new_data = itinerary
+
+    # read existing data and append new rows
     if parquet_file.exists():
         try:
             existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"read {len(existing_data)} existing records from Parquet")
+            final_data = pl.concat([existing_data, new_data], how='vertical')
+            logger.debug(f"appending {len(new_data)} records to existing {len(existing_data)} records")
         except Exception as e:
-            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
-
-    # fallback to JSONL only for migration from legacy format
-    if existing_data is None and output_file.exists():
-        try:
-            existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"migrating {len(existing_data)} records from JSONL to Parquet format")
-        except Exception as e:
-            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
-
-    # perform upsert operation using Polars
-    if existing_data is not None and len(existing_data) > 0:
-        # handle schema migration - add missing columns
-        migration_needed = False
-
-        if 'duration' not in existing_data.columns:
-            logger.info("migrating existing data: adding duration column with default values")
-            existing_data = existing_data.with_columns([
-                pl.when(pl.col('action') == 'departing')
-                .then(0.0)
-                .when(pl.col('action') == 'arriving')
-                .then(60.0)  # standard 60 minutes at location
-                .otherwise(10.0)  # default driving time for legacy data
-                .alias('duration')
-            ])
-            migration_needed = True
-
-        if 'pos_name' not in existing_data.columns:
-            logger.info("migrating existing data: adding pos_name column with default values")
-            existing_data = existing_data.with_columns([
-                pl.when(pl.col('pos_id').is_null())
-                .then(pl.lit(None))  # centroid has no name
-                .otherwise(pl.lit("Legacy Location"))  # placeholder for existing data
-                .alias('pos_name')
-            ])
-            migration_needed = True
-
-        if 'route_order' not in existing_data.columns:
-            logger.info("migrating existing data: adding route_order column with default values")
-            existing_data = existing_data.with_columns([
-                pl.lit(None, dtype=pl.Int64).alias('route_order')  # Will be populated in route optimization stage
-            ])
-            migration_needed = True
-
-        if migration_needed:
-            # reorder columns to match new schema
-            expected_cols = ['zone_id', 'day', 'pos_id', 'pos_name', 'pos_class', 'route', 'action', 'schedule', 'duration',
-                           'route_order', 'clusterer', 'router', 'balancer', 'created_on']
-            existing_data = existing_data.select([col for col in expected_cols if col in existing_data.columns])
-
-        # combine existing and new data
-        combined_data = pl.concat([existing_data, new_data], how='vertical')
-
-        # keep newest records based on uniqueness constraint
-        # unique on: (zone_id, pos_id, day, clusterer, balancer)
-        # Note: action is excluded since early pipeline stages have null actions
-        final_data = (combined_data
-            .with_columns(pl.col('created_on').str.to_datetime('%Y-%m-%d %H:%M:%S'))
-            .sort('created_on', descending=True)
-            .unique(subset=['zone_id', 'pos_id', 'day', 'clusterer', 'balancer'], keep='first')
-            .with_columns(pl.col('created_on').dt.strftime('%Y-%m-%d %H:%M:%S'))
-            .sort(['zone_id', 'day', 'route_order'])
-        )
+            logger.warning(f"could not read existing Parquet file: {e}. creating new file.")
+            final_data = new_data
     else:
         final_data = new_data
 
@@ -178,153 +91,37 @@ def export_itinerary_data(
     # write JSONL second (human-readable backup)
     write_dataframe_to_jsonl(final_data, output_file)
 
-    logger.info(f"exported {len(final_data)} itinerary records to {output_file} and {parquet_file} (merged and deduplicated)")
-
-
-def export_zone_summary_data(
-    zone_summary: pl.DataFrame,
-    output_path: Path,
-    created_on: str
-) -> None:
-    """
-    Export zone summary analytics data to JSONL and Parquet files.
-
-    :param zone_summary: Zone summary DataFrame
-    :param output_path: Output directory path
-    :param created_on: Timestamp of creation
-    """
-    if len(zone_summary) == 0:
-        logger.warning("no zone summary data to export")
-        return
-
-    output_file = output_path / "zone-summary.jsonl"
-
-    # extract metadata from dataframe or set defaults
-    clusterer = zone_summary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in zone_summary.columns and len(zone_summary) > 0 else 'mds_kmeans'
-    balancer = zone_summary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in zone_summary.columns and len(zone_summary) > 0 else 'greedy'
-    router = zone_summary.select('router').unique().to_series().to_list()[0] if 'router' in zone_summary.columns and len(zone_summary) > 0 else 'osrm'
-
-    # add metadata to new dataframe
-    new_data = zone_summary.with_columns([
-        pl.lit(clusterer).alias('clusterer'),
-        pl.lit(router).alias('router'),
-        pl.lit(balancer).alias('balancer'),
-        pl.lit(created_on).alias('created_on')
-    ])
-
-    # read existing data from Parquet (primary format) with JSONL fallback for migration
-    parquet_file = output_path / "zone-summary.parquet"
-    existing_data = None
-
-    if parquet_file.exists():
-        try:
-            existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"read {len(existing_data)} existing zone summary records from Parquet")
-        except Exception as e:
-            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
-
-    # fallback to JSONL only for migration from legacy format
-    if existing_data is None and output_file.exists():
-        try:
-            existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"migrating {len(existing_data)} zone summary records from JSONL to Parquet format")
-        except Exception as e:
-            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
-
-    # perform upsert operation using Polars
-    if existing_data is not None and len(existing_data) > 0:
-        # combine existing and new data
-        combined_data = pl.concat([existing_data, new_data], how='vertical')
-
-        # keep newest records based on uniqueness constraint
-        # unique on: (zone_id, clusterer, balancer)
-        final_data = (combined_data
-            .with_columns(pl.col('created_on').str.to_datetime('%Y-%m-%d %H:%M:%S'))
-            .sort('created_on', descending=True)
-            .unique(subset=['zone_id', 'clusterer', 'balancer'], keep='first')
-            .with_columns(pl.col('created_on').dt.strftime('%Y-%m-%d %H:%M:%S'))
-            .sort(['zone_id'])
-        )
-    else:
-        final_data = new_data
-
-    # write Parquet first (primary format for fast processing)
-    write_dataframe_to_parquet(final_data, parquet_file)
-
-    # write JSONL second (human-readable backup)
-    write_dataframe_to_jsonl(final_data, output_file)
-
-    logger.info(f"exported {len(final_data)} zone summary records to {output_file} and {parquet_file} (merged and deduplicated)")
+    logger.info(f"exported {len(new_data)} itinerary records (total: {len(final_data)})")
 
 
 def export_daily_summary_data(
     daily_summary: pl.DataFrame,
-    output_path: Path,
-    created_on: str
+    output_path: Path
 ) -> None:
     """
-    Export daily summary data to JSONL and Parquet files.
-    Merges with existing data and keeps newest records based on uniqueness constraints.
-    Unique on: (zone_id, day, clusterer, balancer)
+    Export daily summary data by appending to JSONL and Parquet files.
 
     :param daily_summary: Daily summary DataFrame
     :param output_path: Output directory path
-    :param created_on: Timestamp of creation
     """
     if len(daily_summary) == 0:
         logger.warning("no daily summary data to export")
         return
 
     output_file = output_path / "daily-summary.jsonl"
-
-    # extract metadata from dataframe or set defaults
-    clusterer = daily_summary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in daily_summary.columns and len(daily_summary) > 0 else 'mds_kmeans'
-    balancer = daily_summary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in daily_summary.columns and len(daily_summary) > 0 else 'greedy'
-    router = daily_summary.select('router').unique().to_series().to_list()[0] if 'router' in daily_summary.columns and len(daily_summary) > 0 else 'osrm'
-
-    # add metadata to new dataframe (if not already present)
-    new_data = daily_summary
-    if 'clusterer' not in daily_summary.columns:
-        new_data = new_data.with_columns([
-            pl.lit(clusterer).alias('clusterer'),
-            pl.lit(router).alias('router'),
-            pl.lit(balancer).alias('balancer'),
-            pl.lit(created_on).alias('created_on')
-        ])
-
-    # read existing data from Parquet (primary format) with JSONL fallback for migration
     parquet_file = output_path / "daily-summary.parquet"
-    existing_data = None
 
+    new_data = daily_summary
+
+    # read existing data and append new rows
     if parquet_file.exists():
         try:
             existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"read {len(existing_data)} existing daily summary records from Parquet")
+            final_data = pl.concat([existing_data, new_data], how='vertical')
+            logger.debug(f"appending {len(new_data)} records to existing {len(existing_data)} records")
         except Exception as e:
-            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
-
-    # fallback to JSONL only for migration from legacy format
-    if existing_data is None and output_file.exists():
-        try:
-            existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"migrating {len(existing_data)} daily summary records from JSONL to Parquet format")
-        except Exception as e:
-            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
-
-    # perform upsert operation using Polars
-    if existing_data is not None and len(existing_data) > 0:
-        # combine existing and new data
-        combined_data = pl.concat([existing_data, new_data], how='vertical')
-
-        # keep newest records based on uniqueness constraint
-        # unique on: (zone_id, day, clusterer, balancer)
-        final_data = (combined_data
-            .with_columns(pl.col('created_on').str.to_datetime('%Y-%m-%d %H:%M:%S'))
-            .sort('created_on', descending=True)
-            .unique(subset=['zone_id', 'day', 'clusterer', 'balancer'], keep='first')
-            .with_columns(pl.col('created_on').dt.strftime('%Y-%m-%d %H:%M:%S'))
-            .sort(['zone_id', 'day'])
-        )
+            logger.warning(f"could not read existing Parquet file: {e}. creating new file.")
+            final_data = new_data
     else:
         final_data = new_data
 
@@ -334,74 +131,78 @@ def export_daily_summary_data(
     # write JSONL second (human-readable backup)
     write_dataframe_to_jsonl(final_data, output_file)
 
-    logger.info(f"exported {len(final_data)} daily summary records to {output_file} and {parquet_file} (merged and deduplicated)")
+    logger.info(f"exported {len(new_data)} daily summary records (total: {len(final_data)})")
+
+
+def export_zone_summary_data(
+    zone_summary: pl.DataFrame,
+    output_path: Path
+) -> None:
+    """
+    Export zone summary analytics data by appending to JSONL and Parquet files.
+
+    :param zone_summary: Zone summary DataFrame
+    :param output_path: Output directory path
+    """
+    if len(zone_summary) == 0:
+        logger.warning("no zone summary data to export")
+        return
+
+    output_file = output_path / "zone-summary.jsonl"
+    parquet_file = output_path / "zone-summary.parquet"
+
+    new_data = zone_summary
+
+    # read existing data and append new rows
+    if parquet_file.exists():
+        try:
+            existing_data = pl.read_parquet(parquet_file)
+            final_data = pl.concat([existing_data, new_data], how='vertical')
+            logger.debug(f"appending {len(new_data)} records to existing {len(existing_data)} records")
+        except Exception as e:
+            logger.warning(f"could not read existing Parquet file: {e}. creating new file.")
+            final_data = new_data
+    else:
+        final_data = new_data
+
+    # write Parquet first (primary format for fast processing)
+    write_dataframe_to_parquet(final_data, parquet_file)
+
+    # write JSONL second (human-readable backup)
+    write_dataframe_to_jsonl(final_data, output_file)
+
+    logger.info(f"exported {len(new_data)} zone summary records (total: {len(final_data)})")
+
 
 
 def export_aggregate_summary_data(
     aggregate_summary: pl.DataFrame,
-    output_path: Path,
-    created_on: str
+    output_path: Path
 ) -> None:
     """
-    Export aggregate summary statistics to JSONL and Parquet files.
-    Merges with existing data and keeps newest records based on uniqueness constraints.
-    Unique on: (clusterer, balancer)
+    Export aggregate summary statistics by appending to JSONL and Parquet files.
 
     :param aggregate_summary: Aggregate summary DataFrame
     :param output_path: Output directory path
-    :param created_on: Timestamp of creation
     """
     if len(aggregate_summary) == 0:
         logger.warning("no aggregate summary data to export")
         return
 
     output_file = output_path / "aggregate-summary.jsonl"
-
-    # extract metadata from dataframe or set defaults
-    clusterer = aggregate_summary.select('clusterer').unique().to_series().to_list()[0] if 'clusterer' in aggregate_summary.columns and len(aggregate_summary) > 0 else 'mds_kmeans'
-    balancer = aggregate_summary.select('balancer').unique().to_series().to_list()[0] if 'balancer' in aggregate_summary.columns and len(aggregate_summary) > 0 else 'greedy'
-    router = aggregate_summary.select('router').unique().to_series().to_list()[0] if 'router' in aggregate_summary.columns and len(aggregate_summary) > 0 else 'osrm'
-
-    # add metadata to new dataframe
-    new_data = aggregate_summary.with_columns([
-        pl.lit(clusterer).alias('clusterer'),
-        pl.lit(router).alias('router'),
-        pl.lit(balancer).alias('balancer'),
-        pl.lit(created_on).alias('created_on')
-    ])
-
-    # read existing data from Parquet (primary format) with JSONL fallback for migration
     parquet_file = output_path / "aggregate-summary.parquet"
-    existing_data = None
 
+    new_data = aggregate_summary
+
+    # read existing data and append new rows
     if parquet_file.exists():
         try:
             existing_data = pl.read_parquet(parquet_file)
-            logger.debug(f"read {len(existing_data)} existing aggregate summary records from Parquet")
+            final_data = pl.concat([existing_data, new_data], how='vertical')
+            logger.debug(f"appending {len(new_data)} records to existing {len(existing_data)} records")
         except Exception as e:
-            logger.warning(f"could not read existing Parquet file {parquet_file}: {e}. trying JSONL migration.")
-
-    # fallback to JSONL only for migration from legacy format
-    if existing_data is None and output_file.exists():
-        try:
-            existing_data = read_jsonl_to_dataframe(output_file)
-            logger.info(f"migrating {len(existing_data)} aggregate summary records from JSONL to Parquet format")
-        except Exception as e:
-            logger.warning(f"could not read existing JSONL file {output_file}: {e}. using new data only.")
-
-    # perform upsert operation using Polars
-    if existing_data is not None and len(existing_data) > 0:
-        # combine existing and new data
-        combined_data = pl.concat([existing_data, new_data], how='vertical')
-
-        # keep newest records based on uniqueness constraint
-        # unique on: (clusterer, balancer)
-        final_data = (combined_data
-            .with_columns(pl.col('created_on').str.to_datetime('%Y-%m-%d %H:%M:%S'))
-            .sort('created_on', descending=True)
-            .unique(subset=['clusterer', 'balancer'], keep='first')
-            .with_columns(pl.col('created_on').dt.strftime('%Y-%m-%d %H:%M:%S'))
-        )
+            logger.warning(f"could not read existing Parquet file: {e}. creating new file.")
+            final_data = new_data
     else:
         final_data = new_data
 
@@ -411,134 +212,32 @@ def export_aggregate_summary_data(
     # write JSONL second (human-readable backup)
     write_dataframe_to_jsonl(final_data, output_file)
 
-    logger.info(f"exported {len(final_data)} aggregate summary records to {output_file} and {parquet_file} (merged and deduplicated)")
+    logger.info(f"exported {len(new_data)} aggregate summary records (total: {len(final_data)})")
 
 
-def export_csv_files(
-    itinerary: pl.DataFrame,
-    output_path: Path,
-    flatten_routes: bool = True
-) -> None:
-    """
-    Export data in CSV format for external systems.
-
-    :param itinerary: Itinerary DataFrame with individual position records
-    :param output_path: Output directory path
-    :param flatten_routes: Whether to flatten route geometry
-    """
-    if len(itinerary) == 0:
-        logger.warning("no data to export as CSV")
-        return
-
-    # create simplified version for CSV export with new schema
-    csv_data = itinerary.select([
-        "zone_id",
-        "day",
-        "pos_id",
-        "pos_class",
-        "action",
-        "schedule"
-    ])
-
-    output_file = output_path / "routes_summary.csv"
-    csv_data.write_csv(output_file)
-
-    logger.info(f"exported CSV summary to {output_file}")
 
 
 def clean_record_for_json(record: Dict) -> Dict:
     """
     Clean a record for JSON serialization by converting numpy types.
-    
+
     :param record: Dictionary record
     :return: Cleaned record with JSON-serializable types
     """
     cleaned = {}
-    
+
     for key, value in record.items():
         # handle numpy types and convert to Python types
         if hasattr(value, 'item'):  # numpy scalars
             cleaned[key] = value.item()
         elif isinstance(value, list):
-            cleaned[key] = [clean_list_item(item) for item in value]
+            cleaned[key] = [item.item() if hasattr(item, 'item') else item for item in value]
         else:
             cleaned[key] = value
-    
+
     return cleaned
 
 
-def clean_list_item(item) -> any:
-    """
-    Clean individual list items for JSON serialization.
-    
-    :param item: List item to clean
-    :return: JSON-serializable item
-    """
-    if hasattr(item, 'item'):  # numpy scalar
-        return item.item()
-    elif isinstance(item, list):
-        return [clean_list_item(subitem) for subitem in item]
-    else:
-        return item
-
-
-def create_visualization_files(
-    itinerary_df: pl.DataFrame,
-    output_path: Path
-) -> None:
-    """
-    Create HTML visualization files for routes.
-    
-    :param itinerary_df: Itinerary DataFrame
-    :param output_path: Output directory path
-    """
-    vis_path = output_path / "visualizations"
-    vis_path.mkdir(exist_ok=True)
-    
-    # create visualizations for each zone
-    zones = itinerary_df["zone_id"].unique().to_list()
-    
-    for zone_id in zones:
-        zone_df = itinerary_df.filter(pl.col("zone_id") == zone_id)
-        
-        if len(zone_df) > 0:
-            vis_file = vis_path / f"route_map_{zone_id}.html"
-            create_zone_visualization(zone_df, vis_file, zone_id)
-
-
-def create_zone_visualization(
-    zone_df: pl.DataFrame,
-    output_file: Path,
-    zone_id: str
-) -> None:
-    """
-    Create HTML visualization for a single zone.
-
-    :param zone_df: DataFrame for the zone
-    :param output_file: Output HTML file path
-    :param zone_id: Zone identifier
-    """
-    # this would typically use a mapping library like Folium
-    # for now, create a simple HTML placeholder
-
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Route Map - {zone_id}</title>
-    </head>
-    <body>
-        <h1>Route Optimization - {zone_id}</h1>
-        <p>Total days: {len(zone_df)}</p>
-        <p>Interactive map visualization would be generated here using the route geometry data.</p>
-    </body>
-    </html>
-    """
-
-    with open(output_file, 'w') as f:
-        f.write(html_content)
-
-    logger.info(f"created visualization placeholder for {zone_id} at {output_file}")
 
 
 def read_jsonl_to_dataframe(file_path: Path) -> pl.DataFrame:

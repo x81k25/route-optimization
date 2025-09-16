@@ -1,8 +1,3 @@
-"""
-Stage 3.4: Cluster Balancing
-Balance workloads across clusters using organic duration rebalancing
-"""
-
 # standard library imports
 from typing import Dict, List, Optional, Tuple
 

@@ -10,6 +10,10 @@ from typing import Dict, List, Tuple
 from loguru import logger
 import polars as pl
 
+# Configure Polars to show all columns in string representation
+pl.Config.set_tbl_cols(-1)  # Show all columns
+pl.Config.set_fmt_str_lengths(100)  # Increase string length display
+
 # local imports
 from ._3_1_optimization_primary_day_assignment import assign_primary_days
 from ._3_2_optimization_secondary_day_clustering import cluster_secondary_days
@@ -99,37 +103,35 @@ def optimize_zone(
     
     # Stage 3.1: Primary Day Assignment
     itinerary = assign_primary_days(zone_df, model_params)
-    logger.debug(f"after assign_primary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
-
-    # DEBUG: Print primary assignments for zone_000
-    if zone_id == "zone_000":
-        primary_assignments = {}
-        for row in itinerary.filter(pl.col("pos_class") == "primary").iter_rows(named=True):
-            pos_id = row["pos_id"]
-            day = row["day"]
-            if pos_id not in primary_assignments:
-                primary_assignments[pos_id] = []
-            primary_assignments[pos_id].append(day)
-        logger.debug(f"zone {zone_id} primary assignments: {primary_assignments}")
+    logger.debug(f"Stage 3.1 complete - itinerary head:\n{itinerary.head()}")
 
     # Stage 3.2: Secondary Day Clustering
     if clusterer == "none":
         logger.info("clusterer set to 'none' - skipping secondary day clustering")
+        itinerary = itinerary.with_columns(clusterer = pl.lit("none"))
     else:
         itinerary = cluster_secondary_days(itinerary, zone_df, od_matrix, centroid, model_params, clusterer)
-        logger.debug(f"after cluster_secondary_days - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
+    
+    logger.debug(f"Stage 3.2 complete - itinerary head:\n{itinerary.head()}")
 
     # Stage 3.3: Route Optimization
     itinerary = optimize_itinerary_routes(itinerary, zone_df, od_matrix, centroid)
-    logger.debug(f"after optimize_itinerary_routes - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
+    itinerary = itinerary.with_columns(router = pl.lit("exhaustive"))
+    logger.debug(f"Stage 3.3 complete - itinerary head:\n{itinerary.head()}")
 
     # TODO: Implement remaining optimization stages to work with itinerary pattern
     # Stage 3.4: Cluster Balancing
-    # itinerary = balance_cluster_workloads(itinerary, od_matrix, model_params, balancer)
-
+    if balancer == "none":
+        logger.info("balancer set to 'none' - skipping secondary day clustering")
+        itinerary = itinerary.with_columns(balancer = pl.lit("none"))
+    else:
+        itinerary = balance_cluster_workloads(itinerary, od_matrix, model_params, balancer)
+        
+    logger.debug(f"Stage 3.4 complete - itinerary head:\n{itinerary.head()}")  
+    
     # Stage 3.5: Detailed Routing
     itinerary = add_detailed_action_sequences(itinerary, od_matrix)
-    logger.debug(f"after add_detailed_action_sequences - clusterer: {itinerary['clusterer'].unique()}, balancer: {itinerary['balancer'].unique()}")
+    logger.debug(f"Stage 3.5 complete - itinerary head:\n{itinerary.head()}")
 
     logger.success(f"optimization complete for zone {zone_id}")
 

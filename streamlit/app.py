@@ -22,7 +22,7 @@ from zone_details import show_zone_details
 
 st.set_page_config(
     page_title="Route Optimization Dashboard",
-    page_icon="🚗",
+    page_icon=":bar_chart:",
     layout="wide",
     initial_sidebar_state="expanded"
 )

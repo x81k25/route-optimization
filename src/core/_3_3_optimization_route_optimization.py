@@ -1,8 +1,3 @@
-"""
-Stage 3.3: Route Optimization
-Optimize visit sequences within each day using TSP algorithms
-"""
-
 # standard library imports
 import itertools
 from typing import Dict, List, Optional, Tuple

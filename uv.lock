@@ -494,6 +494,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pathlib2"
+version = "2.3.7.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/31/51/99caf463dc7c18eb18dad1fffe465a3cf3ee50ac3d1dccbd1781336fe9c7/pathlib2-2.3.7.post1.tar.gz", hash = "sha256:9fe0edad898b83c0c3e199c842b27ed216645d2e177757b2dd67384d4113c641", size = 211190, upload-time = "2022-02-10T18:01:09.996Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/09/eb/4af4bcd5b8731366b676192675221c5324394a580dfae469d498313b5c4a/pathlib2-2.3.7.post1-py2.py3-none-any.whl", hash = "sha256:5266a0fd000452f1b3467d782f079a4343c63aaa119221fbdc4e39577489ca5b", size = 18027, upload-time = "2022-02-10T18:01:07.751Z" },
+]
+
+[[package]]
 name = "pillow"
 version = "11.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -793,6 +805,7 @@ dependencies = [
     { name = "loguru" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pathlib2" },
     { name = "plotly" },
     { name = "polars" },
     { name = "polyline" },
@@ -815,6 +828,7 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "numpy", specifier = ">=2.3.2" },
     { name = "pandas", specifier = ">=2.3.2" },
+    { name = "pathlib2", specifier = ">=2.3.0" },
     { name = "plotly", specifier = ">=6.3.0" },
     { name = "polars", specifier = ">=1.32.3" },
     { name = "polyline", specifier = ">=2.0.3" },

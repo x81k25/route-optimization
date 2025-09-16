@@ -1,8 +1,3 @@
-"""
-Stage 3.5: Detailed Routing
-Add detailed action sequences with driving times between locations
-"""
-
 # standard library imports
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
@@ -12,7 +7,61 @@ from loguru import logger
 import polars as pl
 
 # local imports
-from src.utils.osrm_utils import fetch_route_geometry
+from src.utils.osrm_utils import fetch_route_geometry, OSRM_BASE_URL, Location
+
+
+def fetch_detailed_driving_route(
+    origin_coords: Tuple[float, float],
+    destination_coords: Tuple[float, float]
+) -> List[List[float]]:
+    """
+    Fetch detailed route coordinates from OSRM for driving between two points.
+
+    :param origin_coords: Origin coordinates as (latitude, longitude)
+    :param destination_coords: Destination coordinates as (latitude, longitude)
+    :return: List of coordinate pairs [[lon, lat], [lon, lat], ...]
+    """
+    try:
+        import requests
+        import polyline
+
+        # OSRM expects longitude,latitude format
+        coordinate_string = f"{origin_coords[1]},{origin_coords[0]};{destination_coords[1]},{destination_coords[0]}"
+
+        endpoint = f"{OSRM_BASE_URL}/route/v1/driving/{coordinate_string}"
+        params = {"overview": "full", "geometries": "polyline"}
+
+        response = requests.get(endpoint, params=params, timeout=30)
+        response.raise_for_status()
+        route_data = response.json()
+
+        if route_data.get("code") != "Ok":
+            logger.warning(f"OSRM API returned error: {route_data.get('message', 'Unknown error')}")
+            return [[origin_coords[1], origin_coords[0]], [destination_coords[1], destination_coords[0]]]
+
+        routes = route_data.get("routes", [])
+        if not routes:
+            logger.warning("No routes returned from OSRM API")
+            return [[origin_coords[1], origin_coords[0]], [destination_coords[1], destination_coords[0]]]
+
+        route = routes[0]
+        encoded_polyline = route.get("geometry", "")
+
+        if encoded_polyline:
+            # Decode polyline to get coordinate arrays
+            decoded_coords = polyline.decode(encoded_polyline)
+            # Convert from [(lat, lon), ...] to [[lon, lat], ...] format (GeoJSON format)
+            route_coords = [[coord[1], coord[0]] for coord in decoded_coords]
+            logger.debug(f"fetched detailed route with {len(route_coords)} coordinate points")
+            return route_coords
+        else:
+            logger.warning("Empty polyline geometry returned from OSRM")
+            return [[origin_coords[1], origin_coords[0]], [destination_coords[1], destination_coords[0]]]
+
+    except Exception as e:
+        logger.error(f"failed to fetch detailed driving route: {e}")
+        # Return simple two-point route as fallback
+        return [[origin_coords[1], origin_coords[0]], [destination_coords[1], destination_coords[0]]]
 
 
 def add_detailed_action_sequences(
@@ -67,6 +116,9 @@ def add_detailed_action_sequences(
 
         logger.info(f"processing day {day}: {len(day_locations)} locations")
 
+        # Initialize cumulative schedule for this day
+        current_schedule = 0.0
+
         # Process each location in sequence to create full action flow
         for i, location in enumerate(day_locations):
             current_pos_id = location["pos_id"]
@@ -83,7 +135,7 @@ def add_detailed_action_sequences(
                 "pos_class": location["pos_class"],
                 "route": location["route"],
                 "action": "departing",
-                "schedule": None,
+                "schedule": current_schedule,
                 "duration": 0.0,  # departing actions have 0 duration
                 "route_order": location["route_order"] * 10,  # multiply by 10 to give room for intermediate actions
                 "clusterer": clusterer_name,
@@ -92,7 +144,10 @@ def add_detailed_action_sequences(
                 "created_on": created_on
             }
             detailed_records.append(departing_record)
-            logger.debug(f"added departing record for {location['pos_id']} with route_order {departing_record['route_order']}")
+            logger.debug(f"added departing record for {location['pos_id']} with route_order {departing_record['route_order']} and schedule {current_schedule}")
+
+            # Update schedule: departing duration is 0, so schedule stays the same
+            # current_schedule remains unchanged since departing duration is 0.0
 
             # If this is not the last location, add driving and arriving actions
             if i < len(day_locations) - 1:
@@ -105,16 +160,27 @@ def add_detailed_action_sequences(
                 # Get driving time from od_matrix
                 driving_time = od_matrix.get((current_lookup_id, next_lookup_id), 0.0)
 
-                # Add "driving" action
+                # Extract origin and destination coordinates for detailed route
+                origin_coords = location["route"][0]  # [lon, lat]
+                dest_coords = next_location["route"][0]  # [lon, lat]
+
+                # Convert from [lon, lat] to (lat, lon) for the OSRM function
+                origin_lat_lon = (origin_coords[1], origin_coords[0])
+                dest_lat_lon = (dest_coords[1], dest_coords[0])
+
+                # Fetch detailed driving route from OSRM
+                detailed_route = fetch_detailed_driving_route(origin_lat_lon, dest_lat_lon)
+
+                # Add "driving" action with detailed route
                 driving_record = {
                     "zone_id": zone_id,
                     "day": day,
                     "pos_id": None,  # driving actions have null pos_id
                     "pos_name": None,  # driving actions have null pos_name
                     "pos_class": None,  # driving actions have null pos_class
-                    "route": [next_location["route"][0]],  # route to next location
+                    "route": detailed_route,  # detailed route with all coordinate pairs
                     "action": "driving",
-                    "schedule": None,
+                    "schedule": current_schedule,
                     "duration": driving_time,
                     "route_order": location["route_order"] * 10 + 1,  # between departing and arriving
                     "clusterer": clusterer_name,
@@ -123,7 +189,10 @@ def add_detailed_action_sequences(
                     "created_on": created_on
                 }
                 detailed_records.append(driving_record)
-                logger.debug(f"added driving record from {current_pos_id} to {next_pos_id} with route_order {driving_record['route_order']} and duration {driving_time}")
+                logger.debug(f"added driving record from {current_pos_id} to {next_pos_id} with route_order {driving_record['route_order']}, schedule {current_schedule} and duration {driving_time}")
+
+                # Update schedule: add driving duration
+                current_schedule += driving_time
 
                 # Add "arriving" action at next location
                 arriving_record = {
@@ -134,7 +203,7 @@ def add_detailed_action_sequences(
                     "pos_class": next_location["pos_class"],
                     "route": next_location["route"],
                     "action": "arriving",
-                    "schedule": None,
+                    "schedule": current_schedule,
                     "duration": next_location["duration"],  # use original location duration
                     "route_order": next_location["route_order"] * 10 - 1,  # just before the departing from next location
                     "clusterer": clusterer_name,
@@ -143,7 +212,10 @@ def add_detailed_action_sequences(
                     "created_on": created_on
                 }
                 detailed_records.append(arriving_record)
-                logger.debug(f"added arriving record for {next_location['pos_id']} with route_order {arriving_record['route_order']}")
+                logger.debug(f"added arriving record for {next_location['pos_id']} with route_order {arriving_record['route_order']} and schedule {current_schedule}")
+
+                # Update schedule: add arriving duration for the next departing action
+                current_schedule += next_location["duration"]
 
     # Create new itinerary DataFrame with detailed actions
     if detailed_records:

@@ -69,7 +69,7 @@ def show_zone_details(itinerary_df) -> None:
     :param itinerary_df: DataFrame with route optimization results
     :return: None
     """
-    st.header("🔍 Zone Details")
+    st.header("Zone Details")
 
     # get unique algorithm values for filters
     clusterers, balancers = get_unique_algorithms(itinerary_df)
@@ -89,7 +89,7 @@ def show_zone_details(itinerary_df) -> None:
             st.session_state.details_balancer = default_balancer
 
     # filters in sidebar
-    st.sidebar.subheader("🔧 Zone Details Filters")
+    st.sidebar.subheader("Zone Details Filters")
 
     clusterer_filter = st.sidebar.selectbox(
         "Clusterer",
@@ -117,7 +117,7 @@ def show_zone_details(itinerary_df) -> None:
         return
 
     # show selected algorithm combination
-    st.info(f"📊 Showing results for: **{clusterer_filter}** + **{balancer_filter}**")
+    st.info(f"Showing results for: **{clusterer_filter}** + **{balancer_filter}**")
 
     # zone selector
     zones = sorted(filtered_itinerary_df['zone_id'].unique())
@@ -200,11 +200,26 @@ def show_zone_details(itinerary_df) -> None:
     zone_summary_df = calculate_zone_metrics(filtered_itinerary_df)
     if zone_summary_df is not None:
         # Filter zone summary by algorithm and selected zone
-        zone_summary_filtered = zone_summary_df[
-            (zone_summary_df['clusterer'] == clusterer_filter) &
-            (zone_summary_df['balancer'] == balancer_filter) &
-            (zone_summary_df['zone_id'] == selected_zone)
-        ]
+        # Handle null values in clusterer and balancer columns
+        if 'clusterer' in zone_summary_df.columns and 'balancer' in zone_summary_df.columns:
+            # Check if columns have null values
+            if zone_summary_df['clusterer'].isna().all() and zone_summary_df['balancer'].isna().all():
+                # If all values are null, just filter by zone_id
+                zone_summary_filtered = zone_summary_df[
+                    zone_summary_df['zone_id'] == selected_zone
+                ]
+            else:
+                # Normal filtering with algorithm values
+                zone_summary_filtered = zone_summary_df[
+                    (zone_summary_df['clusterer'] == clusterer_filter) &
+                    (zone_summary_df['balancer'] == balancer_filter) &
+                    (zone_summary_df['zone_id'] == selected_zone)
+                ]
+        else:
+            # If columns don't exist, just filter by zone_id
+            zone_summary_filtered = zone_summary_df[
+                zone_summary_df['zone_id'] == selected_zone
+            ]
     else:
         zone_summary_filtered = None
 
@@ -220,29 +235,26 @@ def show_zone_details(itinerary_df) -> None:
         zone_daily_summary = None
 
     # Display zone summary using zone-summary data
-    st.subheader(f"📍 Zone {selected_zone} Summary")
-
-    # Show selected days info
-    if len(selected_days) == len(available_days):
-        day_info = "All days"
-    else:
-        day_info = f"Days: {', '.join(map(str, sorted(selected_days)))}"
-    st.info(f"📅 Displaying {day_info}")
+    st.subheader(f"Zone {selected_zone} Summary")
 
     if zone_summary_filtered is not None and len(zone_summary_filtered) > 0:
         # Read summary metrics directly from zone-summary data
         zone_record = zone_summary_filtered.iloc[0]
 
         # Use expander for card-like effect
-        with st.expander("📊 Zone Summary Metrics", expanded=True):
+        with st.expander("Zone Summary Metrics", expanded=True):
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                st.metric("Primary Locations", int(zone_record['primary_count']))
+                # Handle both naming conventions for primary count
+                primary_col = 'primary_count' if 'primary_count' in zone_record else 'primary_pos_count'
+                st.metric("Primary Locations", int(zone_record[primary_col]))
                 st.metric("Weekly Duration", f"{zone_record['weekly_duration']:.1f} min")
 
             with col2:
-                st.metric("Secondary Locations", int(zone_record['secondary_count']))
+                # Handle both naming conventions for secondary count
+                secondary_col = 'secondary_count' if 'secondary_count' in zone_record else 'secondary_pos_count'
+                st.metric("Secondary Locations", int(zone_record[secondary_col]))
                 st.metric("Utilization", f"{zone_record['utilization']:.1f}%")
 
             with col3:
@@ -262,7 +274,7 @@ def show_zone_details(itinerary_df) -> None:
     
     # Zone-specific map
     day_label = "All Days" if len(selected_days) == len(available_days) else f"Days {min(selected_days)}-{max(selected_days)}"
-    st.subheader(f"🗺️ Zone {selected_zone} Map ({day_label})")
+    st.subheader(f"Zone {selected_zone} Map ({day_label})")
 
     # Create colored day labels for reference above the map (only for selected days, in order)
     day_color_display = "".join([
@@ -304,7 +316,7 @@ def show_zone_details(itinerary_df) -> None:
     
     # Display Daily Summary Table (1:1 with daily-summary data)
     if zone_daily_summary is not None and len(zone_daily_summary) > 0:
-        st.subheader("📊 Daily Summary Table")
+        st.subheader("Daily Summary Table")
 
         # Convert to pandas for better display
         daily_summary_pandas = zone_daily_summary.to_pandas()
@@ -321,7 +333,7 @@ def show_zone_details(itinerary_df) -> None:
 
         st.dataframe(
             styled_daily_summary,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 "day": st.column_config.NumberColumn("Day", width=60),
@@ -335,7 +347,7 @@ def show_zone_details(itinerary_df) -> None:
         )
 
     # Display Itinerary Table (1:1 with itinerary data)
-    st.subheader("🗺️ Route Itinerary Table")
+    st.subheader("Route Itinerary Table")
 
     if zone_itinerary is not None and len(zone_itinerary) > 0:
         # Convert to pandas and add location names
@@ -355,7 +367,11 @@ def show_zone_details(itinerary_df) -> None:
                     if isinstance(route_coords, (list, tuple)) and len(route_coords) > 0:
                         first_coord = route_coords[0]
                         if isinstance(first_coord, (list, tuple)) and len(first_coord) >= 2:
-                            route_str = f"[{first_coord[0]:.4f}, {first_coord[1]:.4f}]..."
+                            # Only show "..." if there are more than 1 coordinate pair
+                            if len(route_coords) > 1:
+                                route_str = f"[{first_coord[0]:.4f}, {first_coord[1]:.4f}]..."
+                            else:
+                                route_str = f"[{first_coord[0]:.4f}, {first_coord[1]:.4f}]"
                         else:
                             route_str = str(route_coords)[:50] + "..."
                 except:
@@ -379,7 +395,7 @@ def show_zone_details(itinerary_df) -> None:
 
         st.dataframe(
             styled_itinerary,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 "day": st.column_config.NumberColumn("Day", width=60),

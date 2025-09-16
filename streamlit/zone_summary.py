@@ -32,7 +32,7 @@ def show_zone_summary(itinerary_df) -> None:
     :param itinerary_df: DataFrame with route optimization results
     :return: None
     """
-    st.header("🏢 Zone Summary")
+    st.header("Zone Summary")
 
     # load all data from Parquet files
     with st.spinner("loading zone metrics..."):
@@ -68,7 +68,7 @@ def show_zone_summary(itinerary_df) -> None:
             st.session_state.zone_balancer = default_balancer
 
     # filters in sidebar
-    st.sidebar.subheader("🔧 Zone Summary Filters")
+    st.sidebar.subheader("Zone Summary Filters")
 
     clusterer_filter = st.sidebar.selectbox(
         "Clusterer",
@@ -100,10 +100,10 @@ def show_zone_summary(itinerary_df) -> None:
     filtered_itinerary_df = filter_by_algorithm(itinerary_df, clusterer_filter, balancer_filter)
 
     # show selected algorithm combination
-    st.info(f"📊 Showing results for: **{clusterer_filter}** + **{balancer_filter}**")
+    st.info(f"Showing results for: **{clusterer_filter}** + **{balancer_filter}**")
     
     # Summary statistics calculated from filtered zone data
-    st.subheader("📈 Summary Statistics")
+    st.subheader("Summary Statistics")
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -129,7 +129,7 @@ def show_zone_summary(itinerary_df) -> None:
     st.markdown("---")
     
     # Zone-level metrics table
-    st.subheader("🗂️ Zone-Level Metrics")
+    st.subheader("Zone-Level Metrics")
 
     # Format the dataframe for display
     display_df = zone_metrics_df.copy()
@@ -140,14 +140,19 @@ def show_zone_summary(itinerary_df) -> None:
         if col in display_df.columns:
             display_df = display_df.drop(columns=[col])
 
-    # handle different possible column names from Parquet
+    # handle different possible column names from Parquet and JSONL
     column_mapping = {}
     if 'zone_id' in display_df.columns:
         column_mapping['zone_id'] = 'Zone ID'
+    # Handle both naming conventions for primary/secondary counts
     if 'primary_pos_count' in display_df.columns:
         column_mapping['primary_pos_count'] = 'Primaries'
+    elif 'primary_count' in display_df.columns:
+        column_mapping['primary_count'] = 'Primaries'
     if 'secondary_pos_count' in display_df.columns:
         column_mapping['secondary_pos_count'] = 'Secondaries'
+    elif 'secondary_count' in display_df.columns:
+        column_mapping['secondary_count'] = 'Secondaries'
     if 'weekly_duration' in display_df.columns:
         column_mapping['weekly_duration'] = 'Weekly Duration (hrs)'
     if 'utilization' in display_df.columns:
@@ -168,7 +173,7 @@ def show_zone_summary(itinerary_df) -> None:
     # Display with formatting
     st.dataframe(
         display_df,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         column_config={
             "Zone ID": st.column_config.TextColumn(width="small"),
@@ -187,7 +192,7 @@ def show_zone_summary(itinerary_df) -> None:
     st.markdown("---")
     
     # Map
-    st.subheader("🗺️ All Zones Map")
+    st.subheader("All Zones Map")
 
     with st.spinner("creating map..."):
         map_fig = create_zones_map(filtered_itinerary_df)

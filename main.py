@@ -403,43 +403,44 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Configure dual logger setup based on zone argument usage
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    
+    main_log_level = os.getenv("MAIN_LOG_LEVEL", "INFO").upper()
+    module_log_level = os.getenv("MODULE_LOG_LEVEL", "INFO").upper()
+
     logger.remove()  # Remove default logger
-    
+
     # Determine if zones are specified (either specific zones or empty list means "all zones")
     zones_specified = args.zone_ids is not None and len(args.zone_ids) > 0
-    
+
     if zones_specified:
-        # Testing specific zones - use env log level for both main and core
+        # Testing specific zones - use env log levels for both main and core
         logger.add(
             sink=sys.stderr,
-            level=log_level,
+            level=main_log_level,
             filter=lambda record: "main.py" in record["file"].name,
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | MAIN | <level>{message}</level>"
         )
         logger.add(
             sink=sys.stderr,
-            level=log_level,
+            level=module_log_level,
             filter=lambda record: record["name"].startswith("src."),
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
         )
-        logger.info(f"🔍 Zone-specific run detected: Using {log_level} level for both main and core loggers")
+        logger.info(f"🔍 Zone-specific run detected: Using {main_log_level} level for main, {module_log_level} level for core loggers")
     else:
-        # Full pipeline run - use env level for main, ERROR only for core
+        # Full pipeline run - use env levels for main and modules
         logger.add(
             sink=sys.stderr,
-            level=log_level,
+            level=main_log_level,
             filter=lambda record: "main.py" in record["file"].name,
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | MAIN | <level>{message}</level>"
         )
         logger.add(
             sink=sys.stderr,
-            level="ERROR",
+            level=module_log_level,
             filter=lambda record: record["name"].startswith("src."),
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> - <level>{message}</level>"
         )
-        logger.info(f"full pipeline run: using {log_level} level for main, ERROR level for core loggers")
+        logger.info(f"full pipeline run: using {main_log_level} level for main, {module_log_level} level for core loggers")
 
     # Handle --full-grid argument
     if args.full_grid:

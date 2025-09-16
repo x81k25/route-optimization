@@ -729,15 +729,26 @@ def get_unique_algorithms(df) -> tuple:
     :return: tuple of (clusterers_list, balancers_list)
     """
     if df is None or len(df) == 0:
-        return [], []
+        # Return default algorithm options when no data
+        return ['mds_kmeans'], ['greedy']
 
     clusterers = []
     balancers = []
 
     if 'clusterer' in df.columns:
-        clusterers = sorted(df.select(pl.col('clusterer').unique()).to_series().to_list())
+        clusterer_values = df.select(pl.col('clusterer').unique()).to_series().to_list()
+        # Filter out None/null values and sort, but keep "none" strings
+        clusterers = sorted([c for c in clusterer_values if c is not None])
 
     if 'balancer' in df.columns:
-        balancers = sorted(df.select(pl.col('balancer').unique()).to_series().to_list())
+        balancer_values = df.select(pl.col('balancer').unique()).to_series().to_list()
+        # Filter out None/null values and sort, but keep "none" strings
+        balancers = sorted([b for b in balancer_values if b is not None])
+
+    # Ensure we always have at least one option
+    if not clusterers:
+        clusterers = ['none']  # Use 'none' as default to match data
+    if not balancers:
+        balancers = ['none']   # Use 'none' as default to match data
 
     return clusterers, balancers
