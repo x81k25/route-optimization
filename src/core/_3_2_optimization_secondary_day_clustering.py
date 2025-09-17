@@ -139,6 +139,9 @@ def cluster_secondary_days(
     else:
         final_itinerary = primary_itinerary
 
+    # assign clusterer value
+    final_itinerary = final_itinerary.with_columns(clusterer = pl.lit(clusterer))
+
     logger.success(f"secondary clustering complete: {len(secondary_records)} secondary assignments created")
 
     return final_itinerary

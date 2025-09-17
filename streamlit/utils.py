@@ -160,6 +160,7 @@ def load_daily_summary() -> tuple:
         st.error(f"Error loading daily summary: {e}")
         return None
 
+@st.cache_data
 def create_zones_map(itinerary_df) -> object:
     """Create a map showing all zone locations."""
     if itinerary_df is None:
